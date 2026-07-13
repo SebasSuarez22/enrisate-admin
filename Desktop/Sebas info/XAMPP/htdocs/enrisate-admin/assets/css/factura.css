@@ -1,0 +1,252 @@
+/* =========================================================
+   ENRÍSATE · Factura imprimible
+   Tema claro: la tinta oscura se queda en el panel, el papel
+   es papel. Aquí manda la legibilidad.
+   ========================================================= */
+
+:root {
+  --papel:   #FFFDFB;
+  --tinta-p: #2A1B24;
+  --suave:   #8A7580;
+  --filete:  #E7DCD5;
+  --oro:     #B98B45;
+  --verde:   #2E7D5B;
+}
+
+.modo-papel {
+  background: #EFE8E4;
+  color: var(--tinta-p);
+  font-family: "Manrope", system-ui, sans-serif;
+  padding: 24px 16px 60px;
+}
+
+/* --- Barra de acciones (no se imprime) --- */
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 720px;
+  margin: 0 auto 18px;
+}
+.modo-papel .salir { color: #6B5560; border-color: var(--filete); }
+.modo-papel .salir:hover { color: var(--oro); border-color: var(--oro); }
+.boton.mini {
+  width: auto;
+  margin: 0;
+  padding: 9px 16px;
+  font-size: 13px;
+  text-decoration: none;
+  display: inline-block;
+}
+.boton.mini.verde {
+  background: var(--verde);
+  color: #FFF;
+}
+
+/* --- Hoja --- */
+.hoja {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 46px 46px 34px;
+  background: var(--papel);
+  border-radius: 4px;
+  box-shadow: 0 18px 50px -24px rgba(42, 27, 36, 0.35);
+}
+
+/* --- Encabezado --- */
+.encabezado {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 22px;
+  border-bottom: 2px solid var(--tinta-p);
+}
+.identidad { display: flex; align-items: center; gap: 12px; }
+.identidad img { width: 38px; height: 38px; }
+.nombre-negocio {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 600;
+  font-size: 25px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--tinta-p);
+}
+.lema {
+  margin: 2px 0 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--suave);
+}
+.folio { text-align: right; }
+.folio-num {
+  margin: 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--oro);
+}
+.folio-fecha { margin: 3px 0 0; font-size: 12.5px; color: var(--suave); }
+
+/* --- Cliente --- */
+.rotulo {
+  margin: 0 0 5px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--suave);
+}
+.para { padding: 24px 0 4px; }
+.cliente-nombre {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 500;
+  font-size: 21px;
+}
+.cliente-tel { margin: 2px 0 0; font-size: 13px; color: var(--suave); }
+
+/* --- Detalle --- */
+.detalle { width: 100%; border-collapse: collapse; margin-top: 26px; }
+.detalle th {
+  padding: 0 0 9px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--suave);
+  border-bottom: 1px solid var(--filete);
+}
+.detalle td {
+  padding: 13px 0;
+  font-size: 14px;
+  border-bottom: 1px solid var(--filete);
+  vertical-align: top;
+}
+.detalle .num { text-align: right; }
+.prod { display: block; font-weight: 500; }
+.marca {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--suave);
+}
+
+/* --- Totales --- */
+.totales { margin: 22px 0 0; margin-left: auto; width: 260px; }
+.tot {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 14px;
+  color: var(--suave);
+}
+.tot.grande {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 2px solid var(--tinta-p);
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--tinta-p);
+}
+
+/* --- Plan de pago --- */
+.plan { margin-top: 34px; }
+.cuotas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+.cuota {
+  padding: 14px 16px;
+  border: 1px solid var(--filete);
+  border-radius: 8px;
+  background: #FBF6F1;
+}
+.cuota.pagada { border-color: rgba(46, 125, 91, 0.35); background: rgba(46, 125, 91, 0.05); }
+.cuota-rot { margin: 0; font-size: 11.5px; color: var(--suave); }
+.cuota-val {
+  margin: 5px 0 4px;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 22px;
+  font-weight: 600;
+}
+.cuota-est {
+  margin: 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--verde);
+}
+.cuota-est.pendiente { color: var(--oro); }
+
+.sello {
+  display: inline-block;
+  margin: 0;
+  padding: 8px 18px;
+  border: 1.5px solid var(--verde);
+  border-radius: 6px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--verde);
+}
+
+.nota {
+  margin: 26px 0 0;
+  padding: 13px 15px;
+  border-left: 2px solid var(--oro);
+  background: #FBF6F1;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.cierre {
+  margin-top: 38px;
+  padding-top: 18px;
+  border-top: 1px solid var(--filete);
+  text-align: center;
+}
+.cierre p { margin: 0; font-size: 13px; color: var(--suave); }
+.cierre .fino {
+  margin-top: 6px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #B6A6AE;
+}
+
+/* --- Impresión / PDF ---
+   El margen se aplica como padding del propio contenido, no vía @page,
+   porque @page solo se respeta si el diálogo de impresión tiene
+   "Márgenes: Predeterminados"; con "Ninguno" o "Personalizados" el
+   navegador lo ignora y el PDF queda descuadrado frente a la vista previa. */
+@page { size: A4; margin: 0; }
+
+@media print {
+  .modo-papel { background: #FFF; padding: 0; }
+  .acciones { display: none; }
+  .hoja {
+    max-width: none;
+    padding: 14mm;
+    box-shadow: none;
+    border-radius: 0;
+  }
+  .cuota, .nota { break-inside: avoid; }
+}
+
+@media (max-width: 640px) {
+  .hoja { padding: 28px 22px 24px; }
+  .encabezado { flex-direction: column; }
+  .folio { text-align: left; }
+  .totales { width: 100%; }
+  .cuotas { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,14 @@
+<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Enrísate">
+  <defs>
+    <linearGradient id="hebra" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F6E3C1"/>
+      <stop offset="0.55" stop-color="#E0B87E"/>
+      <stop offset="1" stop-color="#C97F8E"/>
+    </linearGradient>
+  </defs>
+  <g stroke="url(#hebra)" stroke-width="2.4" stroke-linecap="round" fill="none">
+    <path d="M12 5c9 6 9 12 0 18c-8 5-8 11 0 16"/>
+    <path d="M24 5c9 6 9 12 0 18c-8 5-8 11 0 16" opacity="0.78"/>
+    <path d="M36 5c9 6 9 12 0 18c-8 5-8 11 0 16" opacity="0.5"/>
+  </g>
+</svg>

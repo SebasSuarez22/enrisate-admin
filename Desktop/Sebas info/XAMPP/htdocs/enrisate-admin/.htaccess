@@ -1,0 +1,2 @@
+# Bloquea el acceso web a carpetas internas
+RedirectMatch 404 /(includes|storage|tools)/
