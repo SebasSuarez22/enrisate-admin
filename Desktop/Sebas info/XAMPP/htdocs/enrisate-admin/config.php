@@ -22,6 +22,11 @@ const ADMIN_USUARIO = 'admin';
 const ADMIN_NOMBRE  = 'Administradora';
 const ADMIN_HASH    = '$2y$12$050ePq4.ZgMGoIKURU/VouuVfJv1jdPlNgmkIsMmY8FozBvqJMb6G';
 
+/* --- Contacto --- */
+// Número al que llegan los pedidos del catálogo público (sin +, con indicativo).
+// Hoy es un número personal; cuando pasen a WhatsApp Business, cambia solo este valor.
+const APP_WHATSAPP = '573163770326';
+
 /* --- Seguridad --- */
 const MAX_INTENTOS       = 5;    // intentos fallidos antes de bloquear
 const BLOQUEO_SEGUNDOS   = 300;  // 5 minutos de bloqueo

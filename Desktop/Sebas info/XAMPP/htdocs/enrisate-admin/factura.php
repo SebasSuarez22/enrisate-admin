@@ -11,7 +11,7 @@ if (!$f) {
     exit('Esa factura no existe.');
 }
 
-$fecha = fecha_larga($f['creada']);
+$fecha = fecha_larga(fecha_factura($f));
 
 /* Mensaje de WhatsApp */
 $msg  = "Hola " . $f['cliente'] . " 💛\n";
@@ -24,9 +24,15 @@ if ($f['descuento'] > 0) {
 }
 $msg .= "\nTotal: " . pesos($f['total']) . "\n";
 if ($f['plan'] === 'cuotas') {
+    if (!empty($f['saldo_aplicado'])) {
+        $msg .= "Saldo a favor aplicado: " . pesos($f['saldo_aplicado']) . "\n";
+    }
+    if (!empty($f['abono'])) {
+        $msg .= "Abono recibido: " . pesos($f['abono']) . "\n";
+    }
     $msg .= "\nQuedamos así:\n";
-    $msg .= "Primera cuota (hoy): " . pesos($f['cuota1']) . "\n";
-    $msg .= "Segunda cuota (" . fecha_larga($f['vence']) . "): " . pesos($f['cuota2']) . "\n";
+    $msg .= "Primera cuota (" . fecha_larga($f['vence1']) . "): " . pesos($f['cuota1']) . "\n";
+    $msg .= "Segunda cuota (" . fecha_larga($f['vence2']) . "): " . pesos($f['cuota2']) . "\n";
 }
 if (!empty($f['nota'])) {
     $msg .= "\n" . $f['nota'];
@@ -48,7 +54,7 @@ $wa = 'https://wa.me/'
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/enrisate.css">
+<link rel="stylesheet" href="assets/css/enrisate.css?v=<?= filemtime(__DIR__ . '/assets/css/enrisate.css') ?>">
 <link rel="stylesheet" href="assets/css/factura.css">
 </head>
 <body class="modo-papel">
@@ -62,7 +68,11 @@ $wa = 'https://wa.me/'
   <?php endif; ?>
 </nav>
 
-<article class="hoja">
+<article class="hoja<?= !empty($f['anulada']) ? ' hoja-anulada' : '' ?>">
+
+  <?php if (!empty($f['anulada'])): ?>
+    <p class="sello-anulada">Factura anulada</p>
+  <?php endif; ?>
 
   <header class="encabezado">
     <div class="identidad">
@@ -121,16 +131,26 @@ $wa = 'https://wa.me/'
   <?php if ($f['plan'] === 'cuotas'): ?>
     <section class="plan">
       <p class="rotulo">Plan de pago</p>
+      <?php if (!empty($f['saldo_aplicado'])): ?>
+        <p class="cuota-rot">Saldo a favor aplicado: <?= pesos($f['saldo_aplicado']) ?></p>
+      <?php endif; ?>
+      <?php if (!empty($f['abono'])): ?>
+        <p class="cuota-rot">Abono recibido: <?= pesos($f['abono']) ?></p>
+      <?php endif; ?>
       <div class="cuotas">
-        <div class="cuota pagada">
-          <p class="cuota-rot">Primera cuota · hoy</p>
+        <div class="cuota <?= !empty($f['cuota1_pagada']) ? 'pagada' : '' ?>">
+          <p class="cuota-rot">Primera cuota · <?= e(fecha_larga($f['vence1'])) ?></p>
           <p class="cuota-val"><?= pesos($f['cuota1']) ?></p>
-          <p class="cuota-est">Recibida</p>
+          <p class="cuota-est <?= empty($f['cuota1_pagada']) ? 'pendiente' : '' ?>">
+            <?= !empty($f['cuota1_pagada']) ? 'Recibida' : 'Pendiente' ?>
+          </p>
         </div>
-        <div class="cuota">
-          <p class="cuota-rot">Segunda cuota · <?= e(fecha_larga($f['vence'])) ?></p>
+        <div class="cuota <?= !empty($f['cuota2_pagada']) ? 'pagada' : '' ?>">
+          <p class="cuota-rot">Segunda cuota · <?= e(fecha_larga($f['vence2'])) ?></p>
           <p class="cuota-val"><?= pesos($f['cuota2']) ?></p>
-          <p class="cuota-est pendiente">Pendiente</p>
+          <p class="cuota-est <?= empty($f['cuota2_pagada']) ? 'pendiente' : '' ?>">
+            <?= !empty($f['cuota2_pagada']) ? 'Recibida' : 'Pendiente' ?>
+          </p>
         </div>
       </div>
     </section>

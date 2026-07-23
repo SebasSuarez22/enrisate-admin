@@ -199,6 +199,22 @@
   color: var(--verde);
 }
 
+.sello-anulada {
+  display: block;
+  margin: 0 0 20px;
+  padding: 10px 16px;
+  border: 1.5px solid #b23a48;
+  border-radius: 6px;
+  text-align: center;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #b23a48;
+  background: rgba(178, 58, 72, 0.06);
+}
+.hoja-anulada { opacity: 0.72; }
+
 .nota {
   margin: 26px 0 0;
   padding: 13px 15px;

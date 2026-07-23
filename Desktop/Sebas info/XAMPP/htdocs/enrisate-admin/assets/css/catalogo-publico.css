@@ -1,0 +1,282 @@
+/* =========================================================
+   ENRÍSATE · Catálogo público
+   Paleta "Rosa Viral" (opción 2 aprobada): rosa + negro sobre
+   blanco. Rejilla densa estilo Shein. Nada del tema oscuro del
+   panel — esta pantalla la ven las clientas.
+   ========================================================= */
+
+:root {
+  --crema:    #FFFFFF;
+  --papel:    #FFFFFF;
+  --rosa:     #FF2D6F;
+  --negro:    #111111;
+  --gris-suave: #767676;
+  --linea:    #F0F0F0;
+  --chip-bg:  #111111;
+  --acento:   #FF2D6F;
+  --exito:    #25D366;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Manrope", system-ui, -apple-system, sans-serif;
+  color: var(--negro);
+  background: var(--crema);
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 90px; /* deja espacio para la barra de pedido fija */
+}
+
+/* --- Franja superior --- */
+.cp-franja {
+  background: var(--negro);
+  color: var(--rosa);
+  text-align: center;
+  padding: 9px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+/* --- Encabezado --- */
+.cp-encabezado {
+  padding: 26px 20px 16px;
+  text-align: center;
+  border-bottom: 1px solid var(--linea);
+  background: var(--papel);
+}
+.cp-marca {
+  margin: 0;
+}
+.cp-logo {
+  display: block;
+  height: 88px;
+  width: auto;
+  margin: 0 auto;
+}
+.cp-tagline {
+  margin: 6px 0 0;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gris-suave);
+}
+.cp-instrucciones {
+  margin: 14px auto 0;
+  max-width: 520px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--negro);
+}
+
+/* --- Chips de marca (navegación rápida) --- */
+.cp-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 16px 18px 0;
+  max-width: 880px;
+  margin: 0 auto;
+}
+.cp-chip {
+  background: var(--chip-bg);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 7px 14px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.cp-chip:hover { background: var(--rosa); }
+
+/* --- Contenido --- */
+.cp-lienzo {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 20px 18px 40px;
+}
+
+.cp-marca-grupo { margin-bottom: 28px; scroll-margin-top: 14px; }
+.cp-marca-titulo {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rosa);
+}
+
+.cp-rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.cp-tarjeta {
+  display: flex;
+  flex-direction: column;
+  background: var(--papel);
+  border: 1.5px solid var(--linea);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cp-tarjeta:has(.cp-check:checked) {
+  border-color: var(--rosa);
+  box-shadow: 0 8px 20px -12px rgba(255, 45, 111, 0.35);
+}
+.cp-tarjeta.agotada { opacity: 0.55; }
+
+.cp-img-wrap {
+  position: relative;
+  height: 118px;
+  background:
+    linear-gradient(160deg, #FFE3EE, #FFC1DB),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 88'%3E%3Crect x='24' y='4' width='16' height='10' rx='2' fill='%23111'/%3E%3Cpath d='M20 14h24l4 12v50a6 6 0 0 1-6 6H22a6 6 0 0 1-6-6V26z' fill='%23FF2D6F' opacity='0.85'/%3E%3Crect x='18' y='40' width='28' height='18' fill='%23fff' opacity='0.55'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, center;
+  background-size: cover, 52px 72px;
+}
+.cp-foto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cp-estado {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 4px 9px;
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-radius: 0 0 8px 0;
+  background: #A34036;
+  color: #fff;
+}
+
+.cp-marca-logo {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  max-width: 62px;
+  padding: 3px 6px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+.cp-marca-logo img {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.cp-info { padding: 9px 10px 11px; display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.cp-nombre { margin: 0; font-size: 12.5px; font-weight: 800; color: var(--negro); line-height: 1.25; min-height: 32px; }
+.cp-precio { margin: 0; font-size: 14.5px; font-weight: 900; color: var(--rosa); }
+
+.cp-fila-agregar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+}
+.cp-check { display: none; }
+.cp-cant {
+  width: 42px;
+  padding: 7px 6px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--negro);
+  background: #FAFAFA;
+  border: 1px solid var(--linea);
+  border-radius: 7px;
+}
+.cp-boton-agregar {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 4px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #fff;
+  background: var(--negro);
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+.cp-boton-agregar:hover { filter: brightness(1.2); }
+.cp-boton-agregar:disabled { background: var(--linea); color: var(--gris-suave); cursor: not-allowed; }
+.cp-boton-agregar.en-pedido { background: var(--exito); }
+
+/* --- Barra de pedido fija --- */
+.cp-barra-pedido {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  background: var(--rosa);
+  color: #fff;
+  box-shadow: 0 -14px 30px -18px rgba(0, 0, 0, 0.4);
+}
+.cp-barra-pedido[hidden] { display: none; }
+.cp-barra-resumen { flex: 1; font-size: 13.5px; line-height: 1.4; }
+.cp-barra-resumen strong { font-size: 16px; }
+.cp-barra-link {
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--rosa);
+  background: #FFF;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.cp-barra-link:hover { filter: brightness(0.96); }
+.cp-barra-vaciar {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* --- Pie --- */
+.cp-pie {
+  padding: 26px 18px 10px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--gris-suave);
+}
+
+@media (max-width: 480px) {
+  .cp-logo { height: 72px; }
+  .cp-barra-pedido { flex-wrap: wrap; }
+  .cp-barra-link { width: 100%; text-align: center; }
+}

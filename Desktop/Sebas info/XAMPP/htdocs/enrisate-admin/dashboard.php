@@ -1,57 +1,77 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/facturas.php';
 
 requerir_sesion();
 
-$hora    = (int) date('G');
-$saludo  = $hora < 12 ? 'Buenos días' : ($hora < 19 ? 'Buenas tardes' : 'Buenas noches');
-$nombre  = $_SESSION['nombre'] ?? 'Administradora';
+$hora   = (int) date('G');
+$saludo = $hora < 12 ? 'Buenos días' : ($hora < 19 ? 'Buenas tardes' : 'Buenas noches');
+
+$r = metricas_panel();
 
 $modulos = [
-    ['Facturación','Armar la cuenta de cobro, imprimir el PDF y enviarla por WhatsApp.', 'Listo',      'facturar.php'],
-    ['Catálogo',   '92 productos con precio y costo. Por ahora se edita en el Excel.',   'Siguiente',  null],
-    ['Cartera',    'Segundas cuotas pendientes y desde cuándo.',                         'Siguiente',  null],
-    ['Clientes',   'Historial de compras y quién vuelve a comprar.',                     'Pendiente',  null],
-    ['Márgenes',   'Costo contra precio, producto por producto.',                        'Pendiente',  null],
-    ['Ajustes',    'Contraseña, datos del negocio y respaldo de la información.',        'Pendiente',  null],
+    ['Facturación',      'Armar la cuenta de cobro, imprimir el PDF y enviarla por WhatsApp.', 'Listo', 'facturar.php'],
+    ['Productos',        'Agrega productos nuevos al catálogo: SKU, marca, nombre y precio.', 'Listo', 'inventario.php'],
+    ['Catálogo público', 'La vista sin login que ven las clientas. Arman su pedido y te llega por WhatsApp.', 'Listo', 'catalogo-publico.php', true],
+    ['Cartera y reportes', 'Cuotas pendientes, historial de facturas y cómo va la ganancia y las ventas.', 'Listo', 'cartera.php'],
+    ['Clientes',         'Nombre, teléfono y notas de cada clienta.',                          'Listo', 'clientes.php'],
+    ['Márgenes',         'Costo contra precio, producto por producto. Edítalos aquí.',         'Listo', 'margenes.php'],
+    ['Ajustes',          'Contraseña, datos del negocio y respaldo de la información.',        'Pendiente',  null],
 ];
+
+$tituloPagina = 'Panel';
+require __DIR__ . '/includes/cabecera.php';
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<title>Panel · <?= e(APP_NOMBRE) ?></title>
-<link rel="icon" href="assets/img/logo.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/enrisate.css">
-</head>
-<body>
-
-<?php require __DIR__ . '/includes/escena.php'; ?>
-
-<header class="barra">
-  <img src="assets/img/logo.svg" alt="">
-  <span class="wordmark"><?= e(APP_NOMBRE) ?></span>
-  <span class="quien"><?= e($nombre) ?></span>
-  <a class="salir" href="logout.php">Cerrar sesión</a>
-</header>
 
 <main class="lienzo">
   <h1 class="saludo"><?= e($saludo) ?>.</h1>
-  <p class="subsaludo">Ya estás dentro. Estos son los módulos que vamos a construir.</p>
+  <p class="subsaludo">Un vistazo rápido a cómo va el negocio. Abajo tienes cada módulo.</p>
 
+  <?php if ($r['cuotasVencidas'] > 0): ?>
+    <div class="alertas">
+      <a class="alerta peligro" href="cartera.php">
+        <span class="alerta-punto"></span>
+        <span><strong><?= numero($r['cuotasVencidas']) ?> cuota<?= $r['cuotasVencidas'] === 1 ? '' : 's' ?> vencida<?= $r['cuotasVencidas'] === 1 ? '' : 's' ?></strong> · <?= pesos($r['vencido']) ?> por cobrar ya</span>
+        <span class="alerta-ir">Ver cartera →</span>
+      </a>
+    </div>
+  <?php endif; ?>
+
+  <div class="kpis">
+    <div class="kpi acento">
+      <p class="kpi-etiqueta">Por cobrar</p>
+      <p class="kpi-valor"><?= pesos($r['porCobrar']) ?></p>
+      <p class="kpi-sub"><?= $r['cuotasPendientes'] > 0
+        ? numero($r['cuotasPendientes']) . ' cuota' . ($r['cuotasPendientes'] === 1 ? '' : 's') . ' pendiente' . ($r['cuotasPendientes'] === 1 ? '' : 's')
+        : 'Todo al día' ?></p>
+    </div>
+    <div class="kpi<?= $r['vencido'] > 0 ? ' peligro' : '' ?>">
+      <p class="kpi-etiqueta">Vencido</p>
+      <p class="kpi-valor"><?= pesos($r['vencido']) ?></p>
+      <p class="kpi-sub"><?= $r['cuotasVencidas'] > 0
+        ? numero($r['cuotasVencidas']) . ' cuota' . ($r['cuotasVencidas'] === 1 ? '' : 's') . ' por cobrar ya'
+        : 'Sin cuotas vencidas' ?></p>
+    </div>
+    <div class="kpi">
+      <p class="kpi-etiqueta">Ganancia del mes</p>
+      <p class="kpi-valor"><?= pesos($r['gananciaMes']) ?></p>
+      <p class="kpi-sub"><?= e(mes_largo(date('Y-m'))) ?></p>
+    </div>
+    <div class="kpi">
+      <p class="kpi-etiqueta">Total invertido</p>
+      <p class="kpi-valor"><?= pesos($r['totalInvertido']) ?></p>
+      <p class="kpi-sub">Costo de lo vendido · histórico</p>
+    </div>
+  </div>
+
+  <h2 class="titulo-modulo">Módulos</h2>
   <div class="rejilla">
-    <?php foreach ($modulos as [$titulo, $texto, $estado, $link]): ?>
+    <?php foreach ($modulos as $m): [$titulo, $texto, $estado, $link] = $m; $nuevaPestana = $m[4] ?? false; ?>
       <article class="modulo<?= $link ? ' activo' : '' ?>">
         <h3><?= e($titulo) ?></h3>
         <p><?= e($texto) ?></p>
         <?php if ($link): ?>
-          <a class="boton mini" href="<?= e($link) ?>">Abrir</a>
+          <a class="boton mini" href="<?= e($link) ?>"<?= $nuevaPestana ? ' target="_blank" rel="noopener"' : '' ?>>Abrir</a>
         <?php else: ?>
           <span class="etiqueta"><?= e($estado) ?></span>
         <?php endif; ?>
