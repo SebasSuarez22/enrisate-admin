@@ -182,6 +182,63 @@ function factura_por_numero(string $numero): ?array
     return null;
 }
 
+/** Suma de los abonos registrados contra una cuota. */
+function cuota_pagado(array $cuota): int
+{
+    $total = 0;
+    foreach ($cuota['abonos'] ?? [] as $a) {
+        $total += (int) ($a['monto'] ?? 0);
+    }
+    return $total;
+}
+
+/** Lo que falta por pagar de una cuota (nunca negativo). */
+function cuota_pendiente(array $cuota): int
+{
+    return max(0, (int) ($cuota['monto'] ?? 0) - cuota_pagado($cuota));
+}
+
+function cuota_esta_pagada(array $cuota): bool
+{
+    return cuota_pendiente($cuota) <= 0;
+}
+
+/**
+ * Garantiza que una factura a cuotas tenga el array `cuotas` (formato
+ * nuevo). Si viene en el formato viejo (cuota1/cuota2 sueltos), lo
+ * traduce en memoria; no reescribe el archivo. Facturas de contado, o que
+ * ya tienen `cuotas`, se devuelven sin tocar.
+ */
+function normalizar_cuotas_factura(array $f): array
+{
+    if (($f['plan'] ?? '') !== 'cuotas' || isset($f['cuotas'])) {
+        return $f;
+    }
+
+    $cuotas = [];
+    foreach ([1, 2] as $i) {
+        $monto = (int) ($f["cuota{$i}"] ?? 0);
+        if ($monto <= 0) {
+            continue;
+        }
+        $abonos = [];
+        if (!empty($f["cuota{$i}_pagada"])) {
+            $abonos[] = [
+                'monto' => $monto,
+                'fecha' => $f["cuota{$i}_pagada_el"] ?? ($f['creada'] ?? date('c')),
+            ];
+        }
+        $cuotas[] = [
+            'monto'  => $monto,
+            'vence'  => $f["vence{$i}"] ?? date('Y-m-d'),
+            'abonos' => $abonos,
+        ];
+    }
+    $f['cuotas'] = $cuotas;
+
+    return $f;
+}
+
 /** Guarda una factura nueva y devuelve su número. */
 function crear_factura(array $datos): string
 {
