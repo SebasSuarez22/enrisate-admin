@@ -59,10 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $saldoAplicado   = max(0, min($saldoDisponible, $total, (int) ($_POST['saldo_aplicado'] ?? 0)));
 
                 $abono     = 0;
-                $cuota1    = $total;
-                $cuota2    = 0;
-                $vence1    = null;
-                $vence2    = null;
+                $cuotas    = [];
                 $fechaPago = null;
 
                 if ($plan === 'cuotas' && $total > 1) {
@@ -72,21 +69,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $abono = max(0, min($total - $saldoAplicado, (int) ($_POST['abono'] ?? 0)));
                     $resto = $total - $saldoAplicado - $abono;
 
-                    $cuota1 = $resto;
-                    $cuota2 = 0;
-                    if ($resto > 1) {
-                        $cuota1 = (int) ($_POST['cuota1'] ?? 0);
-                        $cuota1 = max(1, min($resto - 1, $cuota1));
-                        $cuota2 = $resto - $cuota1;
-                    }
+                    if ($resto <= 1) {
+                        $cuotas[] = [
+                            'monto'  => max(0, $resto),
+                            'vence'  => date('Y-m-d'),
+                            'abonos' => [],
+                        ];
+                    } else {
+                        $numCuotas    = max(2, min(4, (int) ($_POST['num_cuotas'] ?? 2)));
+                        $montosPost   = is_array($_POST['cuota_monto'] ?? null) ? $_POST['cuota_monto'] : [];
+                        $vencesPost   = is_array($_POST['cuota_vence'] ?? null) ? $_POST['cuota_vence'] : [];
+                        $sumaAnterior = 0;
 
-                    $vence1 = trim((string) ($_POST['vence1'] ?? ''));
-                    if ($vence1 === '') {
-                        $vence1 = date('Y-m-d');
-                    }
-                    $vence2 = trim((string) ($_POST['vence2'] ?? ''));
-                    if ($vence2 === '') {
-                        $vence2 = date('Y-m-d', strtotime('+30 days'));
+                        for ($i = 0; $i < $numCuotas; $i++) {
+                            $vence = trim((string) ($vencesPost[$i] ?? ''));
+                            if ($vence === '') {
+                                $vence = date('Y-m-d', strtotime('+' . (30 * $i) . ' days'));
+                            }
+
+                            if ($i === $numCuotas - 1) {
+                                // La última cuota es siempre el resto exacto: nunca se
+                                // confía en lo que mande el navegador, para que la suma
+                                // cuadre con el total.
+                                $monto = $resto - $sumaAnterior;
+                            } else {
+                                $restantesDespues = $numCuotas - 1 - $i;
+                                $monto = (int) ($montosPost[$i] ?? 0);
+                                $monto = max(1, min($resto - $sumaAnterior - $restantesDespues, $monto));
+                            }
+
+                            $cuotas[] = ['monto' => $monto, 'vence' => $vence, 'abonos' => []];
+                            $sumaAnterior += $monto;
+                        }
                     }
                 } else {
                     $plan = 'contado';
@@ -114,12 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'plan'           => $plan,
                     'abono'          => $abono,
                     'saldo_aplicado' => $saldoAplicado,
-                    'cuota1'         => $cuota1,
-                    'cuota2'         => $cuota2,
-                    'vence1'         => $vence1,
-                    'vence2'         => $vence2,
-                    'cuota1_pagada'  => $plan === 'contado',
-                    'cuota2_pagada'  => $plan === 'contado',
+                    'cuotas'         => $cuotas,
                     'pagado'         => $pagado,
                     'fecha_pago'     => $fechaPago,
                 ]);
@@ -254,7 +263,7 @@ require __DIR__ . '/includes/cabecera.php';
           </label>
           <label class="opcion">
             <input type="radio" name="plan" value="cuotas">
-            <span>En 2 cuotas</span>
+            <span>A cuotas</span>
           </label>
         </div>
 
@@ -272,20 +281,14 @@ require __DIR__ . '/includes/cabecera.php';
             <p class="pista">Lo que la clienta ya te pagó. No es descuento: no baja la ganancia.</p>
           </div>
           <div class="campo">
-            <label for="cuota1">Primera cuota</label>
-            <input type="number" id="cuota1" name="cuota1" min="0" step="500" value="0">
+            <label for="numCuotas">Número de cuotas</label>
+            <select id="numCuotas" name="num_cuotas">
+              <option value="2">2 cuotas</option>
+              <option value="3">3 cuotas</option>
+              <option value="4">4 cuotas</option>
+            </select>
           </div>
-          <div class="campo">
-            <label for="vence1">Fecha de la primera cuota</label>
-            <input type="date" id="vence1" name="vence1"
-                   value="<?= date('Y-m-d') ?>">
-          </div>
-          <p class="pista">Segunda cuota: <strong id="verCuota2">$0</strong></p>
-          <div class="campo">
-            <label for="vence2">Fecha de la segunda cuota</label>
-            <input type="date" id="vence2" name="vence2"
-                   value="<?= date('Y-m-d', strtotime('+30 days')) ?>">
-          </div>
+          <div id="filasCuotas"></div>
         </div>
 
         <div class="campo">
@@ -456,7 +459,7 @@ function pintar() {
   calcular();
 }
 
-function calcular(editandoCuota1) {
+function calcular() {
   const sub    = items.reduce((s, i) => s + i.precio * i.cant, 0);
   const costo  = items.reduce((s, i) => s + i.costo  * i.cant, 0);
   const desc   = Math.max(0, Math.min(sub, parseInt(document.getElementById('descuento').value, 10) || 0));
@@ -485,24 +488,70 @@ function calcular(editandoCuota1) {
   document.getElementById('filaResto').hidden = !esCuotas || (saldo <= 0 && abono <= 0);
   document.getElementById('verResto').textContent = cop(resto);
 
-  const c1i = document.getElementById('cuota1');
-  c1i.max = Math.max(1, resto - 1);
-  if (!editandoCuota1 && (!+c1i.value || +c1i.value > resto)) {
-    c1i.value = Math.round(resto / 2 / 500) * 500;
+  if (esCuotas) {
+    const montoInputs = [...filasCuotas.querySelectorAll('.montoCuota')];
+    const n = montoInputs.length + 1; // cuotas libres + la última calculada
+    let sumaLibres = 0;
+    montoInputs.forEach((input, i) => {
+      const restantesDespues = n - 1 - i;
+      const tope = Math.max(1, resto - sumaLibres - restantesDespues);
+      input.max = tope;
+      if (!+input.value) {
+        input.value = Math.max(0, Math.round((resto / n) / 500) * 500);
+      }
+      const v = Math.max(0, Math.min(tope, +input.value || 0));
+      sumaLibres += v;
+    });
+    const verUltima = document.getElementById('verUltimaCuota');
+    if (verUltima) verUltima.textContent = cop(Math.max(0, resto - sumaLibres));
   }
-  const c1 = Math.max(0, Math.min(resto, +c1i.value || 0));
-  document.getElementById('verCuota2').textContent = cop(resto - c1);
 }
 
-document.getElementById('descuento').addEventListener('input', () => calcular(false));
-document.getElementById('abono').addEventListener('input', () => calcular(false));
-document.getElementById('saldoAplicado').addEventListener('input', () => calcular(false));
-document.getElementById('cuota1').addEventListener('input', () => calcular(true));
+document.getElementById('descuento').addEventListener('input', calcular);
+document.getElementById('abono').addEventListener('input', calcular);
+document.getElementById('saldoAplicado').addEventListener('input', calcular);
+
+const filasCuotas  = document.getElementById('filasCuotas');
+const numCuotasSel = document.getElementById('numCuotas');
+
+function sumarDias(dias) {
+  const d = new Date();
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+function pintarFilasCuotas() {
+  const n = parseInt(numCuotasSel.value, 10);
+  let html = '';
+  for (let i = 0; i < n - 1; i++) {
+    html +=
+      '<div class="campo">' +
+        '<label>Cuota ' + (i + 1) + '</label>' +
+        '<input type="number" name="cuota_monto[]" min="0" step="500" value="0" class="montoCuota">' +
+      '</div>' +
+      '<div class="campo">' +
+        '<label>Fecha de la cuota ' + (i + 1) + '</label>' +
+        '<input type="date" name="cuota_vence[]" class="venceCuota" value="' + sumarDias(30 * i) + '">' +
+      '</div>';
+  }
+  html +=
+    '<p class="pista">Cuota ' + n + ' (última): <strong id="verUltimaCuota">$0</strong></p>' +
+    '<div class="campo">' +
+      '<label>Fecha de la cuota ' + n + '</label>' +
+      '<input type="date" name="cuota_vence[]" class="venceCuota" value="' + sumarDias(30 * (n - 1)) + '">' +
+    '</div>';
+  filasCuotas.innerHTML = html;
+  filasCuotas.querySelectorAll('.montoCuota').forEach(i => i.addEventListener('input', calcular));
+  calcular();
+}
+
+numCuotasSel.addEventListener('change', pintarFilasCuotas);
 
 document.querySelectorAll('input[name="plan"]').forEach(r =>
   r.addEventListener('change', e => {
     document.getElementById('bloqueCuotas').hidden  = (e.target.value !== 'cuotas');
     document.getElementById('bloqueContado').hidden = (e.target.value !== 'contado');
+    if (e.target.value === 'cuotas' && !filasCuotas.children.length) pintarFilasCuotas();
     calcular();
   })
 );
