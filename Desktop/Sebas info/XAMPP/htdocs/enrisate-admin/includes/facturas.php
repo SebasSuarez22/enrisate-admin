@@ -147,7 +147,10 @@ function leer_facturas(): array
         return [];
     }
     $d = json_decode((string) file_get_contents(ruta_facturas()), true);
-    return is_array($d) ? $d : [];
+    if (!is_array($d)) {
+        return [];
+    }
+    return array_map('normalizar_cuotas_factura', $d);
 }
 
 function guardar_facturas(array $f): void
@@ -273,26 +276,48 @@ function actualizar_factura(string $numero, array $cambios): bool
     return $hallada;
 }
 
-/** Marca una cuota (1 o 2) de una factura a plazos como pagada. */
-function marcar_cuota_pagada(string $numero, int $cuota): bool
+/** Total realmente cobrado de una factura a cuotas: saldo a favor aplicado + abono inicial + todos los abonos de todas las cuotas. */
+function total_pagado_cuotas(array $f): int
+{
+    $total = (int) ($f['saldo_aplicado'] ?? 0) + (int) ($f['abono'] ?? 0);
+    foreach ($f['cuotas'] ?? [] as $c) {
+        $total += cuota_pagado($c);
+    }
+    return $total;
+}
+
+/**
+ * Registra un abono de monto libre contra una cuota específica de una
+ * factura a plazos. Rechaza (no recorta) montos mayores al pendiente,
+ * índices de cuota inexistentes, montos de cero o facturas anuladas.
+ * Devuelve true si quedó registrado.
+ */
+function registrar_abono(string $numero, int $indiceCuota, int $monto): bool
 {
     $f = factura_por_numero($numero);
-    if (!$f || $f['plan'] !== 'cuotas' || ($cuota !== 1 && $cuota !== 2)) {
+    if (!$f || !empty($f['anulada']) || ($f['plan'] ?? '') !== 'cuotas') {
         return false;
     }
-    $campo = 'cuota' . $cuota . '_pagada';
-    if (!empty($f[$campo])) {
+    if (!isset($f['cuotas'][$indiceCuota])) {
+        return false;
+    }
+    if ($monto <= 0) {
         return false;
     }
 
-    $cuota1Pagada = $cuota === 1 ? true : !empty($f['cuota1_pagada']);
-    $cuota2Pagada = $cuota === 2 ? true : !empty($f['cuota2_pagada']);
+    $pendiente = cuota_pendiente($f['cuotas'][$indiceCuota]);
+    if ($monto > $pendiente) {
+        return false;
+    }
+
+    $f['cuotas'][$indiceCuota]['abonos'][] = [
+        'monto' => $monto,
+        'fecha' => date('c'),
+    ];
 
     return actualizar_factura($numero, [
-        $campo               => true,
-        'cuota' . $cuota . '_pagada_el' => date('c'),
-        'pagado'             => (int) ($f['abono'] ?? 0)
-            + ($cuota1Pagada ? $f['cuota1'] : 0) + ($cuota2Pagada ? $f['cuota2'] : 0),
+        'cuotas' => $f['cuotas'],
+        'pagado' => total_pagado_cuotas($f),
     ]);
 }
 
@@ -365,18 +390,15 @@ function metricas_panel(): array
             continue;
         }
 
-        foreach ([1, 2] as $i) {
-            if (!empty($f["cuota{$i}_pagada"])) {
+        foreach ($f['cuotas'] ?? [] as $cuota) {
+            $pendiente = cuota_pendiente($cuota);
+            if ($pendiente <= 0) {
                 continue;
             }
-            $monto = (int) ($f["cuota{$i}"] ?? 0);
-            if ($monto <= 0) {
-                continue;
-            }
-            $porCobrar += $monto;
+            $porCobrar += $pendiente;
             $cuotasPendientes++;
-            if (esta_vencida((string) ($f["vence{$i}"] ?? ''))) {
-                $vencido += $monto;
+            if (esta_vencida((string) ($cuota['vence'] ?? ''))) {
+                $vencido += $pendiente;
                 $cuotasVencidas++;
             }
         }
