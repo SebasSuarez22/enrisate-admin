@@ -24,17 +24,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'No pude reactivar esa factura.';
     } else {
         $numero = (string) ($_POST['numero'] ?? '');
-        $cuota  = (int) ($_POST['cuota'] ?? 0);
-        if (marcar_cuota_pagada($numero, $cuota)) {
-            header('Location: cartera.php?ok=pagada');
+        $idx    = (int) ($_POST['cuota_idx'] ?? -1);
+        $monto  = (int) ($_POST['monto'] ?? 0);
+        if (registrar_abono($numero, $idx, $monto)) {
+            header('Location: cartera.php?ok=abono&numero=' . urlencode($numero) . '&cuota=' . $idx . '&monto=' . $monto);
             exit;
         }
-        $error = 'No pude marcar esa cuota como pagada.';
+        $error = 'No pude registrar ese abono. Revisa que el monto no supere lo pendiente.';
     }
 }
 
-if (($_GET['ok'] ?? '') === 'pagada') {
-    $ok = 'Cuota marcada como pagada.';
+$waAbono = null;
+
+if (($_GET['ok'] ?? '') === 'abono') {
+    $ok     = 'Abono registrado.';
+    $fNum   = (string) ($_GET['numero'] ?? '');
+    $idx    = (int) ($_GET['cuota'] ?? -1);
+    $monto  = (int) ($_GET['monto'] ?? 0);
+    $fAbono = $fNum !== '' ? factura_por_numero($fNum) : null;
+
+    if ($fAbono && $fAbono['telefono'] !== '' && isset($fAbono['cuotas'][$idx]) && $monto > 0) {
+        $cuotaAbono = $fAbono['cuotas'][$idx];
+        $pendiente  = cuota_pendiente($cuotaAbono);
+
+        $msg  = "Hola " . $fAbono['cliente'] . " 💛\n";
+        $msg .= "Recibimos tu abono de " . pesos($monto) . " (" . fecha_larga(date('Y-m-d')) . ").\n";
+        $msg .= "Corresponde a la cuota de " . pesos((int) $cuotaAbono['monto'])
+              . " con vencimiento " . fecha_larga($cuotaAbono['vence']) . ".\n";
+        $msg .= $pendiente > 0
+            ? "Saldo pendiente de esa cuota: " . pesos($pendiente) . "\n"
+            : "Con esto, esa cuota queda completa. ¡Gracias!\n";
+
+        $waAbono = 'https://wa.me/' . '57' . ltrim($fAbono['telefono'], '5')
+            . '?text=' . rawurlencode($msg);
+    }
 } elseif (($_GET['ok'] ?? '') === 'anulada') {
     $ok = 'Factura anulada. Ya no cuenta en los reportes ni en la cartera.';
 } elseif (($_GET['ok'] ?? '') === 'reactivada') {
@@ -46,16 +69,26 @@ $q = trim((string) ($_GET['q'] ?? ''));
 $todas = leer_facturas();
 usort($todas, fn($a, $b) => strcmp($b['creada'], $a['creada']));
 
+$rotulosCuota = ['Primera cuota', 'Segunda cuota', 'Tercera cuota', 'Cuarta cuota'];
+
 $pendientes = [];
 foreach ($todas as $f) {
     if (!empty($f['anulada']) || $f['plan'] !== 'cuotas') {
         continue;
     }
-    if (empty($f['cuota1_pagada'])) {
-        $pendientes[] = ['factura' => $f, 'cuota' => 1, 'rotulo' => 'Primera cuota', 'monto' => $f['cuota1'], 'vence' => $f['vence1']];
-    }
-    if (empty($f['cuota2_pagada'])) {
-        $pendientes[] = ['factura' => $f, 'cuota' => 2, 'rotulo' => 'Segunda cuota', 'monto' => $f['cuota2'], 'vence' => $f['vence2']];
+    foreach ($f['cuotas'] as $idx => $cuota) {
+        $pendiente = cuota_pendiente($cuota);
+        if ($pendiente <= 0) {
+            continue;
+        }
+        $pendientes[] = [
+            'factura'   => $f,
+            'idx'       => $idx,
+            'rotulo'    => $rotulosCuota[$idx] ?? ('Cuota ' . ($idx + 1)),
+            'pactado'   => (int) $cuota['monto'],
+            'pendiente' => $pendiente,
+            'vence'     => $cuota['vence'],
+        ];
     }
 }
 usort($pendientes, fn($a, $b) => strcmp($a['vence'], $b['vence']));
@@ -159,6 +192,11 @@ require __DIR__ . '/includes/cabecera.php';
   <?php if ($ok !== ''): ?>
     <p class="aviso neutro"><?= e($ok) ?></p>
   <?php endif; ?>
+  <?php if ($waAbono): ?>
+    <p class="aviso neutro">
+      <a class="boton mini verde" href="<?= e($waAbono) ?>" target="_blank" rel="noopener">Enviar comprobante por WhatsApp</a>
+    </p>
+  <?php endif; ?>
 
   <section class="panel">
     <h2 class="titulo-panel">Cartera pendiente</h2>
@@ -177,7 +215,7 @@ require __DIR__ . '/includes/cabecera.php';
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($pendientes as $p): $f = $p['factura']; $vencida = esta_vencida($p['vence']); ?>
+          <?php foreach ($pendientes as $p): $f = $p['factura']; $vencida = esta_vencida($p['vence']); $abonado = $p['pactado'] - $p['pendiente']; ?>
             <tr>
               <td>
                 <?= e($f['cliente']) ?>
@@ -189,13 +227,18 @@ require __DIR__ . '/includes/cabecera.php';
                 <?= e(fecha_larga($p['vence'])) ?>
                 <?php if ($vencida): ?><span class="etiqueta vencida">Vencida</span><?php endif; ?>
               </td>
-              <td class="num"><?= pesos($p['monto']) ?></td>
               <td class="num">
-                <form method="post" action="cartera.php">
+                <?= pesos($p['pendiente']) ?>
+                <?php if ($abonado > 0): ?><span class="sku">de <?= pesos($p['pactado']) ?></span><?php endif; ?>
+              </td>
+              <td class="num">
+                <form method="post" action="cartera.php" class="en-linea">
                   <input type="hidden" name="csrf" value="<?= e($token) ?>">
                   <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
-                  <input type="hidden" name="cuota" value="<?= (int) $p['cuota'] ?>">
-                  <button type="submit" class="boton mini">Marcar pagada</button>
+                  <input type="hidden" name="cuota_idx" value="<?= (int) $p['idx'] ?>">
+                  <input type="number" name="monto" min="1" max="<?= (int) $p['pendiente'] ?>" step="500"
+                         value="<?= (int) $p['pendiente'] ?>" aria-label="Monto del abono">
+                  <button type="submit" class="boton mini">Registrar abono</button>
                 </form>
               </td>
             </tr>
@@ -240,16 +283,27 @@ require __DIR__ . '/includes/cabecera.php';
             } elseif ($f['plan'] !== 'cuotas') {
                 $estadoClase = '';
                 $estadoTexto = 'Contado';
-            } elseif (!empty($f['cuota1_pagada']) && !empty($f['cuota2_pagada'])) {
-                $estadoClase = 'pagada';
-                $estadoTexto = 'Pagada';
-            } elseif ((empty($f['cuota1_pagada']) && esta_vencida($f['vence1']))
-                   || (empty($f['cuota2_pagada']) && esta_vencida($f['vence2']))) {
-                $estadoClase = 'vencida';
-                $estadoTexto = 'Vencida';
             } else {
-                $estadoClase = 'pendiente';
-                $estadoTexto = 'Pendiente';
+                $todasPagadas  = true;
+                $algunaVencida = false;
+                foreach ($f['cuotas'] as $cuota) {
+                    if (!cuota_esta_pagada($cuota)) {
+                        $todasPagadas = false;
+                        if (esta_vencida($cuota['vence'])) {
+                            $algunaVencida = true;
+                        }
+                    }
+                }
+                if ($todasPagadas) {
+                    $estadoClase = 'pagada';
+                    $estadoTexto = 'Pagada';
+                } elseif ($algunaVencida) {
+                    $estadoClase = 'vencida';
+                    $estadoTexto = 'Vencida';
+                } else {
+                    $estadoClase = 'pendiente';
+                    $estadoTexto = 'Pendiente';
+                }
             }
           ?>
             <tr<?= $anulada ? ' class="fila-anulada"' : '' ?>>
