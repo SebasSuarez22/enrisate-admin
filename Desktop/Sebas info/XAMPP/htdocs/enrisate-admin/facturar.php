@@ -498,6 +498,11 @@ function calcular() {
       input.max = tope;
       if (!+input.value) {
         input.value = Math.max(0, Math.round((resto / n) / 500) * 500);
+      } else if (+input.value > tope) {
+        // Baja al múltiplo de 500 más cercano por debajo del tope: si se deja el
+        // tope exacto (normalmente no es múltiplo de 500), el navegador lo marca
+        // inválido por el step del input y bloquea el envío igual que antes.
+        input.value = Math.max(0, Math.floor(tope / 500) * 500);
       }
       const v = Math.max(0, Math.min(tope, +input.value || 0));
       sumaLibres += v;
