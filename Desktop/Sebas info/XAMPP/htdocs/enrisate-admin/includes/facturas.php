@@ -141,16 +141,24 @@ function ruta_facturas(): string
     return STORAGE_DIR . '/facturas.json';
 }
 
-function leer_facturas(): array
+/**
+ * Lee las facturas del archivo tal cual están guardadas, SIN migrar el
+ * formato viejo. Uso interno de las funciones que escriben (crear_factura,
+ * actualizar_factura), para que nunca se reescriba con datos migrados el
+ * registro de una factura que no se está tocando.
+ */
+function leer_facturas_raw(): array
 {
     if (!is_file(ruta_facturas())) {
         return [];
     }
     $d = json_decode((string) file_get_contents(ruta_facturas()), true);
-    if (!is_array($d)) {
-        return [];
-    }
-    return array_map('normalizar_cuotas_factura', $d);
+    return is_array($d) ? $d : [];
+}
+
+function leer_facturas(): array
+{
+    return array_map('normalizar_cuotas_factura', leer_facturas_raw());
 }
 
 function guardar_facturas(array $f): void
@@ -245,7 +253,7 @@ function normalizar_cuotas_factura(array $f): array
 /** Guarda una factura nueva y devuelve su número. */
 function crear_factura(array $datos): string
 {
-    $facturas = leer_facturas();
+    $facturas = leer_facturas_raw();
     $numero   = siguiente_numero();
 
     $datos['numero'] = $numero;
@@ -260,7 +268,7 @@ function crear_factura(array $datos): string
 /** Aplica cambios a una factura existente. Devuelve true si la encontró. */
 function actualizar_factura(string $numero, array $cambios): bool
 {
-    $facturas = leer_facturas();
+    $facturas = leer_facturas_raw();
     $hallada  = false;
     foreach ($facturas as &$f) {
         if ($f['numero'] === $numero) {
