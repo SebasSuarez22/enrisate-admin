@@ -14,6 +14,8 @@ if (!$f) {
 $fecha = fecha_larga(fecha_factura($f));
 
 /* Mensaje de WhatsApp */
+$rotulosCuota = ['Primera cuota', 'Segunda cuota', 'Tercera cuota', 'Cuarta cuota'];
+
 $msg  = "Hola " . $f['cliente'] . " 💛\n";
 $msg .= "Aquí está tu cuenta de " . APP_NOMBRE . " (No. " . $f['numero'] . "):\n\n";
 foreach ($f['lineas'] as $l) {
@@ -31,8 +33,10 @@ if ($f['plan'] === 'cuotas') {
         $msg .= "Abono recibido: " . pesos($f['abono']) . "\n";
     }
     $msg .= "\nQuedamos así:\n";
-    $msg .= "Primera cuota (" . fecha_larga($f['vence1']) . "): " . pesos($f['cuota1']) . "\n";
-    $msg .= "Segunda cuota (" . fecha_larga($f['vence2']) . "): " . pesos($f['cuota2']) . "\n";
+    foreach ($f['cuotas'] as $idx => $cuota) {
+        $rotulo = $rotulosCuota[$idx] ?? ('Cuota ' . ($idx + 1));
+        $msg .= $rotulo . ' (' . fecha_larga($cuota['vence']) . '): ' . pesos((int) $cuota['monto']) . "\n";
+    }
 }
 if (!empty($f['nota'])) {
     $msg .= "\n" . $f['nota'];
@@ -138,20 +142,26 @@ $wa = 'https://wa.me/'
         <p class="cuota-rot">Abono recibido: <?= pesos($f['abono']) ?></p>
       <?php endif; ?>
       <div class="cuotas">
-        <div class="cuota <?= !empty($f['cuota1_pagada']) ? 'pagada' : '' ?>">
-          <p class="cuota-rot">Primera cuota · <?= e(fecha_larga($f['vence1'])) ?></p>
-          <p class="cuota-val"><?= pesos($f['cuota1']) ?></p>
-          <p class="cuota-est <?= empty($f['cuota1_pagada']) ? 'pendiente' : '' ?>">
-            <?= !empty($f['cuota1_pagada']) ? 'Recibida' : 'Pendiente' ?>
-          </p>
-        </div>
-        <div class="cuota <?= !empty($f['cuota2_pagada']) ? 'pagada' : '' ?>">
-          <p class="cuota-rot">Segunda cuota · <?= e(fecha_larga($f['vence2'])) ?></p>
-          <p class="cuota-val"><?= pesos($f['cuota2']) ?></p>
-          <p class="cuota-est <?= empty($f['cuota2_pagada']) ? 'pendiente' : '' ?>">
-            <?= !empty($f['cuota2_pagada']) ? 'Recibida' : 'Pendiente' ?>
-          </p>
-        </div>
+        <?php foreach ($f['cuotas'] as $idx => $cuota):
+            $rotulo    = $rotulosCuota[$idx] ?? ('Cuota ' . ($idx + 1));
+            $pagado    = cuota_pagado($cuota);
+            $pendiente = cuota_pendiente($cuota);
+            $pagada    = $pendiente <= 0;
+        ?>
+          <div class="cuota <?= $pagada ? 'pagada' : '' ?>">
+            <p class="cuota-rot"><?= e($rotulo) ?> · <?= e(fecha_larga($cuota['vence'])) ?></p>
+            <p class="cuota-val"><?= pesos((int) $cuota['monto']) ?></p>
+            <p class="cuota-est <?= $pagada ? '' : 'pendiente' ?>">
+              <?php if ($pagada): ?>
+                Recibida
+              <?php elseif ($pagado > 0): ?>
+                Abonado <?= pesos($pagado) ?> · Pendiente <?= pesos($pendiente) ?>
+              <?php else: ?>
+                Pendiente
+              <?php endif; ?>
+            </p>
+          </div>
+        <?php endforeach; ?>
       </div>
     </section>
   <?php else: ?>
