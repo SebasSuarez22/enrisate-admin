@@ -55,8 +55,7 @@ if (($_GET['ok'] ?? '') === 'abono') {
             ? "Saldo pendiente de esa cuota: " . pesos($pendiente) . "\n"
             : "Con esto, esa cuota queda completa. ¡Gracias!\n";
 
-        $waAbono = 'https://wa.me/' . '57' . ltrim($fAbono['telefono'], '5')
-            . '?text=' . rawurlencode($msg);
+        $waAbono = enlace_whatsapp($fAbono['telefono'], $msg);
     }
 } elseif (($_GET['ok'] ?? '') === 'anulada') {
     $ok = 'Factura anulada. Ya no cuenta en los reportes ni en la cartera.';
@@ -68,8 +67,6 @@ $q = trim((string) ($_GET['q'] ?? ''));
 
 $todas = leer_facturas();
 usort($todas, fn($a, $b) => strcmp($b['creada'], $a['creada']));
-
-$rotulosCuota = ['Primera cuota', 'Segunda cuota', 'Tercera cuota', 'Cuarta cuota'];
 
 $pendientes = [];
 foreach ($todas as $f) {
@@ -84,7 +81,7 @@ foreach ($todas as $f) {
         $pendientes[] = [
             'factura'   => $f,
             'idx'       => $idx,
-            'rotulo'    => $rotulosCuota[$idx] ?? ('Cuota ' . ($idx + 1)),
+            'rotulo'    => rotulo_cuota($idx),
             'pactado'   => (int) $cuota['monto'],
             'pendiente' => $pendiente,
             'vence'     => $cuota['vence'],
@@ -236,7 +233,7 @@ require __DIR__ . '/includes/cabecera.php';
                   <input type="hidden" name="csrf" value="<?= e($token) ?>">
                   <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
                   <input type="hidden" name="cuota_idx" value="<?= (int) $p['idx'] ?>">
-                  <input type="number" name="monto" min="1" max="<?= (int) $p['pendiente'] ?>" step="500"
+                  <input type="number" name="monto" min="1" max="<?= (int) $p['pendiente'] ?>" step="1"
                          value="<?= (int) $p['pendiente'] ?>" aria-label="Monto del abono">
                   <button type="submit" class="boton mini">Registrar abono</button>
                 </form>

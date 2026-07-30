@@ -14,8 +14,6 @@ if (!$f) {
 $fecha = fecha_larga(fecha_factura($f));
 
 /* Mensaje de WhatsApp */
-$rotulosCuota = ['Primera cuota', 'Segunda cuota', 'Tercera cuota', 'Cuarta cuota'];
-
 $msg  = "Hola " . $f['cliente'] . " 💛\n";
 $msg .= "Aquí está tu cuenta de " . APP_NOMBRE . " (No. " . $f['numero'] . "):\n\n";
 foreach ($f['lineas'] as $l) {
@@ -34,7 +32,7 @@ if ($f['plan'] === 'cuotas') {
     }
     $msg .= "\nQuedamos así:\n";
     foreach ($f['cuotas'] as $idx => $cuota) {
-        $rotulo = $rotulosCuota[$idx] ?? ('Cuota ' . ($idx + 1));
+        $rotulo = rotulo_cuota($idx);
         $msg .= $rotulo . ' (' . fecha_larga($cuota['vence']) . '): ' . pesos((int) $cuota['monto']) . "\n";
     }
 }
@@ -43,9 +41,7 @@ if (!empty($f['nota'])) {
 }
 $msg .= "\n¡Gracias por confiar en nosotros!";
 
-$wa = 'https://wa.me/'
-    . ($f['telefono'] !== '' ? '57' . ltrim($f['telefono'], '5') : '')
-    . '?text=' . rawurlencode($msg);
+$wa = enlace_whatsapp($f['telefono'], $msg);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -143,7 +139,7 @@ $wa = 'https://wa.me/'
       <?php endif; ?>
       <div class="cuotas">
         <?php foreach ($f['cuotas'] as $idx => $cuota):
-            $rotulo    = $rotulosCuota[$idx] ?? ('Cuota ' . ($idx + 1));
+            $rotulo    = rotulo_cuota($idx);
             $pagado    = cuota_pagado($cuota);
             $pendiente = cuota_pendiente($cuota);
             $pagada    = $pendiente <= 0;

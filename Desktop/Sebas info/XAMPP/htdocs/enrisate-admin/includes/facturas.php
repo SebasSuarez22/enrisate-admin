@@ -454,3 +454,17 @@ function mes_largo(string $ym): string
     [$anio, $mes] = explode('-', $ym);
     return $meses[(int) $mes] . ' de ' . $anio;
 }
+
+/** Rótulo en español de una cuota por su índice (0-based): "Primera cuota", "Segunda cuota", ..., o "Cuota N" más allá de la cuarta. */
+function rotulo_cuota(int $idx): string
+{
+    $rotulos = ['Primera cuota', 'Segunda cuota', 'Tercera cuota', 'Cuarta cuota'];
+    return $rotulos[$idx] ?? ('Cuota ' . ($idx + 1));
+}
+
+/** Arma el link de WhatsApp (wa.me) para un teléfono y un mensaje ya redactado. Si el teléfono está vacío, devuelve un link sin número (comportamiento existente). */
+function enlace_whatsapp(string $telefono, string $mensaje): string
+{
+    return 'https://wa.me/' . ($telefono !== '' ? '57' . ltrim($telefono, '5') : '')
+        . '?text=' . rawurlencode($mensaje);
+}
