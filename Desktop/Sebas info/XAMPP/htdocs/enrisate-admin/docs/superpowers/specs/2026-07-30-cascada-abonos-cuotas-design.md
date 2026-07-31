@@ -19,10 +19,16 @@ real (caso detectado con la factura 2026-0002 de Alina Torres).
   sobrante se reparte automáticamente hacia la(s) próxima(s) cuota(s)
   pendientes de la misma factura, en orden.
 - Un abono nunca se aplica "hacia atrás" a una cuota anterior ya cubierta.
-- Un abono que supere el pendiente de **toda la factura** (todas las
-  cuotas ya cubiertas) se sigue rechazando — no existe concepto de saldo
-  a favor más allá de la factura (evaluado y descartado: ver alternativas
-  B/C consideradas).
+- Si el abono cae sobre la **última** cuota de la factura y sobra plata
+  (no hay una cuota siguiente donde cascadear), el sobrante **se acepta
+  igual, no se rechaza**: la cuota queda pagada y el monto real pagado
+  queda registrado tal cual, aunque supere lo pactado de esa cuota. El
+  campo `pagado` de la factura puede terminar por encima del `total` de
+  la factura (ej. redondeos a favor). No existe concepto de saldo a favor
+  más allá de la factura — el excedente no se guarda en ningún otro lado,
+  simplemente queda reflejado en el historial de abonos de esa cuota
+  (evaluado y descartado: modelo de crédito entre facturas, ver
+  alternativas B/C consideradas).
 - **Fuera de alcance:** saldo a favor de la clienta entre facturas distintas;
   cambios al flujo de creación de facturas (`facturar.php`); cambios a
   `clientes.php`, `inventario.php`, `margenes.php`, `catalogo-publico.php`.
@@ -35,9 +41,15 @@ registrado sobre el índice `i`:
 1. Se aplica a `Ci` hasta completar su pendiente.
 2. Si sobra, se aplica a `Ci+1` hasta completar su pendiente, y así
    sucesivamente hasta agotar `M` o llegar a la última cuota.
-3. Si `M` supera la suma de pendientes de `Ci..Cn`, se rechaza el abono
-   completo (no se aplica nada parcialmente) — mismo patrón de "todo o
-   nada" que ya sigue `registrar_abono()` hoy.
+3. Si `M` supera la suma de pendientes de `Ci..Cn` **y `Cn` no es la
+   última cuota de la factura**, se rechaza el abono completo (no se
+   aplica nada parcialmente) — mismo patrón de "todo o nada" que ya sigue
+   `registrar_abono()` hoy.
+4. Si `M` supera la suma de pendientes de `Ci..Cn` **y `Cn` sí es la
+   última cuota**, no se rechaza: el excedente completo se agrega al
+   abono de la última cuota (su `cuota_pendiente()` queda en 0 igual,
+   porque ya está acotada con `max(0, ...)`, pero el monto real del abono
+   registrado sí refleja lo que realmente se pagó).
 
 ## Componentes afectados
 
@@ -73,9 +85,21 @@ registrado sobre el índice `i`:
 
 - Igual que hoy: CSRF, factura anulada, índice de cuota inexistente, monto
   ≤ 0 → rechazado sin registrar nada.
-- Nuevo: monto mayor a la suma de pendientes desde la cuota indicada hasta
-  el final de la factura → rechazado completo, no se recorta ni se aplica
+- Monto mayor a la suma de pendientes desde la cuota indicada hasta el
+  final de la factura, **cuando esa cuota final no es la última cuota de
+  la factura** → rechazado completo, no se recorta ni se aplica
   parcialmente.
+- Monto mayor a la suma de pendientes cuando la cascada llega hasta la
+  **última** cuota de la factura → se acepta completo (ver "Comportamiento"
+  punto 4), no se rechaza.
+
+### Tope del campo en `cartera.php`
+
+Cuando la fila de "Cartera pendiente" corresponde a la última cuota de la
+factura, el campo de monto **no lleva `max`** (o lleva un tope alto
+simbólico) — puede escribirse cualquier valor mayor al pendiente. Cuando
+hay cuotas siguientes, el `max` sigue siendo la suma de pendientes de esa
+cuota + las siguientes, como ya se definía arriba.
 
 ## Verificación
 
