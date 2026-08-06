@@ -91,6 +91,23 @@ function actualizar_cliente(string $id, string $nombre, string $telefono, string
     return '';
 }
 
+/** Elimina varias clientas por id. Devuelve cuántas encontró y quitó. */
+function eliminar_clientes(array $ids): int
+{
+    $ids = array_values(array_unique(array_filter($ids, fn($id) => $id !== '')));
+    if (!$ids) {
+        return 0;
+    }
+
+    $clientes  = leer_clientes();
+    $filtrados = array_values(array_filter($clientes, fn($c) => !in_array($c['id'], $ids, true)));
+    $borradas  = count($clientes) - count($filtrados);
+    if ($borradas > 0) {
+        guardar_clientes($filtrados);
+    }
+    return $borradas;
+}
+
 /** Devuelve una clienta por su id, o null. */
 function cliente_por_id(string $id): ?array
 {

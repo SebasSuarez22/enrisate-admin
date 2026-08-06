@@ -265,6 +265,11 @@ body {
 .boton:active { transform: translateY(1px); }
 .boton:focus-visible { outline: 2px solid var(--brillo); outline-offset: 3px; }
 .boton[disabled] { opacity: 0.4; cursor: not-allowed; filter: grayscale(0.5); }
+.boton.peligro {
+  color: #FDF3F5;
+  background: linear-gradient(135deg, var(--alerta), #C96A80 62%, #B14F66);
+}
+.boton.peligro:hover { box-shadow: 0 12px 28px -14px rgba(228, 137, 154, 0.75); }
 
 /* --- Avisos --- */
 .aviso {
@@ -757,6 +762,43 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   font-size: 13px;
 }
 .form-precios .boton.mini { padding: 8px 12px; font-size: 12px; }
+
+/* =========================================================
+   Eliminar en lote (Clientes, Productos)
+   ========================================================= */
+.barra-eliminar { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-bottom: 12px; }
+.barra-eliminar .boton { width: auto; margin-top: 0; }
+.seleccionar-todo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--texto);
+  font-size: 13px;
+  color: var(--marfil-70);
+  cursor: pointer;
+}
+
+/* =========================================================
+   Inventario · editar / eliminar producto
+   ========================================================= */
+.acciones-inventario {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.form-editar-producto {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+}
+.form-editar-producto input[type="text"] {
+  width: 110px;
+  padding: 8px 9px;
+  font-size: 13px;
+}
+.form-editar-producto .boton.mini { padding: 8px 12px; font-size: 12px; }
 
 /* =========================================================
    Reportes

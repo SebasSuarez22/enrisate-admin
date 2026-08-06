@@ -28,6 +28,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         $error = $mensaje;
+    } elseif (($_POST['accion'] ?? '') === 'eliminar') {
+        $ids      = array_filter(array_map('trim', explode(',', (string) ($_POST['ids'] ?? ''))));
+        $borradas = eliminar_clientes($ids);
+        if ($borradas > 0) {
+            header('Location: clientes.php?ok=eliminadas&n=' . $borradas);
+            exit;
+        }
+        $error = 'Selecciona al menos una clienta para eliminar.';
     } else {
         $mensaje = agregar_cliente(
             (string) ($_POST['nombre'] ?? ''),
@@ -46,6 +54,9 @@ if (($_GET['ok'] ?? '') === '1') {
     $ok = 'Clienta agregada a la lista.';
 } elseif (($_GET['ok'] ?? '') === 'editada') {
     $ok = 'Datos de la clienta actualizados.';
+} elseif (($_GET['ok'] ?? '') === 'eliminadas') {
+    $n  = (int) ($_GET['n'] ?? 0);
+    $ok = 'Se eliminó ' . $n . ' clienta' . ($n === 1 ? '' : 's') . ' de la lista.';
 } elseif (($_GET['ok'] ?? '') === 'sync') {
     $n  = (int) ($_GET['n'] ?? 0);
     $ok = $n > 0
@@ -107,9 +118,16 @@ require __DIR__ . '/includes/cabecera.php';
     <?php if (!$clientes): ?>
       <p class="subsaludo">Todavía no hay clientas en la lista.</p>
     <?php else: ?>
+      <form method="post" action="clientes.php" id="form-eliminar-clientes" class="barra-eliminar" onsubmit="return prepararEliminarClientes(this);">
+        <input type="hidden" name="csrf" value="<?= e($token) ?>">
+        <input type="hidden" name="accion" value="eliminar">
+        <input type="hidden" name="ids" id="idsEliminarClientes" value="">
+        <button type="submit" class="boton mini peligro">Eliminar seleccionadas</button>
+      </form>
       <table class="lineas">
         <thead>
           <tr>
+            <th><input type="checkbox" id="chkTodosClientes" aria-label="Seleccionar todas"></th>
             <th>Nombre</th>
             <th>Teléfono</th>
             <th class="num">Saldo a favor</th>
@@ -120,6 +138,7 @@ require __DIR__ . '/includes/cabecera.php';
         <tbody>
           <?php foreach ($clientes as $c): $saldo = (int) ($c['saldo_favor'] ?? 0); ?>
             <tr id="vista-<?= e($c['id']) ?>">
+              <td><input type="checkbox" class="chk-cliente" value="<?= e($c['id']) ?>" aria-label="Seleccionar a <?= e($c['nombre']) ?>"></td>
               <td><?= e($c['nombre']) ?></td>
               <td><?= e($c['telefono']) ?></td>
               <td class="num"><?= $saldo > 0 ? '<strong class="saldo-favor">' . pesos($saldo) . '</strong>' : '—' ?></td>
@@ -129,7 +148,7 @@ require __DIR__ . '/includes/cabecera.php';
               </td>
             </tr>
             <tr id="edicion-<?= e($c['id']) ?>" hidden>
-              <td colspan="5">
+              <td colspan="6">
                 <form method="post" action="clientes.php" class="form-editar-cliente">
                   <input type="hidden" name="csrf" value="<?= e($token) ?>">
                   <input type="hidden" name="accion" value="editar">
@@ -176,6 +195,27 @@ document.querySelectorAll('.btn-cancelar-cliente').forEach(btn => {
     document.getElementById('edicion-' + btn.dataset.id).hidden = true;
   });
 });
+
+const chkTodosClientes = document.getElementById('chkTodosClientes');
+if (chkTodosClientes) {
+  chkTodosClientes.addEventListener('change', () => {
+    document.querySelectorAll('.chk-cliente').forEach(chk => { chk.checked = chkTodosClientes.checked; });
+  });
+}
+
+function prepararEliminarClientes(form) {
+  const seleccionadas = Array.from(document.querySelectorAll('.chk-cliente:checked'));
+  if (seleccionadas.length === 0) {
+    alert('Selecciona al menos una clienta para eliminar.');
+    return false;
+  }
+  const plural = seleccionadas.length === 1 ? 'la clienta seleccionada' : 'las ' + seleccionadas.length + ' clientas seleccionadas';
+  if (!confirm('¿Eliminar ' + plural + '? Esta acción no se puede deshacer.')) {
+    return false;
+  }
+  document.getElementById('idsEliminarClientes').value = seleccionadas.map(chk => chk.value).join(',');
+  return true;
+}
 </script>
 
 </body>

@@ -133,6 +133,49 @@ function actualizar_precio_costo(string $sku, int $precio, int $costo): bool
     return $hallado;
 }
 
+/** Actualiza marca y nombre de un SKU existente. Devuelve true si lo encontró. */
+function actualizar_producto(string $sku, string $marca, string $nombre): bool
+{
+    $marca  = trim($marca);
+    $nombre = trim($nombre);
+    if ($marca === '' || $nombre === '') {
+        return false;
+    }
+
+    $productos = catalogo();
+    $hallado   = false;
+    foreach ($productos as &$p) {
+        if ($p['sku'] === $sku) {
+            $p['marca']  = $marca;
+            $p['nombre'] = $nombre;
+            $hallado     = true;
+            break;
+        }
+    }
+    unset($p);
+    if ($hallado) {
+        guardar_catalogo($productos);
+    }
+    return $hallado;
+}
+
+/** Elimina varios productos del catálogo por SKU. Devuelve cuántos encontró y quitó. */
+function eliminar_productos(array $skus): int
+{
+    $skus = array_values(array_unique(array_filter($skus, fn($sku) => $sku !== '')));
+    if (!$skus) {
+        return 0;
+    }
+
+    $productos = catalogo();
+    $filtrados = array_values(array_filter($productos, fn($p) => !in_array($p['sku'], $skus, true)));
+    $borrados  = count($productos) - count($filtrados);
+    if ($borrados > 0) {
+        guardar_catalogo($filtrados);
+    }
+    return $borrados;
+}
+
 function ruta_facturas(): string
 {
     if (!is_dir(STORAGE_DIR)) {
@@ -375,12 +418,15 @@ function metricas_panel(): array
 {
     $facturas = leer_facturas();
     $mesHoy   = date('Y-m');
+    $anioHoy  = date('Y');
 
     $porCobrar        = 0; // suma de cuotas no pagadas
     $vencido          = 0; // de esas, las que ya se pasaron de fecha
     $cuotasPendientes = 0;
     $cuotasVencidas   = 0;
     $gananciaMes      = 0;
+    $gananciaAnio     = 0;
+    $ventaAnio        = 0; // total vendido (facturado) este año
     $totalInvertido   = 0; // costo histórico de todo lo vendido
 
     foreach ($facturas as $f) {
@@ -390,8 +436,13 @@ function metricas_panel(): array
 
         $totalInvertido += (int) ($f['costo'] ?? 0);
 
-        if (substr(fecha_factura($f), 0, 7) === $mesHoy) {
+        $fecha = fecha_factura($f);
+        if (substr($fecha, 0, 7) === $mesHoy) {
             $gananciaMes += (int) ($f['margen'] ?? 0);
+        }
+        if (substr($fecha, 0, 4) === $anioHoy) {
+            $gananciaAnio += (int) ($f['margen'] ?? 0);
+            $ventaAnio    += (int) ($f['total'] ?? 0);
         }
 
         if (($f['plan'] ?? '') !== 'cuotas') {
@@ -414,7 +465,7 @@ function metricas_panel(): array
 
     return compact(
         'porCobrar', 'vencido', 'cuotasPendientes', 'cuotasVencidas', 'gananciaMes',
-        'totalInvertido'
+        'gananciaAnio', 'ventaAnio', 'totalInvertido'
     );
 }
 
@@ -455,9 +506,17 @@ function mes_largo(string $ym): string
     return $meses[(int) $mes] . ' de ' . $anio;
 }
 
-/** Rótulo en español de una cuota por su índice (0-based): "Primera cuota", "Segunda cuota", ..., o "Cuota N" más allá de la cuarta. */
-function rotulo_cuota(int $idx): string
+/**
+ * Rótulo en español de una cuota por su índice (0-based): "Primera cuota",
+ * "Segunda cuota", ..., o "Cuota N" más allá de la cuarta. Si $totalCuotas
+ * es 1 (un pago único a plazo, sin dividir), devuelve "Pago único" en vez
+ * de "Primera cuota", que sonaría raro si no hay una segunda.
+ */
+function rotulo_cuota(int $idx, int $totalCuotas = 0): string
 {
+    if ($totalCuotas === 1) {
+        return 'Pago único';
+    }
     $rotulos = ['Primera cuota', 'Segunda cuota', 'Tercera cuota', 'Cuarta cuota'];
     return $rotulos[$idx] ?? ('Cuota ' . ($idx + 1));
 }

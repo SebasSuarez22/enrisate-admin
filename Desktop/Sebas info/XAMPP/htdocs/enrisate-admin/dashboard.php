@@ -58,6 +58,16 @@ require __DIR__ . '/includes/cabecera.php';
       <p class="kpi-sub"><?= e(mes_largo(date('Y-m'))) ?></p>
     </div>
     <div class="kpi">
+      <p class="kpi-etiqueta">Ganancia del año</p>
+      <p class="kpi-valor"><?= pesos($r['gananciaAnio']) ?></p>
+      <p class="kpi-sub">Año <?= e(date('Y')) ?></p>
+    </div>
+    <div class="kpi">
+      <p class="kpi-etiqueta">Total vendido en el año</p>
+      <p class="kpi-valor"><?= pesos($r['ventaAnio']) ?></p>
+      <p class="kpi-sub">Año <?= e(date('Y')) ?></p>
+    </div>
+    <div class="kpi">
       <p class="kpi-etiqueta">Total invertido</p>
       <p class="kpi-valor"><?= pesos($r['totalInvertido']) ?></p>
       <p class="kpi-sub">Costo de lo vendido · histórico</p>

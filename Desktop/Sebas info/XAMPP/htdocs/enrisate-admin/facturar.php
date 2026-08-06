@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'abonos' => [],
                         ];
                     } else {
-                        $numCuotas    = max(2, min(4, (int) ($_POST['num_cuotas'] ?? 2)));
+                        $numCuotas    = max(1, min(4, (int) ($_POST['num_cuotas'] ?? 2)));
                         $montosPost   = is_array($_POST['cuota_monto'] ?? null) ? $_POST['cuota_monto'] : [];
                         $vencesPost   = is_array($_POST['cuota_vence'] ?? null) ? $_POST['cuota_vence'] : [];
                         $sumaAnterior = 0;
@@ -283,10 +283,12 @@ require __DIR__ . '/includes/cabecera.php';
           <div class="campo">
             <label for="numCuotas">Número de cuotas</label>
             <select id="numCuotas" name="num_cuotas">
-              <option value="2">2 cuotas</option>
+              <option value="1">1 cuota (pago único a plazo)</option>
+              <option value="2" selected>2 cuotas</option>
               <option value="3">3 cuotas</option>
               <option value="4">4 cuotas</option>
             </select>
+            <p class="pista">"1 cuota" es para una clienta que paga todo junto pero en una fecha futura (su día de pago): queda pendiente hasta que marques el pago, y se ve como vencida si no paga a tiempo — a diferencia de "De contado", que se da por pagado el mismo día.</p>
           </div>
           <div id="filasCuotas"></div>
         </div>
@@ -542,11 +544,14 @@ function pintarFilasCuotas() {
         '<input type="date" name="cuota_vence[]" class="venceCuota" value="' + sumarDias(30 * i) + '">' +
       '</div>';
   }
+  const rotuloUltima = n === 1 ? 'Total a pagar' : ('Cuota ' + n + ' (última)');
+  const rotuloFecha  = n === 1 ? 'Fecha de pago acordada' : ('Fecha de la cuota ' + n);
+  const fechaDefecto = n === 1 ? sumarDias(15) : sumarDias(30 * (n - 1));
   html +=
-    '<p class="pista">Cuota ' + n + ' (última): <strong id="verUltimaCuota">$0</strong></p>' +
+    '<p class="pista">' + rotuloUltima + ': <strong id="verUltimaCuota">$0</strong></p>' +
     '<div class="campo">' +
-      '<label>Fecha de la cuota ' + n + '</label>' +
-      '<input type="date" name="cuota_vence[]" class="venceCuota" value="' + sumarDias(30 * (n - 1)) + '">' +
+      '<label>' + rotuloFecha + '</label>' +
+      '<input type="date" name="cuota_vence[]" class="venceCuota" value="' + fechaDefecto + '">' +
     '</div>';
   filasCuotas.innerHTML = html;
   filasCuotas.querySelectorAll('.montoCuota').forEach(i => i.addEventListener('input', calcular));

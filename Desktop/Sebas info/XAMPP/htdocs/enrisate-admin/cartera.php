@@ -81,7 +81,7 @@ foreach ($todas as $f) {
         $pendientes[] = [
             'factura'   => $f,
             'idx'       => $idx,
-            'rotulo'    => rotulo_cuota($idx),
+            'rotulo'    => rotulo_cuota($idx, count($f['cuotas'])),
             'pactado'   => (int) $cuota['monto'],
             'pendiente' => $pendiente,
             'vence'     => $cuota['vence'],

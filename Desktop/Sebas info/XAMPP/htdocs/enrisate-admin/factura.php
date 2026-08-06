@@ -32,7 +32,7 @@ if ($f['plan'] === 'cuotas') {
     }
     $msg .= "\nQuedamos así:\n";
     foreach ($f['cuotas'] as $idx => $cuota) {
-        $rotulo = rotulo_cuota($idx);
+        $rotulo = rotulo_cuota($idx, count($f['cuotas']));
         $msg .= $rotulo . ' (' . fecha_larga($cuota['vence']) . '): ' . pesos((int) $cuota['monto']) . "\n";
     }
 }
@@ -139,7 +139,7 @@ $wa = enlace_whatsapp($f['telefono'], $msg);
       <?php endif; ?>
       <div class="cuotas">
         <?php foreach ($f['cuotas'] as $idx => $cuota):
-            $rotulo    = rotulo_cuota($idx);
+            $rotulo    = rotulo_cuota($idx, count($f['cuotas']));
             $pagado    = cuota_pagado($cuota);
             $pendiente = cuota_pendiente($cuota);
             $pagada    = $pendiente <= 0;

@@ -10,6 +10,24 @@ $ok    = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_valido($_POST['csrf'] ?? null)) {
         $error = 'La página estuvo abierta demasiado tiempo. Recárgala e intenta de nuevo.';
+    } elseif (($_POST['accion'] ?? '') === 'eliminar') {
+        $skus     = array_filter(array_map('trim', explode(',', (string) ($_POST['skus'] ?? ''))));
+        $borrados = eliminar_productos($skus);
+        if ($borrados > 0) {
+            header('Location: inventario.php?ok=eliminados&n=' . $borrados);
+            exit;
+        }
+        $error = 'Selecciona al menos un producto para eliminar.';
+    } elseif (($_POST['accion'] ?? '') === 'editar') {
+        if (actualizar_producto(
+            (string) ($_POST['sku'] ?? ''),
+            (string) ($_POST['marca'] ?? ''),
+            (string) ($_POST['nombre'] ?? '')
+        )) {
+            header('Location: inventario.php?ok=editado');
+            exit;
+        }
+        $error = 'Escribe la marca y el nombre, y verifica que el producto exista.';
     } else {
         $mensaje = agregar_producto(
             (string) ($_POST['sku'] ?? ''),
@@ -28,6 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if (($_GET['ok'] ?? '') === 'agregado') {
     $ok = 'Producto agregado al catálogo.';
+} elseif (($_GET['ok'] ?? '') === 'editado') {
+    $ok = 'Producto actualizado.';
+} elseif (($_GET['ok'] ?? '') === 'eliminados') {
+    $n  = (int) ($_GET['n'] ?? 0);
+    $ok = 'Se eliminó ' . $n . ' producto' . ($n === 1 ? '' : 's') . ' del catálogo.';
 }
 
 $porMarca = [];
@@ -62,6 +85,7 @@ require __DIR__ . '/includes/cabecera.php';
     <h2 class="titulo-panel">Agregar producto nuevo</h2>
     <form method="post" action="inventario.php" class="rejilla-campos">
       <input type="hidden" name="csrf" value="<?= e($token) ?>">
+      <input type="hidden" name="accion" value="agregar">
 
       <div class="campo">
         <label for="nSku">SKU</label>
@@ -88,16 +112,28 @@ require __DIR__ . '/includes/cabecera.php';
     </form>
   </section>
 
+  <?php if ($porMarca): ?>
+    <form method="post" action="inventario.php" id="form-eliminar-productos" class="barra-eliminar" onsubmit="return prepararEliminarProductos(this);">
+      <input type="hidden" name="csrf" value="<?= e($token) ?>">
+      <input type="hidden" name="accion" value="eliminar">
+      <input type="hidden" name="skus" id="skusEliminarProductos" value="">
+      <label class="seleccionar-todo"><input type="checkbox" id="chkTodosProductos"> Seleccionar todos</label>
+      <button type="submit" class="boton mini peligro">Eliminar seleccionados</button>
+    </form>
+  <?php endif; ?>
+
   <?php foreach ($porMarca as $marca => $ps): ?>
     <section class="panel panel-inventario">
       <h2 class="titulo-panel"><?= e($marca) ?></h2>
       <table class="lineas">
         <thead>
           <tr>
+            <th></th>
             <th>Producto</th>
             <th class="num">Precio</th>
             <th class="num">Costo</th>
             <th class="num">Margen</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -106,6 +142,7 @@ require __DIR__ . '/includes/cabecera.php';
             $pct    = $p['precio'] > 0 ? round($margen / $p['precio'] * 100) : 0;
           ?>
             <tr>
+              <td><input type="checkbox" class="chk-producto" value="<?= e($p['sku']) ?>" aria-label="Seleccionar <?= e($p['nombre']) ?>"></td>
               <td>
                 <?= e($p['nombre']) ?>
                 <span class="sku"><?= e($p['sku']) ?></span>
@@ -113,6 +150,16 @@ require __DIR__ . '/includes/cabecera.php';
               <td class="num"><?= pesos($p['precio']) ?></td>
               <td class="num"><?= pesos($p['costo']) ?></td>
               <td class="num"><?= pesos($margen) ?> <span class="sku"><?= $pct ?>%</span></td>
+              <td class="num acciones-inventario">
+                <form method="post" action="inventario.php" class="form-editar-producto">
+                  <input type="hidden" name="csrf" value="<?= e($token) ?>">
+                  <input type="hidden" name="accion" value="editar">
+                  <input type="hidden" name="sku" value="<?= e($p['sku']) ?>">
+                  <input type="text" name="marca" value="<?= e($p['marca']) ?>" aria-label="Marca de <?= e($p['nombre']) ?>">
+                  <input type="text" name="nombre" value="<?= e($p['nombre']) ?>" aria-label="Nombre de <?= e($p['nombre']) ?>">
+                  <button type="submit" class="boton mini">Guardar</button>
+                </form>
+              </td>
             </tr>
           <?php endforeach; ?>
         </tbody>
@@ -121,6 +168,29 @@ require __DIR__ . '/includes/cabecera.php';
   <?php endforeach; ?>
 
 </main>
+
+<script>
+const chkTodosProductos = document.getElementById('chkTodosProductos');
+if (chkTodosProductos) {
+  chkTodosProductos.addEventListener('change', () => {
+    document.querySelectorAll('.chk-producto').forEach(chk => { chk.checked = chkTodosProductos.checked; });
+  });
+}
+
+function prepararEliminarProductos(form) {
+  const seleccionados = Array.from(document.querySelectorAll('.chk-producto:checked'));
+  if (seleccionados.length === 0) {
+    alert('Selecciona al menos un producto para eliminar.');
+    return false;
+  }
+  const plural = seleccionados.length === 1 ? 'el producto seleccionado' : 'los ' + seleccionados.length + ' productos seleccionados';
+  if (!confirm('¿Eliminar ' + plural + ' del catálogo? Esta acción no se puede deshacer.')) {
+    return false;
+  }
+  document.getElementById('skusEliminarProductos').value = seleccionados.map(chk => chk.value).join(',');
+  return true;
+}
+</script>
 
 </body>
 </html>

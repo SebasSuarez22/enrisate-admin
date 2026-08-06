@@ -21,6 +21,14 @@ function cp_slug(string $s): string {
     return trim($s, '-');
 }
 
+// Cache-busting: si el archivo cambia (misma foto, contenido nuevo), el navegador
+// vuelve a descargarla en lugar de mostrar la versión vieja que tenía cacheada.
+function cp_img_v(string $rutaRelativa): string {
+    $rutaAbs = __DIR__ . '/' . $rutaRelativa;
+    $mtime = @filemtime($rutaAbs);
+    return $rutaRelativa . ($mtime ? '?v=' . $mtime : '');
+}
+
 // Logo por marca. Tongolé es una línea de La Poción, usa el mismo logo.
 // Las marcas que no están aquí todavía no tienen logo conseguido.
 $logosPorMarca = [
@@ -44,7 +52,7 @@ $fotosPorSku = [
     'ACC-06' => 'ACC-06.webp', // Rapunzel tónico capilar (Lola Cosmetics)
     'ACC-07' => 'ACC-07.jpg', // Karsell
     'ACC-08' => 'ACC-08.jpg', // Sobres de Karsell
-    'DES01'  => 'DES01.jpg', // Desodorante piedra de alumbre
+    'DES01'  => 'DES01.jpg', // Desodorante piedra de alumbre (foto Adobe Stock, piedras naturales)
     'ET-01'  => 'ET-01.png', // Shampoo Etniker
     'ET-02'  => 'ET-02.webp', // Espuma intensificadora de rizos
     'ET-03'  => 'ET-03.png', // Crema de peinar
@@ -83,7 +91,7 @@ $fotosPorSku = [
 <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/catalogo-publico.css">
 </head>
 <body>
@@ -96,9 +104,9 @@ $fotosPorSku = [
   <p class="cp-instrucciones">Marca lo que te gusta y la cantidad, y al final tocas un solo botón para mandarnos tu pedido por WhatsApp.</p>
 </header>
 
-<nav class="cp-chips">
+<nav class="cp-chips" id="chips">
   <?php foreach (array_keys($porMarca) as $marca): ?>
-    <a class="cp-chip" href="#marca-<?= cp_slug($marca) ?>"><?= e($marca) ?></a>
+    <a class="cp-chip" href="#marca-<?= cp_slug($marca) ?>" data-slug="marca-<?= cp_slug($marca) ?>"><?= e($marca) ?></a>
   <?php endforeach; ?>
 </nav>
 
@@ -108,23 +116,40 @@ $fotosPorSku = [
       <h2 class="cp-marca-titulo"><?= e($marca) ?></h2>
       <div class="cp-rejilla">
         <?php foreach ($ps as $p): ?>
+          <?php
+            $tieneFoto = isset($fotosPorSku[$p['sku']]);
+            $tieneLogo = isset($logosPorMarca[$marca]);
+            // Estado de la imagen: foto real > logo de marca > nombre de marca.
+            $claseImg = $tieneFoto ? 'cp-img-foto' : ($tieneLogo ? 'cp-img-logo' : 'cp-img-marca');
+          ?>
           <article class="cp-tarjeta"
                    data-sku="<?= e($p['sku']) ?>"
                    data-nombre="<?= e($p['nombre']) ?>"
                    data-precio="<?= (int) $p['precio'] ?>">
-            <div class="cp-img-wrap">
-              <?php if (isset($fotosPorSku[$p['sku']])): ?>
-                <img class="cp-foto" src="assets/img/productos/<?= e($fotosPorSku[$p['sku']]) ?>" alt="">
-              <?php endif; ?>
-              <?php if (isset($logosPorMarca[$marca])): ?>
-                <span class="cp-marca-logo"><img src="assets/img/marcas/<?= e($logosPorMarca[$marca]) ?>" alt="<?= e($marca) ?>"></span>
+            <div class="cp-img-wrap <?= $claseImg ?>">
+              <?php if ($tieneFoto): ?>
+                <img class="cp-foto" src="<?= e(cp_img_v('assets/img/productos/' . $fotosPorSku[$p['sku']])) ?>" alt="<?= e($p['nombre']) ?> · <?= e($marca) ?>" loading="lazy" decoding="async">
+                <?php if ($tieneLogo): ?>
+                  <span class="cp-marca-logo"><img src="<?= e(cp_img_v('assets/img/marcas/' . $logosPorMarca[$marca])) ?>" alt="<?= e($marca) ?>" loading="lazy"></span>
+                <?php endif; ?>
+              <?php elseif ($tieneLogo): ?>
+                <img class="cp-logo-fondo" src="<?= e(cp_img_v('assets/img/marcas/' . $logosPorMarca[$marca])) ?>" alt="<?= e($marca) ?>" loading="lazy" decoding="async">
+                <span class="cp-proximamente">Foto próximamente</span>
+              <?php else: ?>
+                <span class="cp-marca-inicial" aria-hidden="true"><?= e(mb_substr($marca, 0, 1, 'UTF-8')) ?></span>
+                <span class="cp-marca-nombre"><?= e($marca) ?></span>
+                <span class="cp-proximamente">Foto próximamente</span>
               <?php endif; ?>
             </div>
             <div class="cp-info">
               <p class="cp-nombre"><?= e($p['nombre']) ?></p>
               <p class="cp-precio"><?= pesos($p['precio']) ?></p>
               <div class="cp-fila-agregar">
-                <input type="number" class="cp-cant" value="1" min="1" max="99" aria-label="Cantidad">
+                <div class="cp-stepper">
+                  <button type="button" class="cp-paso" data-d="-1" aria-label="Restar">−</button>
+                  <input type="number" class="cp-cant" value="1" min="1" max="99" aria-label="Cantidad">
+                  <button type="button" class="cp-paso" data-d="1" aria-label="Sumar">+</button>
+                </div>
                 <button type="button" class="cp-boton-agregar">Agregar</button>
               </div>
             </div>
@@ -139,10 +164,13 @@ $fotosPorSku = [
   <p>Precios sujetos a disponibilidad. Escríbenos si tienes dudas.</p>
 </footer>
 
-<div class="cp-barra-pedido" id="barraPedido" hidden>
-  <p class="cp-barra-resumen" id="resumenPedido"></p>
-  <button type="button" class="cp-barra-vaciar" id="vaciarPedido">Vaciar</button>
-  <a class="cp-barra-link" id="enlaceWhatsapp" href="#" target="_blank" rel="noopener">Pedir por WhatsApp</a>
+<div class="cp-pedido-flotante" id="pedidoFlotante" hidden>
+  <div class="cp-lista-pedido" id="listaPedido" hidden></div>
+  <div class="cp-barra-pedido">
+    <button type="button" class="cp-barra-resumen" id="resumenPedido" aria-expanded="false"></button>
+    <button type="button" class="cp-barra-vaciar" id="vaciarPedido">Vaciar</button>
+    <a class="cp-barra-link" id="enlaceWhatsapp" href="#" target="_blank" rel="noopener">Pedir por WhatsApp</a>
+  </div>
 </div>
 
 <script>
@@ -151,16 +179,63 @@ const NOMBRE_NEGOCIO = '<?= e(APP_NOMBRE) ?>';
 const cop = n => '$' + Math.round(n).toLocaleString('es-CO');
 
 const pedido = [];
-const barra    = document.getElementById('barraPedido');
-const resumen  = document.getElementById('resumenPedido');
-const enlace   = document.getElementById('enlaceWhatsapp');
+const flotante    = document.getElementById('pedidoFlotante');
+const listaPedido = document.getElementById('listaPedido');
+const resumen     = document.getElementById('resumenPedido');
+const enlace      = document.getElementById('enlaceWhatsapp');
+
+function quitarDelPedido(sku) {
+  const idx = pedido.findIndex(i => i.sku === sku);
+  if (idx === -1) return;
+  pedido.splice(idx, 1);
+
+  const tarjeta = document.querySelector('.cp-tarjeta[data-sku="' + CSS.escape(sku) + '"]');
+  if (tarjeta) {
+    tarjeta.classList.remove('en-pedido');
+    const boton = tarjeta.querySelector('.cp-boton-agregar');
+    if (boton) {
+      boton.textContent = 'Agregar';
+      boton.classList.remove('en-pedido');
+    }
+  }
+  actualizarBarra();
+}
+
+function renderLista() {
+  listaPedido.innerHTML = '';
+  pedido.forEach(i => {
+    const fila = document.createElement('div');
+    fila.className = 'cp-lista-fila';
+
+    const nombre = document.createElement('span');
+    nombre.className = 'cp-lista-nombre';
+    nombre.textContent = i.cant + ' × ' + i.nombre;
+
+    const precio = document.createElement('span');
+    precio.className = 'cp-lista-precio';
+    precio.textContent = cop(i.precio * i.cant);
+
+    const quitar = document.createElement('button');
+    quitar.type = 'button';
+    quitar.className = 'cp-lista-quitar';
+    quitar.setAttribute('aria-label', 'Quitar ' + i.nombre + ' del pedido');
+    quitar.textContent = '×';
+    quitar.addEventListener('click', () => quitarDelPedido(i.sku));
+
+    fila.append(nombre, precio, quitar);
+    listaPedido.appendChild(fila);
+  });
+}
 
 function actualizarBarra() {
   if (!pedido.length) {
-    barra.hidden = true;
+    flotante.hidden = true;
+    listaPedido.hidden = true;
+    resumen.setAttribute('aria-expanded', 'false');
     return;
   }
-  barra.hidden = false;
+  flotante.hidden = false;
+  renderLista();
 
   const cantTotal = pedido.reduce((s, i) => s + i.cant, 0);
   const total     = pedido.reduce((s, i) => s + i.precio * i.cant, 0);
@@ -173,6 +248,36 @@ function actualizarBarra() {
   msg += '\nTotal aproximado: ' + cop(total) + '\n\n(Este es mi pedido, todavía no he pagado nada)';
 
   enlace.href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent(msg);
+}
+
+resumen.addEventListener('click', () => {
+  const abrir = listaPedido.hidden;
+  listaPedido.hidden = !abrir;
+  resumen.setAttribute('aria-expanded', String(abrir));
+});
+
+document.querySelectorAll('.cp-stepper').forEach(stepper => {
+  const input = stepper.querySelector('.cp-cant');
+  stepper.querySelectorAll('.cp-paso').forEach(boton => {
+    boton.addEventListener('click', () => {
+      const delta = parseInt(boton.dataset.d, 10);
+      const actual = parseInt(input.value, 10) || 1;
+      input.value = Math.max(1, Math.min(99, actual + delta));
+    });
+  });
+});
+
+const chips = document.querySelectorAll('.cp-chip');
+const gruposMarca = document.querySelectorAll('.cp-marca-grupo');
+if (chips.length && gruposMarca.length) {
+  const observador = new IntersectionObserver(entradas => {
+    entradas.forEach(entrada => {
+      if (entrada.isIntersecting) {
+        chips.forEach(chip => chip.classList.toggle('activo', chip.dataset.slug === entrada.target.id));
+      }
+    });
+  }, { rootMargin: '-100px 0px -70% 0px' });
+  gruposMarca.forEach(grupo => observador.observe(grupo));
 }
 
 document.querySelectorAll('.cp-tarjeta').forEach(tarjeta => {
@@ -193,6 +298,7 @@ document.querySelectorAll('.cp-tarjeta').forEach(tarjeta => {
     }
     boton.textContent = 'En tu pedido ✓';
     boton.classList.add('en-pedido');
+    tarjeta.classList.add('en-pedido');
     actualizarBarra();
   });
 });
@@ -203,6 +309,7 @@ document.getElementById('vaciarPedido').addEventListener('click', () => {
     b.textContent = 'Agregar';
     b.classList.remove('en-pedido');
   });
+  document.querySelectorAll('.cp-tarjeta.en-pedido').forEach(t => t.classList.remove('en-pedido'));
   actualizarBarra();
 });
 </script>
