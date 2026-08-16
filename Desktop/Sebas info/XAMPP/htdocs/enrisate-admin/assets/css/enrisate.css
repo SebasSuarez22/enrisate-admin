@@ -728,6 +728,29 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
 .lineas tr.fila-anulada td { opacity: 0.5; }
 .lineas tr.fila-anulada td:first-child { text-decoration: line-through; }
 
+.form-abono {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+}
+.form-abono input[type="number"] {
+  width: 110px;
+  padding: 8px 9px;
+  font-family: var(--texto);
+  font-size: 13px;
+  text-align: right;
+  color: var(--marfil);
+  background: rgba(21, 12, 18, 0.62);
+  border: 1px solid rgba(243, 234, 226, 0.12);
+  border-radius: var(--r-campo);
+  outline: none;
+}
+.form-abono input[type="number"]:focus-visible {
+  border-color: var(--champana);
+  box-shadow: 0 0 0 3px rgba(224, 184, 126, 0.16);
+}
+
 /* Acciones en una celda del historial (Ver + Anular/Reactivar) */
 .acciones-factura { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
 .acciones-factura .en-linea { display: inline; margin: 0; }
