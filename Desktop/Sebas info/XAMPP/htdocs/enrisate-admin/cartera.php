@@ -229,7 +229,7 @@ require __DIR__ . '/includes/cabecera.php';
                 <?php if ($abonado > 0): ?><span class="sku">de <?= pesos($p['pactado']) ?></span><?php endif; ?>
               </td>
               <td class="num">
-                <form method="post" action="cartera.php" class="en-linea">
+                <form method="post" action="cartera.php" class="en-linea form-abono">
                   <input type="hidden" name="csrf" value="<?= e($token) ?>">
                   <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
                   <input type="hidden" name="cuota_idx" value="<?= (int) $p['idx'] ?>">
