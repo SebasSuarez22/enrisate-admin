@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/includes/facturas.php';
+require_once __DIR__ . '/includes/pedidos.php';
 
 requerir_sesion();
 
@@ -9,14 +9,19 @@ $saludo = $hora < 12 ? 'Buenos días' : ($hora < 19 ? 'Buenas tardes' : 'Buenas 
 
 $r = metricas_panel();
 
+$pedidosPendientes = pedidos_pendientes_count();
+$textoPedidos = $pedidosPendientes > 0
+    ? numero($pedidosPendientes) . ' pedido' . ($pedidosPendientes === 1 ? '' : 's') . ' por revisar.'
+    : 'Lo que llega del catálogo público, listo para confirmar o descartar.';
+
 $modulos = [
     ['Facturación',      'Armar la cuenta de cobro, imprimir el PDF y enviarla por WhatsApp.', 'Listo', 'facturar.php'],
+    ['Pedidos',          $textoPedidos, 'Listo', 'pedidos.php'],
     ['Productos',        'Agrega productos nuevos al catálogo: SKU, marca, nombre y precio.', 'Listo', 'inventario.php'],
     ['Catálogo público', 'La vista sin login que ven las clientas. Arman su pedido y te llega por WhatsApp.', 'Listo', 'catalogo-publico.php', true],
     ['Cartera y reportes', 'Cuotas pendientes, historial de facturas y cómo va la ganancia y las ventas.', 'Listo', 'cartera.php'],
     ['Clientes',         'Nombre, teléfono y notas de cada clienta.',                          'Listo', 'clientes.php'],
     ['Márgenes',         'Costo contra precio, producto por producto. Edítalos aquí.',         'Listo', 'margenes.php'],
-    ['Ajustes',          'Contraseña, datos del negocio y respaldo de la información.',        'Pendiente',  null],
 ];
 
 $tituloPagina = 'Panel';
@@ -27,13 +32,22 @@ require __DIR__ . '/includes/cabecera.php';
   <h1 class="saludo"><?= e($saludo) ?>.</h1>
   <p class="subsaludo">Un vistazo rápido a cómo va el negocio. Abajo tienes cada módulo.</p>
 
-  <?php if ($r['cuotasVencidas'] > 0): ?>
+  <?php if ($r['cuotasVencidas'] > 0 || $pedidosPendientes > 0): ?>
     <div class="alertas">
-      <a class="alerta peligro" href="cartera.php">
-        <span class="alerta-punto"></span>
-        <span><strong><?= numero($r['cuotasVencidas']) ?> cuota<?= $r['cuotasVencidas'] === 1 ? '' : 's' ?> vencida<?= $r['cuotasVencidas'] === 1 ? '' : 's' ?></strong> · <?= pesos($r['vencido']) ?> por cobrar ya</span>
-        <span class="alerta-ir">Ver cartera →</span>
-      </a>
+      <?php if ($pedidosPendientes > 0): ?>
+        <a class="alerta" href="pedidos.php">
+          <span class="alerta-punto"></span>
+          <span><strong><?= numero($pedidosPendientes) ?> pedido<?= $pedidosPendientes === 1 ? '' : 's' ?> nuevo<?= $pedidosPendientes === 1 ? '' : 's' ?></strong> del catálogo público por revisar</span>
+          <span class="alerta-ir">Ver pedidos →</span>
+        </a>
+      <?php endif; ?>
+      <?php if ($r['cuotasVencidas'] > 0): ?>
+        <a class="alerta peligro" href="cartera.php">
+          <span class="alerta-punto"></span>
+          <span><strong><?= numero($r['cuotasVencidas']) ?> cuota<?= $r['cuotasVencidas'] === 1 ? '' : 's' ?> vencida<?= $r['cuotasVencidas'] === 1 ? '' : 's' ?></strong> · <?= pesos($r['vencido']) ?> por cobrar ya</span>
+          <span class="alerta-ir">Ver cartera →</span>
+        </a>
+      <?php endif; ?>
     </div>
   <?php endif; ?>
 

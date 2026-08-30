@@ -265,6 +265,9 @@ body {
 .boton:active { transform: translateY(1px); }
 .boton:focus-visible { outline: 2px solid var(--brillo); outline-offset: 3px; }
 .boton[disabled] { opacity: 0.4; cursor: not-allowed; filter: grayscale(0.5); }
+/* Un <a> con clase .boton (links de WhatsApp, "Abrir"…) debe verse y
+   comportarse igual que un <button>, no como texto subrayado en línea. */
+a.boton { display: inline-block; text-decoration: none; }
 .boton.peligro {
   color: #FDF3F5;
   background: linear-gradient(135deg, var(--alerta), #C96A80 62%, #B14F66);
@@ -431,6 +434,23 @@ body {
 .alerta.peligro { border-color: rgba(228, 137, 154, 0.4); }
 .alerta-punto { width: 8px; height: 8px; border-radius: 999px; background: var(--champana); flex: none; }
 .alerta.peligro .alerta-punto { background: var(--alerta); }
+
+/* Recordatorios de cartera: una fila compacta por cuota en vez de una
+   tabla de 6 columnas repetida — la misma información (clienta, factura,
+   cuota, monto, vencimiento) en dos renglones cortos, para que la lista
+   de "vence pronto" no ocupe media pantalla antes de llegar a lo demás. */
+.alerta-texto { flex: 1; min-width: 0; line-height: 1.4; }
+.alerta-texto strong { color: var(--marfil); font-weight: 600; }
+.alerta-factura {
+  margin-left: 6px;
+  font-family: var(--dato);
+  font-size: 11px;
+  color: var(--marfil-40);
+  text-decoration: none;
+}
+.alerta-factura:hover { color: var(--champana); }
+.alerta-detalle { display: block; margin-top: 2px; font-size: 12.5px; color: var(--marfil-40); }
+
 .alerta-ir {
   margin-left: auto;
   font-family: var(--dato);
@@ -579,6 +599,10 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   font-size: 13.5px;
 }
 
+/* Envuelve cada <table class="lineas"> para que en pantallas angostas
+   se pueda desplazar horizontalmente en vez de romper el ancho de la
+   página (las tablas de cartera/historial tienen hasta 7 columnas). */
+.tabla-scroll { overflow-x: auto; }
 .lineas { width: 100%; border-collapse: collapse; }
 .lineas th {
   padding: 0 14px 10px 0;
@@ -758,7 +782,51 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
 .como-boton.peligro { color: var(--alerta); border-color: rgba(228, 137, 154, 0.3); }
 .como-boton.peligro:hover { color: var(--alerta); border-color: var(--alerta); }
 
+/* Acciones en una celda de cartera pendiente (WhatsApp de mora + abono):
+   el mensaje siempre va primero (acción liviana, informativa) y el
+   registro del abono al final (la acción que de verdad cierra la fila),
+   mismo orden que Ver → Anular en el historial. Sin wrap: si se parte en
+   dos líneas, esa fila queda más alta que las demás y descuadra toda la
+   tabla (el número de factura de esa fila se ve perdido, chiquito, en
+   medio de una fila mucho más alta que sus vecinas). */
+.acciones-cartera { display: flex; flex-wrap: nowrap; gap: 10px; justify-content: flex-end; align-items: center; }
+.acciones-cartera .form-abono { margin: 0; flex-shrink: 0; }
+.salir.peligro { color: var(--alerta); border-color: rgba(228, 137, 154, 0.3); }
+.salir.peligro:hover { color: var(--alerta); border-color: var(--alerta); }
+
+/* Un mismo alto para el número de factura y los botones "salir" sueltos
+   en una celda (No. factura, Ver, Anular, Reactivar, Escribir por
+   WhatsApp) y para "Registrar abono", para que ninguno se vea
+   desproporcionado junto a los demás en la misma fila. Solo dentro de
+   las tablas de acciones (cartera, historial) — las tablas de edición
+   rápida de Inventario y Márgenes usan botones más chicos a propósito
+   para caber junto a sus campos de texto, y no deben cambiar de alto.
+   44px porque es el tamaño mínimo recomendado para que un botón sea
+   fácil de tocar en pantallas táctiles. */
+.lineas td > .salir,
+.acciones-cartera .boton.mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
 .saldo-favor { color: #8FCB9B; font-weight: 600; }
+
+/* Acciones en una celda de "Pedidos por revisar" (Confirmar y facturar +
+   Descartar): mismo alto compacto para los dos botones, en vez del tamaño
+   de .acciones-cartera (pensado para la tabla de cartera, con un botón
+   suelto en la celda en lugar de uno envuelto en un <form>). */
+.acciones-pedido { display: flex; flex-wrap: nowrap; gap: 10px; justify-content: flex-end; align-items: center; }
+.acciones-pedido .en-linea { display: inline; margin: 0; flex-shrink: 0; }
+.acciones-pedido .boton.mini {
+  padding: 8px 14px;
+  font-size: 12.5px;
+  min-height: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
 .form-busqueda {
   display: flex;
@@ -767,6 +835,71 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   margin-bottom: 16px;
 }
 .form-busqueda .campo { flex: 1; margin-bottom: 0; }
+
+/* Cabecera de panel: título + una acción suelta (ej. "Descargar Excel"),
+   en la misma línea en vez de una debajo de la otra — así la acción del
+   listado queda arriba del todo, no perdida entre las filas. */
+.panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.panel-header .titulo-panel { margin: 0; }
+
+/* Botón solo-ícono: mismo tamaño de toque (44px) que un .boton mini, pero
+   sin texto — para que una fila con varias acciones (WhatsApp, registrar
+   abono, aplicar descuento) no repita botones largos de texto en cada
+   una de las filas de una tabla con muchas cuotas. Siempre con
+   aria-label/title, nunca solo el ícono a secas. */
+.boton-icono {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: #2A1622;
+  background: linear-gradient(135deg, var(--brillo), var(--champana) 62%, #D3A167);
+  border: 0;
+  border-radius: var(--r-campo);
+  cursor: pointer;
+  transition: transform 0.14s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+.boton-icono:hover { filter: brightness(1.06); box-shadow: 0 12px 28px -14px rgba(224, 184, 126, 0.75); }
+.boton-icono:active { transform: translateY(1px); }
+.boton-icono:focus-visible { outline: 2px solid var(--brillo); outline-offset: 3px; }
+.boton-icono svg { width: 18px; height: 18px; }
+a.boton-icono { text-decoration: none; }
+
+/* Variante "fantasma": para acciones secundarias (aplicar descuento,
+   escribir por WhatsApp) que no deben competir visualmente con la
+   acción principal de la fila (registrar abono). */
+.boton-icono.fantasma {
+  color: var(--marfil-70);
+  background: transparent;
+  border: 1px solid rgba(243, 234, 226, 0.14);
+}
+.boton-icono.fantasma:hover {
+  color: var(--champana);
+  border-color: var(--champana);
+  box-shadow: none;
+  filter: none;
+}
+.boton-icono.fantasma.peligro { color: var(--alerta); border-color: rgba(228, 137, 154, 0.3); }
+.boton-icono.fantasma.peligro:hover { color: var(--alerta); border-color: var(--alerta); }
+
+/* Fila expandible con el formulario de descuento: en vez de meter un
+   formulario entero (2 campos + botón) adentro de la celda de acciones
+   —que con flex-wrap: nowrap se salía de ancho y se veía roto—, ocupa su
+   propia fila de ancho completo debajo de la cuota. */
+.fila-descuento td { padding: 14px 0 18px; background: rgba(224, 184, 126, 0.04); }
+.panel-descuento { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.panel-descuento input[name="motivo"] { flex: 1 1 220px; }
+.panel-descuento input[type="number"] { width: 110px; flex: none; }
 
 .form-editar-cliente { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 0; }
 .form-editar-cliente .campo { flex: 1 1 150px; margin-bottom: 0; }
@@ -785,6 +918,11 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   font-size: 13px;
 }
 .form-precios .boton.mini { padding: 8px 12px; font-size: 12px; }
+
+/* Botón "Traer clientas de facturación", suelto arriba de la tabla en
+   Clientes — mismo espaciado de bloque que usa el resto de la página
+   (antes tenía un margen suelto de 18px por estilo en línea). */
+.form-sincronizar { margin-bottom: var(--sp-bloque); }
 
 /* =========================================================
    Eliminar en lote (Clientes, Productos)

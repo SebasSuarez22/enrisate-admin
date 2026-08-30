@@ -110,7 +110,7 @@ require __DIR__ . '/includes/cabecera.php';
   <section class="panel">
     <h2 class="titulo-panel">Todas las clientas</h2>
     <p class="subsaludo">Cada factura nueva agrega a la clienta aquí solita. Si tienes facturas viejas de antes de este cambio, usa este botón una vez para traerlas.</p>
-    <form method="post" action="clientes.php" style="margin-bottom: 18px;">
+    <form method="post" action="clientes.php" class="form-sincronizar">
       <input type="hidden" name="csrf" value="<?= e($token) ?>">
       <input type="hidden" name="accion" value="sincronizar">
       <button type="submit" class="boton mini">Traer clientas de facturación</button>
@@ -122,8 +122,10 @@ require __DIR__ . '/includes/cabecera.php';
         <input type="hidden" name="csrf" value="<?= e($token) ?>">
         <input type="hidden" name="accion" value="eliminar">
         <input type="hidden" name="ids" id="idsEliminarClientes" value="">
+        <button type="button" id="btnEditarSeleccionada" class="boton mini">Editar seleccionada</button>
         <button type="submit" class="boton mini peligro">Eliminar seleccionadas</button>
       </form>
+      <div class="tabla-scroll">
       <table class="lineas">
         <thead>
           <tr>
@@ -132,23 +134,19 @@ require __DIR__ . '/includes/cabecera.php';
             <th>Teléfono</th>
             <th class="num">Saldo a favor</th>
             <th>Notas</th>
-            <th></th>
           </tr>
         </thead>
         <tbody>
           <?php foreach ($clientes as $c): $saldo = (int) ($c['saldo_favor'] ?? 0); ?>
             <tr id="vista-<?= e($c['id']) ?>">
-              <td><input type="checkbox" class="chk-cliente" value="<?= e($c['id']) ?>" aria-label="Seleccionar a <?= e($c['nombre']) ?>"></td>
+              <td><input type="checkbox" class="chk-cliente" id="chk-<?= e($c['id']) ?>" value="<?= e($c['id']) ?>" aria-label="Seleccionar a <?= e($c['nombre']) ?>"></td>
               <td><?= e($c['nombre']) ?></td>
               <td><?= e($c['telefono']) ?></td>
               <td class="num"><?= $saldo > 0 ? '<strong class="saldo-favor">' . pesos($saldo) . '</strong>' : '—' ?></td>
               <td><?= e($c['notas']) ?></td>
-              <td class="num">
-                <button type="button" class="boton mini btn-editar-cliente" data-id="<?= e($c['id']) ?>">Editar</button>
-              </td>
             </tr>
             <tr id="edicion-<?= e($c['id']) ?>" hidden>
-              <td colspan="6">
+              <td colspan="5">
                 <form method="post" action="clientes.php" class="form-editar-cliente">
                   <input type="hidden" name="csrf" value="<?= e($token) ?>">
                   <input type="hidden" name="accion" value="editar">
@@ -177,24 +175,40 @@ require __DIR__ . '/includes/cabecera.php';
           <?php endforeach; ?>
         </tbody>
       </table>
+      </div>
     <?php endif; ?>
   </section>
 
 </main>
 
 <script>
-document.querySelectorAll('.btn-editar-cliente').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.getElementById('vista-' + btn.dataset.id).hidden   = true;
-    document.getElementById('edicion-' + btn.dataset.id).hidden = false;
-  });
-});
 document.querySelectorAll('.btn-cancelar-cliente').forEach(btn => {
   btn.addEventListener('click', () => {
     document.getElementById('vista-' + btn.dataset.id).hidden   = false;
     document.getElementById('edicion-' + btn.dataset.id).hidden = true;
+    const chk = document.getElementById('chk-' + btn.dataset.id);
+    if (chk) chk.checked = false;
   });
 });
+
+const btnEditarSeleccionada = document.getElementById('btnEditarSeleccionada');
+if (btnEditarSeleccionada) {
+  btnEditarSeleccionada.addEventListener('click', () => {
+    const seleccionadas = Array.from(document.querySelectorAll('.chk-cliente:checked'));
+    if (seleccionadas.length === 0) {
+      alert('Selecciona una clienta para editar.');
+      return;
+    }
+    if (seleccionadas.length > 1) {
+      alert('Selecciona solo una clienta a la vez para editar.');
+      return;
+    }
+    const id = seleccionadas[0].value;
+    document.getElementById('vista-' + id).hidden   = true;
+    document.getElementById('edicion-' + id).hidden = false;
+    document.getElementById('edicion-' + id).scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+}
 
 const chkTodosClientes = document.getElementById('chkTodosClientes');
 if (chkTodosClientes) {

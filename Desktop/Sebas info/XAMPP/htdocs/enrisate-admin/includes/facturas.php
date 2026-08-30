@@ -2,46 +2,81 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/categorias.php';
 
 /* =========================================================
-   Facturas · almacén en archivo (puente hacia la base de datos)
+   Facturas y catálogo · almacén en MySQL (capa 3)
+   =========================================================
+   Toda la lógica de negocio de este archivo es la misma que tenía la
+   versión en JSON. Lo único que cambió son las funciones que leen y
+   escriben el almacenamiento (catalogo_cache/guardar_catalogo y
+   leer_facturas_raw/guardar_facturas): antes tocaban storage/*.json,
+   ahora hablan con MySQL a través de includes/db.php.
    ========================================================= */
 
-function ruta_catalogo(): string
+/**
+ * ¿La tabla productos ya tiene la columna `categoria`?
+ *
+ * La agrega storage/actualizar-2026-08-23-categorias.sql. Mientras no se
+ * haya importado, todo sigue funcionando: el catálogo deduce la categoría
+ * del nombre del producto. Sin esta comprobación, la página se caía con
+ * "Unknown column 'categoria'" hasta importar el .sql.
+ */
+function productos_tiene_categoria(): bool
 {
-    if (!is_dir(STORAGE_DIR)) {
-        @mkdir(STORAGE_DIR, 0775, true);
+    static $tiene = null;
+
+    if ($tiene === null) {
+        try {
+            $tiene = (bool) db()->query("SHOW COLUMNS FROM productos LIKE 'categoria'")->fetch();
+        } catch (Throwable $e) {
+            $tiene = false;
+        }
     }
-    return STORAGE_DIR . '/catalogo.json';
+
+    return $tiene;
 }
 
 /**
  * Devuelve una referencia a la caché en memoria del catálogo, para que
  * catalogo() y guardar_catalogo() siempre vean el mismo estado dentro
- * de una misma petición (si no, guardar dos veces seguidas —p. ej.
- * agregar un producto y luego revisar duplicados— pisaría el primer
- * cambio con datos viejos).
+ * de una misma petición.
  */
 function &catalogo_cache(): array
 {
     static $cat = null;
-    if ($cat === null) {
-        $ruta = ruta_catalogo();
-        $d    = is_file($ruta) ? json_decode((string) file_get_contents($ruta), true) : null;
 
-        if (is_array($d)) {
-            $cat = $d;
+    if ($cat === null) {
+        $columnaCategoria = productos_tiene_categoria() ? 'categoria, ' : '';
+        $filas = db()->query(
+            'SELECT sku, marca, nombre, ' . $columnaCategoria . 'precio, costo, stock
+             FROM productos ORDER BY marca, nombre'
+        )->fetchAll();
+
+        if ($filas) {
+            $cat = array_map(static fn(array $p): array => [
+                'sku'    => (string) $p['sku'],
+                'marca'  => (string) $p['marca'],
+                'nombre' => (string) $p['nombre'],
+                'categoria' => (string) ($p['categoria'] ?? ''),
+                'precio' => (int) $p['precio'],
+                'costo'  => (int) $p['costo'],
+                'stock'  => (int) $p['stock'],
+            ], $filas);
         } else {
-            // Primera vez: siembra el catálogo editable desde el archivo base.
+            // Primera vez (tabla vacía): siembra el catálogo editable desde el archivo base.
             $semilla = require BASE_DIR . '/datos/catalogo.php';
             foreach ($semilla as &$p) {
                 $p['stock'] = $p['stock'] ?? 0;
+                $p['categoria'] = $p['categoria'] ?? categoria_deducida((string) $p['nombre']);
             }
             unset($p);
             $cat = $semilla;
             guardar_catalogo($cat);
         }
     }
+
     return $cat;
 }
 
@@ -50,15 +85,42 @@ function catalogo(): array
     return catalogo_cache();
 }
 
+/** Reemplaza el catálogo completo en la base de datos (igual que antes reemplazaba el archivo entero). */
 function guardar_catalogo(array $productos): void
 {
     $productos = array_values($productos);
+    $pdo       = db();
 
-    file_put_contents(
-        ruta_catalogo(),
-        json_encode($productos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
-        LOCK_EX
-    );
+    $pdo->beginTransaction();
+    try {
+        $conCategoria = productos_tiene_categoria();
+
+        $pdo->exec('DELETE FROM productos');
+        $st = $pdo->prepare($conCategoria
+            ? 'INSERT INTO productos (sku, marca, nombre, categoria, precio, costo, stock)
+               VALUES (:sku, :marca, :nombre, :categoria, :precio, :costo, :stock)'
+            : 'INSERT INTO productos (sku, marca, nombre, precio, costo, stock)
+               VALUES (:sku, :marca, :nombre, :precio, :costo, :stock)'
+        );
+        foreach ($productos as $p) {
+            $fila = [
+                ':sku'    => (string) $p['sku'],
+                ':marca'  => (string) $p['marca'],
+                ':nombre' => (string) $p['nombre'],
+                ':precio' => (int) $p['precio'],
+                ':costo'  => (int) $p['costo'],
+                ':stock'  => (int) ($p['stock'] ?? 0),
+            ];
+            if ($conCategoria) {
+                $fila[':categoria'] = (string) ($p['categoria'] ?? '');
+            }
+            $st->execute($fila);
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
 
     $cache = &catalogo_cache();
     $cache = $productos;
@@ -81,7 +143,7 @@ function sku_orden(string $sku): int
 }
 
 /** Agrega un producto nuevo al catálogo. Devuelve '' si quedó bien, o un mensaje de error. */
-function agregar_producto(string $sku, string $marca, string $nombre, int $precio, int $costo): string
+function agregar_producto(string $sku, string $marca, string $nombre, int $precio, int $costo, string $categoria = ''): string
 {
     $sku    = strtoupper(trim($sku));
     $marca  = trim($marca);
@@ -99,14 +161,23 @@ function agregar_producto(string $sku, string $marca, string $nombre, int $preci
     if (producto_por_sku($sku)) {
         return 'Ya existe un producto con el SKU ' . $sku . '.';
     }
+    $categoria = trim($categoria);
+    if (!categoria_valida($categoria)) {
+        return 'Esa categoría no existe.';
+    }
+    if ($categoria === '') {
+        $categoria = categoria_deducida($nombre);
+    }
 
     $productos   = catalogo();
     $productos[] = [
-        'sku'    => $sku,
-        'marca'  => $marca,
-        'nombre' => $nombre,
-        'precio' => $precio,
-        'costo'  => $costo,
+        'sku'       => $sku,
+        'marca'     => $marca,
+        'nombre'    => $nombre,
+        'categoria' => $categoria,
+        'precio'    => $precio,
+        'costo'     => $costo,
+        'stock'     => 0,
     ];
     guardar_catalogo($productos);
 
@@ -134,12 +205,18 @@ function actualizar_precio_costo(string $sku, int $precio, int $costo): bool
 }
 
 /** Actualiza marca y nombre de un SKU existente. Devuelve true si lo encontró. */
-function actualizar_producto(string $sku, string $marca, string $nombre): bool
+function actualizar_producto(string $sku, string $marca, string $nombre, ?string $categoria = null): bool
 {
     $marca  = trim($marca);
     $nombre = trim($nombre);
     if ($marca === '' || $nombre === '') {
         return false;
+    }
+    if ($categoria !== null) {
+        $categoria = trim($categoria);
+        if (!categoria_valida($categoria)) {
+            return false;
+        }
     }
 
     $productos = catalogo();
@@ -148,6 +225,9 @@ function actualizar_producto(string $sku, string $marca, string $nombre): bool
         if ($p['sku'] === $sku) {
             $p['marca']  = $marca;
             $p['nombre'] = $nombre;
+            if ($categoria !== null) {
+                $p['categoria'] = $categoria;
+            }
             $hallado     = true;
             break;
         }
@@ -176,27 +256,83 @@ function eliminar_productos(array $skus): int
     return $borrados;
 }
 
-function ruta_facturas(): string
-{
-    if (!is_dir(STORAGE_DIR)) {
-        @mkdir(STORAGE_DIR, 0775, true);
-    }
-    return STORAGE_DIR . '/facturas.json';
-}
-
 /**
- * Lee las facturas del archivo tal cual están guardadas, SIN migrar el
- * formato viejo. Uso interno de las funciones que escriben (crear_factura,
- * actualizar_factura), para que nunca se reescriba con datos migrados el
- * registro de una factura que no se está tocando.
+ * Lee las facturas tal cual están guardadas, SIN migrar el formato viejo.
+ * Uso interno de las funciones que escriben (crear_factura, actualizar_factura),
+ * para que nunca se reescriba con datos migrados el registro de una factura
+ * que no se está tocando.
  */
 function leer_facturas_raw(): array
 {
-    if (!is_file(ruta_facturas())) {
+    $pdo = db();
+
+    $facturas = $pdo->query(
+        'SELECT * FROM facturas ORDER BY numero'
+    )->fetchAll();
+
+    if (!$facturas) {
         return [];
     }
-    $d = json_decode((string) file_get_contents(ruta_facturas()), true);
-    return is_array($d) ? $d : [];
+
+    $lineasPorFactura = [];
+    foreach ($pdo->query('SELECT * FROM factura_lineas ORDER BY factura_numero, orden')->fetchAll() as $l) {
+        $lineasPorFactura[$l['factura_numero']][] = [
+            'sku'    => (string) $l['sku'],
+            'nombre' => (string) $l['nombre'],
+            'marca'  => (string) $l['marca'],
+            'precio' => (int) $l['precio'],
+            'costo'  => (int) $l['costo'],
+            'cant'   => (int) $l['cant'],
+        ];
+    }
+
+    $abonosPorCuota = [];
+    foreach ($pdo->query('SELECT * FROM factura_abonos ORDER BY cuota_id, orden')->fetchAll() as $a) {
+        $abonosPorCuota[(int) $a['cuota_id']][] = [
+            'monto'  => (int) $a['monto'],
+            'fecha'  => (string) $a['fecha'],
+            'tipo'   => (string) ($a['tipo'] ?? 'abono'),
+            'motivo' => (string) ($a['motivo'] ?? ''),
+        ];
+    }
+
+    $cuotasPorFactura = [];
+    foreach ($pdo->query('SELECT * FROM factura_cuotas ORDER BY factura_numero, orden')->fetchAll() as $c) {
+        $cuotasPorFactura[$c['factura_numero']][] = [
+            'monto'  => (int) $c['monto'],
+            'vence'  => (string) $c['vence'],
+            'abonos' => $abonosPorCuota[(int) $c['id']] ?? [],
+        ];
+    }
+
+    $resultado = [];
+    foreach ($facturas as $f) {
+        $numero = (string) $f['numero'];
+        $resultado[] = [
+            'cliente'          => (string) $f['cliente'],
+            'telefono'         => (string) $f['telefono'],
+            'nota'             => (string) $f['nota'],
+            'lineas'           => $lineasPorFactura[$numero] ?? [],
+            'subtotal'         => (int) $f['subtotal'],
+            'descuento'        => (int) $f['descuento'],
+            'total'            => (int) $f['total'],
+            'costo'            => (int) $f['costo'],
+            'margen'           => (int) $f['margen'],
+            'plan'             => (string) $f['plan'],
+            'abono'            => (int) $f['abono'],
+            'saldo_aplicado'   => (int) $f['saldo_aplicado'],
+            'cuotas'           => $cuotasPorFactura[$numero] ?? [],
+            'pagado'           => (int) $f['pagado'],
+            'fecha_pago'       => $f['fecha_pago'],
+            'numero'           => $numero,
+            'creada'           => (string) $f['creada'],
+            'anulada'          => (bool) $f['anulada'],
+            'anulada_el'       => $f['anulada_el'],
+            'motivo_anulacion' => (string) $f['motivo_anulacion'],
+        ];
+    }
+
+    return $resultado;
 }
 
 function leer_facturas(): array
@@ -204,13 +340,105 @@ function leer_facturas(): array
     return array_map('normalizar_cuotas_factura', leer_facturas_raw());
 }
 
+/** Reemplaza todas las facturas en la base de datos (igual que antes reemplazaba el archivo entero). */
 function guardar_facturas(array $f): void
 {
-    file_put_contents(
-        ruta_facturas(),
-        json_encode($f, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
-        LOCK_EX
-    );
+    $pdo = db();
+
+    $pdo->beginTransaction();
+    try {
+        // Igual que antes con el archivo completo: se reconstruye todo desde cero
+        // a partir del array en memoria. Los ON DELETE CASCADE de factura_lineas/
+        // factura_cuotas/factura_abonos se encargan de limpiar lo dependiente.
+        $pdo->exec('DELETE FROM facturas');
+
+        $stFac = $pdo->prepare(
+            'INSERT INTO facturas
+                (numero, cliente, telefono, nota, subtotal, descuento, total, costo, margen,
+                 plan, abono, saldo_aplicado, pagado, fecha_pago, creada,
+                 anulada, anulada_el, motivo_anulacion)
+             VALUES
+                (:numero, :cliente, :telefono, :nota, :subtotal, :descuento, :total, :costo, :margen,
+                 :plan, :abono, :saldo_aplicado, :pagado, :fecha_pago, :creada,
+                 :anulada, :anulada_el, :motivo_anulacion)'
+        );
+        $stLinea = $pdo->prepare(
+            'INSERT INTO factura_lineas (factura_numero, orden, sku, nombre, marca, precio, costo, cant)
+             VALUES (:factura_numero, :orden, :sku, :nombre, :marca, :precio, :costo, :cant)'
+        );
+        $stCuota = $pdo->prepare(
+            'INSERT INTO factura_cuotas (factura_numero, orden, monto, vence)
+             VALUES (:factura_numero, :orden, :monto, :vence)'
+        );
+        $stAbono = $pdo->prepare(
+            'INSERT INTO factura_abonos (cuota_id, orden, monto, fecha, tipo, motivo)
+             VALUES (:cuota_id, :orden, :monto, :fecha, :tipo, :motivo)'
+        );
+
+        foreach ($f as $factura) {
+            $numero = (string) $factura['numero'];
+
+            $stFac->execute([
+                ':numero'           => $numero,
+                ':cliente'          => (string) ($factura['cliente'] ?? ''),
+                ':telefono'         => (string) ($factura['telefono'] ?? ''),
+                ':nota'             => (string) ($factura['nota'] ?? ''),
+                ':subtotal'         => (int) ($factura['subtotal'] ?? 0),
+                ':descuento'        => (int) ($factura['descuento'] ?? 0),
+                ':total'            => (int) ($factura['total'] ?? 0),
+                ':costo'            => (int) ($factura['costo'] ?? 0),
+                ':margen'           => (int) ($factura['margen'] ?? 0),
+                ':plan'             => ($factura['plan'] ?? 'contado') === 'cuotas' ? 'cuotas' : 'contado',
+                ':abono'            => (int) ($factura['abono'] ?? 0),
+                ':saldo_aplicado'   => (int) ($factura['saldo_aplicado'] ?? 0),
+                ':pagado'           => (int) ($factura['pagado'] ?? 0),
+                ':fecha_pago'       => !empty($factura['fecha_pago']) ? substr((string) $factura['fecha_pago'], 0, 10) : null,
+                ':creada'           => (string) ($factura['creada'] ?? date('c')),
+                ':anulada'          => !empty($factura['anulada']) ? 1 : 0,
+                ':anulada_el'       => $factura['anulada_el'] ?? null,
+                ':motivo_anulacion' => (string) ($factura['motivo_anulacion'] ?? ''),
+            ]);
+
+            foreach (($factura['lineas'] ?? []) as $i => $l) {
+                $stLinea->execute([
+                    ':factura_numero' => $numero,
+                    ':orden'          => $i,
+                    ':sku'            => (string) ($l['sku'] ?? ''),
+                    ':nombre'         => (string) ($l['nombre'] ?? ''),
+                    ':marca'          => (string) ($l['marca'] ?? ''),
+                    ':precio'         => (int) ($l['precio'] ?? 0),
+                    ':costo'          => (int) ($l['costo'] ?? 0),
+                    ':cant'           => (int) ($l['cant'] ?? 1),
+                ]);
+            }
+
+            foreach (($factura['cuotas'] ?? []) as $i => $c) {
+                $stCuota->execute([
+                    ':factura_numero' => $numero,
+                    ':orden'          => $i,
+                    ':monto'          => (int) ($c['monto'] ?? 0),
+                    ':vence'          => substr((string) ($c['vence'] ?? date('Y-m-d')), 0, 10),
+                ]);
+                $cuotaId = (int) $pdo->lastInsertId();
+
+                foreach (($c['abonos'] ?? []) as $j => $a) {
+                    $stAbono->execute([
+                        ':cuota_id' => $cuotaId,
+                        ':orden'    => $j,
+                        ':monto'    => (int) ($a['monto'] ?? 0),
+                        ':fecha'    => (string) ($a['fecha'] ?? date('c')),
+                        ':tipo'     => ($a['tipo'] ?? 'abono') === 'descuento' ? 'descuento' : 'abono',
+                        ':motivo'   => (string) ($a['motivo'] ?? ''),
+                    ]);
+                }
+            }
+        }
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
 }
 
 function siguiente_numero(): string
@@ -362,8 +590,53 @@ function registrar_abono(string $numero, int $indiceCuota, int $monto): bool
     }
 
     $f['cuotas'][$indiceCuota]['abonos'][] = [
-        'monto' => $monto,
-        'fecha' => date('c'),
+        'monto'  => $monto,
+        'fecha'  => date('c'),
+        'tipo'   => 'abono',
+        'motivo' => '',
+    ];
+
+    return actualizar_factura($numero, [
+        'cuotas' => $f['cuotas'],
+        'pagado' => total_pagado_cuotas($f),
+    ]);
+}
+
+/**
+ * Perdona (descuenta) un monto de lo pendiente de una cuota específica.
+ * Es igual a registrar_abono() en las validaciones — misma factura activa
+ * a plazos, mismo tope del monto — pero NO es plata recibida: se marca
+ * como 'descuento' para no mezclarse con lo realmente cobrado en efectivo
+ * si en algún momento se arma un reporte de caja. Por eso exige un motivo.
+ */
+function aplicar_descuento_cuota(string $numero, int $indiceCuota, int $monto, string $motivo): bool
+{
+    $motivo = trim($motivo);
+    if ($motivo === '') {
+        return false;
+    }
+
+    $f = factura_por_numero($numero);
+    if (!$f || !empty($f['anulada']) || ($f['plan'] ?? '') !== 'cuotas') {
+        return false;
+    }
+    if (!isset($f['cuotas'][$indiceCuota])) {
+        return false;
+    }
+    if ($monto <= 0) {
+        return false;
+    }
+
+    $pendiente = cuota_pendiente($f['cuotas'][$indiceCuota]);
+    if ($monto > $pendiente) {
+        return false;
+    }
+
+    $f['cuotas'][$indiceCuota]['abonos'][] = [
+        'monto'  => $monto,
+        'fecha'  => date('c'),
+        'tipo'   => 'descuento',
+        'motivo' => $motivo,
     ];
 
     return actualizar_factura($numero, [
@@ -521,9 +794,16 @@ function rotulo_cuota(int $idx, int $totalCuotas = 0): string
     return $rotulos[$idx] ?? ('Cuota ' . ($idx + 1));
 }
 
-/** Arma el link de WhatsApp (wa.me) para un teléfono y un mensaje ya redactado. Si el teléfono está vacío, devuelve un link sin número (comportamiento existente). */
+/**
+ * Arma el link de WhatsApp (wa.me) para un teléfono y un mensaje ya
+ * redactado. Si el teléfono está vacío, devuelve un link sin número
+ * (comportamiento existente). Se normaliza primero (quita el 57 si ya lo
+ * traía) para no duplicar el indicativo — antes, un teléfono guardado con
+ * "57" adelante producía un link roto.
+ */
 function enlace_whatsapp(string $telefono, string $mensaje): string
 {
-    return 'https://wa.me/' . ($telefono !== '' ? '57' . ltrim($telefono, '5') : '')
+    $telefono = normalizar_telefono($telefono);
+    return 'https://wa.me/' . ($telefono !== '' ? '57' . $telefono : '')
         . '?text=' . rawurlencode($mensaje);
 }

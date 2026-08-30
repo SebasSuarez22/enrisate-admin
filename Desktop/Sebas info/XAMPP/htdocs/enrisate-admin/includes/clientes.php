@@ -2,42 +2,66 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/db.php';
 
 /* =========================================================
-   Clientes · almacén en archivo (puente hacia la base de datos)
+   Clientes · almacén en MySQL (capa 3)
+   =========================================================
+   Misma lógica de negocio que la versión en JSON. Solo cambiaron
+   leer_clientes() y guardar_clientes(), que ahora hablan con MySQL
+   en vez de storage/clientes.json.
    ========================================================= */
-
-function ruta_clientes(): string
-{
-    if (!is_dir(STORAGE_DIR)) {
-        @mkdir(STORAGE_DIR, 0775, true);
-    }
-    return STORAGE_DIR . '/clientes.json';
-}
 
 function leer_clientes(): array
 {
-    if (!is_file(ruta_clientes())) {
-        return [];
-    }
-    $d = json_decode((string) file_get_contents(ruta_clientes()), true);
-    return is_array($d) ? $d : [];
+    $filas = db()->query(
+        'SELECT id, nombre, telefono, notas, saldo_favor, creado FROM clientes ORDER BY nombre'
+    )->fetchAll();
+
+    return array_map(static fn(array $c): array => [
+        'id'          => (string) $c['id'],
+        'nombre'      => (string) $c['nombre'],
+        'telefono'    => (string) $c['telefono'],
+        'notas'       => (string) $c['notas'],
+        'creado'      => (string) $c['creado'],
+        'saldo_favor' => (int) $c['saldo_favor'],
+    ], $filas);
 }
 
+/** Reemplaza la lista completa de clientas en la base de datos (igual que antes reemplazaba el archivo entero). */
 function guardar_clientes(array $clientes): void
 {
-    file_put_contents(
-        ruta_clientes(),
-        json_encode($clientes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
-        LOCK_EX
-    );
+    $pdo = db();
+
+    $pdo->beginTransaction();
+    try {
+        $pdo->exec('DELETE FROM clientes');
+        $st = $pdo->prepare(
+            'INSERT INTO clientes (id, nombre, telefono, notas, saldo_favor, creado)
+             VALUES (:id, :nombre, :telefono, :notas, :saldo_favor, :creado)'
+        );
+        foreach ($clientes as $c) {
+            $st->execute([
+                ':id'          => (string) $c['id'],
+                ':nombre'      => (string) $c['nombre'],
+                ':telefono'    => (string) $c['telefono'],
+                ':notas'       => (string) ($c['notas'] ?? ''),
+                ':saldo_favor' => (int) ($c['saldo_favor'] ?? 0),
+                ':creado'      => (string) ($c['creado'] ?? date('c')),
+            ]);
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
 }
 
 /** Agrega una clienta nueva a la lista. Devuelve '' si quedó bien, o un mensaje de error. */
 function agregar_cliente(string $nombre, string $telefono, string $notas): string
 {
     $nombre   = trim($nombre);
-    $telefono = (string) preg_replace('/\D+/', '', $telefono);
+    $telefono = normalizar_telefono($telefono);
     $notas    = trim($notas);
 
     if ($nombre === '') {
@@ -61,7 +85,7 @@ function agregar_cliente(string $nombre, string $telefono, string $notas): strin
 function actualizar_cliente(string $id, string $nombre, string $telefono, string $notas, int $saldoFavor = 0): string
 {
     $nombre   = trim($nombre);
-    $telefono = (string) preg_replace('/\D+/', '', $telefono);
+    $telefono = normalizar_telefono($telefono);
     $notas    = trim($notas);
 
     if ($nombre === '') {
@@ -160,11 +184,29 @@ function cliente_ya_existe(array $clientes, string $nombre, string $telefono): b
     return false;
 }
 
+/**
+ * Igual que cliente_ya_existe(), pero devuelve la clienta encontrada (o null)
+ * en vez de solo true/false. Se usa para precargar "Clienta existente" al
+ * confirmar un pedido del catálogo público, en vez de asumir que es nueva.
+ */
+function buscar_cliente_coincidente(array $clientes, string $nombre, string $telefono): ?array
+{
+    foreach ($clientes as $c) {
+        if ($telefono !== '' && $c['telefono'] === $telefono) {
+            return $c;
+        }
+        if (strcasecmp(trim($c['nombre']), $nombre) === 0) {
+            return $c;
+        }
+    }
+    return null;
+}
+
 /** Agrega la clienta de una factura a la lista, si todavía no está ahí. */
 function agregar_cliente_desde_factura(string $nombre, string $telefono): void
 {
     $nombre   = trim($nombre);
-    $telefono = (string) preg_replace('/\D+/', '', $telefono);
+    $telefono = normalizar_telefono($telefono);
 
     if ($nombre === '') {
         return;
@@ -184,7 +226,7 @@ function sincronizar_clientes_desde_facturas(array $facturas): int
 
     foreach ($facturas as $f) {
         $nombre   = trim((string) ($f['cliente'] ?? ''));
-        $telefono = (string) preg_replace('/\D+/', '', (string) ($f['telefono'] ?? ''));
+        $telefono = normalizar_telefono((string) ($f['telefono'] ?? ''));
 
         if ($nombre === '' || cliente_ya_existe($clientes, $nombre, $telefono)) {
             continue;

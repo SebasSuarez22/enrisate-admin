@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/includes/facturas.php';
+require_once __DIR__ . '/includes/pedidos.php';
 require_once __DIR__ . '/includes/clientes.php';
 
 requerir_sesion();
@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'La página estuvo abierta demasiado tiempo. Recárgala e intenta de nuevo.';
     } else {
         $cliente  = trim((string) ($_POST['cliente'] ?? ''));
-        $telefono = preg_replace('/\D+/', '', (string) ($_POST['telefono'] ?? ''));
+        $telefono = normalizar_telefono((string) ($_POST['telefono'] ?? ''));
         $items    = json_decode((string) ($_POST['items'] ?? '[]'), true);
 
         if ($cliente === '') {
@@ -140,6 +140,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     restar_saldo_favor($clienteId, $saldoAplicado);
                 }
 
+                // Si esta cuenta vino de un pedido del catálogo público, lo marca
+                // como confirmado y lo enlaza con la factura recién creada.
+                $numeroPedidoOrigen = trim((string) ($_POST['desde_pedido'] ?? ''));
+                if ($numeroPedidoOrigen !== '') {
+                    marcar_pedido_confirmado($numeroPedidoOrigen, $numero);
+                }
+
                 header('Location: factura.php?n=' . urlencode($numero));
                 exit;
             }
@@ -151,6 +158,30 @@ $catalogo = catalogo();
 
 $clientesExistentes = leer_clientes();
 usort($clientesExistentes, fn($a, $b) => $a['nombre'] <=> $b['nombre']);
+
+// Si se abrió desde "Confirmar y facturar" en Pedidos, precarga esa
+// propuesta — pero solo si el pedido sigue pendiente (no reabre uno ya
+// confirmado o descartado).
+$pedidoDesde = null;
+$numeroPedidoGet = trim((string) ($_GET['desde_pedido'] ?? ''));
+if ($numeroPedidoGet !== '') {
+    $pd = pedido_por_numero($numeroPedidoGet);
+    if ($pd && ($pd['estado'] ?? '') === 'pendiente') {
+        $pedidoDesde = $pd;
+    }
+}
+
+// Si quien pidió por el catálogo público ya es una clienta guardada (mismo
+// teléfono, o mismo nombre si no hay teléfono), se precarga como "Clienta
+// existente" en vez de "Nueva clienta" — así se ve su saldo a favor si tiene.
+$clienteCoincidente = null;
+if ($pedidoDesde) {
+    $clienteCoincidente = buscar_cliente_coincidente(
+        $clientesExistentes,
+        trim((string) ($pedidoDesde['cliente'] ?? '')),
+        normalizar_telefono((string) ($pedidoDesde['telefono'] ?? ''))
+    );
+}
 
 $token = csrf_token();
 
@@ -166,10 +197,19 @@ require __DIR__ . '/includes/cabecera.php';
   <?php if ($error !== ''): ?>
     <p class="aviso" role="alert"><?= e($error) ?></p>
   <?php endif; ?>
+  <?php if ($pedidoDesde): ?>
+    <p class="aviso neutro">Prellenado desde el pedido <?= e($pedidoDesde['numero']) ?> de <?= e($pedidoDesde['cliente']) ?>. Revisa todo antes de generar la factura.</p>
+    <label class="opcion opcion-pago-pedido">
+      <input type="checkbox" id="pedidoYaPago">
+      <span>Ya me pagó el total</span>
+    </label>
+    <p class="pista">Si no te ha pagado todavía (lo normal en un pedido recién llegado), déjalo sin marcar: la cuenta queda pendiente de cobro hasta que la marques como pagada. Ajusta el plan, los montos y las fechas según lo que quedaron con ella por WhatsApp.</p>
+  <?php endif; ?>
 
   <form method="post" action="facturar.php" id="cuenta" autocomplete="off">
     <input type="hidden" name="csrf" value="<?= e($token) ?>">
     <input type="hidden" name="items" id="items" value="[]">
+    <input type="hidden" name="desde_pedido" value="<?= e($pedidoDesde['numero'] ?? '') ?>">
 
     <div class="dos-columnas">
 
@@ -188,6 +228,7 @@ require __DIR__ . '/includes/cabecera.php';
           <button type="button" class="boton mini" id="agregar">Agregar</button>
         </div>
 
+        <div class="tabla-scroll">
         <table class="lineas" id="tabla">
           <thead>
             <tr><th>Producto</th><th class="num">Cant.</th><th class="num">Valor</th><th></th></tr>
@@ -196,6 +237,7 @@ require __DIR__ . '/includes/cabecera.php';
             <tr class="vacio"><td colspan="4">Todavía no hay productos en la cuenta.</td></tr>
           </tbody>
         </table>
+        </div>
 
         <div class="campo apretado">
           <label for="descuento">Descuento</label>
@@ -330,6 +372,9 @@ const PRODUCTOS = <?= json_encode(array_map(fn($p) => [
     'precio' => (int) $p['precio'],
     'costo'  => (int) $p['costo'],
 ], $catalogo), JSON_UNESCAPED_UNICODE) ?>;
+
+const PEDIDO_DESDE = <?= json_encode($pedidoDesde, JSON_UNESCAPED_UNICODE) ?>;
+const CLIENTE_COINCIDENTE = <?= json_encode($clienteCoincidente, JSON_UNESCAPED_UNICODE) ?>;
 
 const cant   = document.getElementById('cant');
 const cuerpo = document.getElementById('cuerpo');
@@ -636,6 +681,70 @@ document.getElementById('cuenta').addEventListener('submit', e => {
     alert('Elige una clienta de la lista, o cambia a "Nueva clienta".');
   }
 });
+
+/* ------------- Precarga desde un pedido del catálogo público -------------
+   Los montos y fechas de cuotas NUNCA vienen calculados de antemano: eso se
+   negocia de verdad con la clienta por WhatsApp. Lo único que se precarga
+   es la propuesta (contado o cuántas cuotas prefiere) como punto de
+   partida, y si ya te pagó o no — por defecto se asume que NO, porque
+   ningún pedido del catálogo trae plata: si no ha pagado, se arma como
+   "1 cuota" (pago pendiente, no "de contado") para que quede visible en
+   Cartera hasta que la marques como cobrada. */
+if (PEDIDO_DESDE) {
+  (PEDIDO_DESDE.lineas || []).forEach(l => {
+    const prod = PRODUCTOS.find(p => p.sku === l.sku);
+    if (prod) {
+      items.push({ sku: prod.sku, nombre: prod.nombre, precio: prod.precio, costo: prod.costo, cant: l.cant });
+    }
+  });
+
+  // Si el teléfono (o, si no hay, el nombre) ya corresponde a una clienta
+  // guardada, se precarga como "Clienta existente" (así se ve su saldo a
+  // favor si tiene). Si no, se asume "Nueva clienta" como antes.
+  const opcionCoincidente = CLIENTE_COINCIDENTE
+    ? clienteSel.querySelector('option[data-id="' + CSS.escape(CLIENTE_COINCIDENTE.id) + '"]')
+    : null;
+
+  if (opcionCoincidente) {
+    document.querySelector('input[name="modoCliente"][value="existente"]').checked = true;
+    opcionCoincidente.selected = true;
+    aplicarModoCliente('existente');
+  } else {
+    document.querySelector('input[name="modoCliente"][value="nueva"]').checked = true;
+    aplicarModoCliente('nueva');
+    clienteInput.value  = PEDIDO_DESDE.cliente || '';
+    telefonoInput.value = PEDIDO_DESDE.telefono || '';
+  }
+
+  const yaPagoInput = document.getElementById('pedidoYaPago');
+
+  function aplicarPlanDelPedido() {
+    const yaPago = !!(yaPagoInput && yaPagoInput.checked);
+
+    if (yaPago) {
+      document.querySelector('input[name="plan"][value="contado"]').checked = true;
+      document.getElementById('bloqueCuotas').hidden  = true;
+      document.getElementById('bloqueContado').hidden = false;
+    } else {
+      // No ha pagado: siempre queda como pendiente de cobro, sea que la
+      // clienta haya pedido "de contado" (1 cuota = paga todo pero después)
+      // o "a cuotas" (se usa el número que ella prefirió, como punto de
+      // partida — ajústalo si quedaron en otra cosa por WhatsApp).
+      const nPreferido = PEDIDO_DESDE.plan === 'cuotas' && PEDIDO_DESDE.num_cuotas_preferido
+        ? Math.max(1, Math.min(4, parseInt(PEDIDO_DESDE.num_cuotas_preferido, 10) || 1))
+        : 1;
+      document.querySelector('input[name="plan"][value="cuotas"]').checked = true;
+      document.getElementById('bloqueCuotas').hidden  = false;
+      document.getElementById('bloqueContado').hidden = true;
+      numCuotasSel.value = String(nPreferido);
+      pintarFilasCuotas();
+    }
+    calcular();
+  }
+
+  if (yaPagoInput) yaPagoInput.addEventListener('change', aplicarPlanDelPedido);
+  aplicarPlanDelPedido();
+}
 
 pintar();
 </script>

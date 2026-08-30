@@ -22,6 +22,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         $error = 'No pude reactivar esa factura.';
+    } elseif (($_POST['accion'] ?? '') === 'descuento') {
+        $numero = (string) ($_POST['numero'] ?? '');
+        $idx    = (int) ($_POST['cuota_idx'] ?? -1);
+        $monto  = (int) ($_POST['monto'] ?? 0);
+        $motivo = (string) ($_POST['motivo'] ?? '');
+        if (aplicar_descuento_cuota($numero, $idx, $monto, $motivo)) {
+            header('Location: cartera.php?ok=descuento&numero=' . urlencode($numero) . '&cuota=' . $idx . '&monto=' . $monto);
+            exit;
+        }
+        $error = trim($motivo) === ''
+            ? 'Escribe el motivo del descuento.'
+            : 'No pude aplicar ese descuento. Revisa que el monto no supere lo pendiente.';
     } else {
         $numero = (string) ($_POST['numero'] ?? '');
         $idx    = (int) ($_POST['cuota_idx'] ?? -1);
@@ -34,7 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$waAbono = null;
+$waAbono     = null;
+$waDescuento = null;
 
 if (($_GET['ok'] ?? '') === 'abono') {
     $ok     = 'Abono registrado.';
@@ -56,6 +69,26 @@ if (($_GET['ok'] ?? '') === 'abono') {
             : "Con esto, esa cuota queda completa. ¡Gracias!\n";
 
         $waAbono = enlace_whatsapp($fAbono['telefono'], $msg);
+    }
+} elseif (($_GET['ok'] ?? '') === 'descuento') {
+    $ok       = 'Descuento aplicado.';
+    $fNum     = (string) ($_GET['numero'] ?? '');
+    $idx      = (int) ($_GET['cuota'] ?? -1);
+    $monto    = (int) ($_GET['monto'] ?? 0);
+    $fDescto  = $fNum !== '' ? factura_por_numero($fNum) : null;
+
+    if ($fDescto && $fDescto['telefono'] !== '' && isset($fDescto['cuotas'][$idx]) && $monto > 0) {
+        $cuotaDescto = $fDescto['cuotas'][$idx];
+        $pendiente   = cuota_pendiente($cuotaDescto);
+        $rotuloDescto = rotulo_cuota($idx, count($fDescto['cuotas']));
+
+        $msg  = "Hola " . $fDescto['cliente'] . " 💛\n";
+        $msg .= "Te aplicamos un descuento de " . pesos($monto) . " a tu " . lcfirst($rotuloDescto) . ".\n";
+        $msg .= $pendiente > 0
+            ? "Saldo pendiente de esa cuota: " . pesos($pendiente) . "\n"
+            : "Con esto, esa cuota queda al día. ¡Gracias por tu confianza!\n";
+
+        $waDescuento = enlace_whatsapp($fDescto['telefono'], $msg);
     }
 } elseif (($_GET['ok'] ?? '') === 'anulada') {
     $ok = 'Factura anulada. Ya no cuenta en los reportes ni en la cartera.';
@@ -89,6 +122,11 @@ foreach ($todas as $f) {
     }
 }
 usort($pendientes, fn($a, $b) => strcmp($a['vence'], $b['vence']));
+
+$limiteRecordatorio = date('Y-m-d', strtotime('+5 days'));
+$recordatorios = array_values(array_filter($pendientes, fn($p) =>
+    !esta_vencida($p['vence']) && $p['vence'] <= $limiteRecordatorio
+));
 
 $historial = $todas;
 if ($q !== '') {
@@ -194,12 +232,53 @@ require __DIR__ . '/includes/cabecera.php';
       <a class="boton mini verde" href="<?= e($waAbono) ?>" target="_blank" rel="noopener">Enviar comprobante por WhatsApp</a>
     </p>
   <?php endif; ?>
+  <?php if ($waDescuento): ?>
+    <p class="aviso neutro">
+      <a class="boton mini verde" href="<?= e($waDescuento) ?>" target="_blank" rel="noopener">Avisar el descuento por WhatsApp</a>
+    </p>
+  <?php endif; ?>
+
+  <?php if ($recordatorios): ?>
+    <section class="panel">
+      <h2 class="titulo-panel">Recordatorios <span class="titulo-nota">cuotas que vencen en los próximos 5 días</span></h2>
+      <div class="alertas">
+        <?php foreach ($recordatorios as $r): $f = $r['factura'];
+          $msgRecordatorio = "Hola " . $f['cliente'] . " 💛\n"
+              . "Te recordamos que tu " . lcfirst($r['rotulo']) . " de " . pesos($r['pendiente'])
+              . " vence el " . fecha_larga($r['vence']) . ".\n"
+              . "¡Cualquier cosa, aquí estamos!";
+          $waRecordatorio = $f['telefono'] !== '' ? enlace_whatsapp($f['telefono'], $msgRecordatorio) : null;
+        ?>
+          <div class="alerta">
+            <span class="alerta-punto" aria-hidden="true"></span>
+            <span class="alerta-texto">
+              <strong><?= e($f['cliente']) ?></strong>
+              <a class="alerta-factura" href="factura.php?n=<?= e($f['numero']) ?>">#<?= e($f['numero']) ?></a>
+              <span class="alerta-detalle"><?= e($r['rotulo']) ?> de <?= pesos($r['pendiente']) ?> · vence <?= e(fecha_larga($r['vence'])) ?></span>
+            </span>
+            <?php if ($waRecordatorio): ?>
+              <a class="boton-icono fantasma" href="<?= e($waRecordatorio) ?>" target="_blank" rel="noopener"
+                 title="Recordar por WhatsApp" aria-label="Recordar por WhatsApp a <?= e($f['cliente']) ?>">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.49 2 2 6.49 2 12c0 1.87.5 3.62 1.38 5.13L2 22l4.99-1.31A9.94 9.94 0 0 0 12 22c5.51 0 10-4.49 10-10S17.51 2 12 2Zm5.2 14.2c-.22.62-1.28 1.2-1.77 1.24-.45.05-.98.24-3.29-.7-2.77-1.13-4.53-3.92-4.66-4.1-.14-.18-1.1-1.47-1.1-2.8 0-1.34.7-1.99.95-2.26.24-.27.53-.34.7-.34h.5c.16 0 .38-.03.58.44.22.51.75 1.77.82 1.9.06.13.1.28.02.46-.08.18-.13.29-.25.44-.13.16-.27.35-.38.47-.13.13-.27.28-.11.55.16.27.7 1.16 1.51 1.87 1.04.93 1.92 1.22 2.19 1.36.27.14.43.12.6-.07.16-.19.68-.79.86-1.06.18-.27.36-.22.6-.13.24.09 1.55.73 1.82.86.27.13.45.2.51.31.07.12.07.68-.15 1.36Z"/></svg>
+              </a>
+            <?php else: ?>
+              <span class="sku">Sin teléfono</span>
+            <?php endif; ?>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    </section>
+  <?php endif; ?>
 
   <section class="panel">
-    <h2 class="titulo-panel">Cartera pendiente</h2>
+    <div class="panel-header">
+      <h2 class="titulo-panel">Cartera pendiente</h2>
+      <a class="boton mini" href="cartera-excel.php" title="Vencidas y pendientes">Descargar Excel</a>
+    </div>
     <?php if (!$pendientes): ?>
       <p class="subsaludo">No hay cuotas pendientes por cobrar.</p>
     <?php else: ?>
+      <div class="tabla-scroll">
       <table class="lineas">
         <thead>
           <tr>
@@ -228,37 +307,73 @@ require __DIR__ . '/includes/cabecera.php';
                 <?= pesos($p['pendiente']) ?>
                 <?php if ($abonado > 0): ?><span class="sku">de <?= pesos($p['pactado']) ?></span><?php endif; ?>
               </td>
-              <td class="num">
+              <td class="num acciones-cartera">
+                <?php if ($vencida && $f['telefono'] !== ''):
+                  $msgMora = "Hola " . $f['cliente'] . " 💛\n"
+                      . "Notamos que tu " . lcfirst($p['rotulo']) . " de " . pesos($p['pendiente'])
+                      . " venció el " . fecha_larga($p['vence']) . " y sigue pendiente.\n"
+                      . "¿Nos ayudas poniéndote al día?";
+                  $waMora = enlace_whatsapp($f['telefono'], $msgMora);
+                ?>
+                  <a class="boton-icono fantasma peligro" href="<?= e($waMora) ?>" target="_blank" rel="noopener"
+                     title="Escribir por WhatsApp" aria-label="Escribir por WhatsApp a <?= e($f['cliente']) ?> por la mora">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.49 2 2 6.49 2 12c0 1.87.5 3.62 1.38 5.13L2 22l4.99-1.31A9.94 9.94 0 0 0 12 22c5.51 0 10-4.49 10-10S17.51 2 12 2Zm5.2 14.2c-.22.62-1.28 1.2-1.77 1.24-.45.05-.98.24-3.29-.7-2.77-1.13-4.53-3.92-4.66-4.1-.14-.18-1.1-1.47-1.1-2.8 0-1.34.7-1.99.95-2.26.24-.27.53-.34.7-.34h.5c.16 0 .38-.03.58.44.22.51.75 1.77.82 1.9.06.13.1.28.02.46-.08.18-.13.29-.25.44-.13.16-.27.35-.38.47-.13.13-.27.28-.11.55.16.27.7 1.16 1.51 1.87 1.04.93 1.92 1.22 2.19 1.36.27.14.43.12.6-.07.16-.19.68-.79.86-1.06.18-.27.36-.22.6-.13.24.09 1.55.73 1.82.86.27.13.45.2.51.31.07.12.07.68-.15 1.36Z"/></svg>
+                  </a>
+                <?php endif; ?>
                 <form method="post" action="cartera.php" class="en-linea form-abono">
                   <input type="hidden" name="csrf" value="<?= e($token) ?>">
                   <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
                   <input type="hidden" name="cuota_idx" value="<?= (int) $p['idx'] ?>">
                   <input type="number" name="monto" min="1" max="<?= (int) $p['pendiente'] ?>" step="1"
                          value="<?= (int) $p['pendiente'] ?>" aria-label="Monto del abono">
-                  <button type="submit" class="boton mini">Registrar abono</button>
+                  <button type="submit" class="boton-icono" title="Registrar abono" aria-label="Registrar abono">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l4.5 4.5L20 6"/></svg>
+                  </button>
+                </form>
+                <?php $idDescuento = 'desc-' . $f['numero'] . '-' . $p['idx']; ?>
+                <button type="button" class="boton-icono fantasma btn-mostrar-descuento" data-id="<?= e($idDescuento) ?>"
+                        title="Aplicar descuento" aria-label="Aplicar descuento">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19 19 5M7.5 8.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm9 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>
+                </button>
+              </td>
+            </tr>
+            <tr class="fila-descuento" id="fila-<?= e($idDescuento) ?>" hidden>
+              <td colspan="6">
+                <form method="post" action="cartera.php" class="panel-descuento form-descuento" id="form-<?= e($idDescuento) ?>">
+                  <input type="hidden" name="csrf" value="<?= e($token) ?>">
+                  <input type="hidden" name="accion" value="descuento">
+                  <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
+                  <input type="hidden" name="cuota_idx" value="<?= (int) $p['idx'] ?>">
+                  <input type="number" name="monto" min="1" max="<?= (int) $p['pendiente'] ?>" step="1"
+                         value="<?= (int) $p['pendiente'] ?>" aria-label="Monto del descuento">
+                  <input type="text" name="motivo" placeholder="Motivo del descuento" maxlength="255" required aria-label="Motivo del descuento">
+                  <button type="submit" class="boton mini">Confirmar descuento</button>
+                  <button type="button" class="salir como-boton cerrar-descuento" data-id="<?= e($idDescuento) ?>">Cancelar</button>
                 </form>
               </td>
             </tr>
           <?php endforeach; ?>
         </tbody>
       </table>
+      </div>
     <?php endif; ?>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="historial">
     <h2 class="titulo-panel">Historial de facturas</h2>
 
-    <form method="get" action="cartera.php" class="form-busqueda">
+    <form method="get" action="cartera.php#historial" class="form-busqueda">
       <div class="campo apretado">
-        <input type="search" name="q" value="<?= e($q) ?>" placeholder="Buscar por clienta o número de factura…">
+        <input type="search" name="q" value="<?= e($q) ?>" id="buscar-historial" placeholder="Buscar por clienta o número de factura…">
       </div>
       <button type="submit" class="boton mini">Buscar</button>
-      <?php if ($q !== ''): ?><a class="salir" href="cartera.php">Limpiar</a><?php endif; ?>
+      <?php if ($q !== ''): ?><a class="salir" href="cartera.php#historial">Limpiar</a><?php endif; ?>
     </form>
 
     <?php if (!$historial): ?>
       <p class="subsaludo">No hay facturas que coincidan con la búsqueda.</p>
     <?php else: ?>
+      <div class="tabla-scroll">
       <table class="lineas">
         <thead>
           <tr>
@@ -339,6 +454,7 @@ require __DIR__ . '/includes/cabecera.php';
           <?php endforeach; ?>
         </tbody>
       </table>
+      </div>
     <?php endif; ?>
   </section>
 
@@ -418,6 +534,7 @@ require __DIR__ . '/includes/cabecera.php';
 
   <section class="panel panel-inventario">
     <h2 class="titulo-panel">Detalle por SKU</h2>
+    <div class="tabla-scroll">
     <table class="lineas">
       <thead>
         <tr>
@@ -443,11 +560,64 @@ require __DIR__ . '/includes/cabecera.php';
         <?php endforeach; ?>
       </tbody>
     </table>
+    </div>
   </section>
 
   <?php endif; ?>
 
 </main>
+
+<script>
+document.querySelectorAll('.btn-mostrar-descuento').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const fila = document.getElementById('fila-' + btn.dataset.id);
+    if (!fila) return;
+    fila.hidden = !fila.hidden;
+    if (!fila.hidden) {
+      const motivo = fila.querySelector('input[name="motivo"]');
+      if (motivo) motivo.focus();
+    }
+  });
+});
+document.querySelectorAll('.cerrar-descuento').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const fila = document.getElementById('fila-' + btn.dataset.id);
+    if (fila) fila.hidden = true;
+  });
+});
+document.querySelectorAll('.form-descuento').forEach(form => {
+  form.addEventListener('submit', (ev) => {
+    const monto  = form.querySelector('input[name="monto"]').value;
+    const motivo = form.querySelector('input[name="motivo"]').value.trim();
+    if (motivo === '') {
+      ev.preventDefault();
+      alert('Escribe el motivo del descuento.');
+      return;
+    }
+    if (!confirm('¿Aplicar un descuento de $' + Number(monto).toLocaleString('es-CO') + ' a esta cuota? No es un abono real: quedará marcado como descuento.')) {
+      ev.preventDefault();
+    }
+  });
+});
+
+// La búsqueda de facturas vive lejos del top de la página (después de
+// recordatorios y cartera pendiente). Sin esto, cada recarga del
+// formulario de búsqueda (Buscar o Limpiar) manda al usuario de vuelta
+// al encabezado de arriba de todo, en vez de dejarlo donde estaba
+// buscando — tiene que volver a bajar y a hacer clic en el campo.
+if (location.search.includes('q=') || location.hash === '#historial') {
+  const historial = document.getElementById('historial');
+  if (historial) {
+    historial.scrollIntoView({ block: 'start' });
+    const campo = document.getElementById('buscar-historial');
+    if (campo) {
+      const valor = campo.value;
+      campo.focus();
+      campo.setSelectionRange(valor.length, valor.length);
+    }
+  }
+}
+</script>
 
 </body>
 </html>

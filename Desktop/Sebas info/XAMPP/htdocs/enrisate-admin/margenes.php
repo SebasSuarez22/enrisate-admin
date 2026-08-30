@@ -55,6 +55,7 @@ require __DIR__ . '/includes/cabecera.php';
   <?php foreach ($porMarca as $marca => $ps): ?>
     <section class="panel panel-inventario">
       <h2 class="titulo-panel"><?= e($marca) ?></h2>
+      <div class="tabla-scroll">
       <table class="lineas">
         <thead>
           <tr>
@@ -94,6 +95,7 @@ require __DIR__ . '/includes/cabecera.php';
           <?php endforeach; ?>
         </tbody>
       </table>
+      </div>
     </section>
   <?php endforeach; ?>
 

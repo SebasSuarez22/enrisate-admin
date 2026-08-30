@@ -187,3 +187,24 @@ function e(?string $s): string
 {
     return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 }
+
+/**
+ * Deja el teléfono en un formato único: solo dígitos, SIN el indicativo de
+ * país (57) adelante. Así, sin importar si alguien lo escribió con "+57",
+ * con espacios, o solo el número, dos personas con el mismo celular quedan
+ * guardadas exactamente igual — lo que hace falta para poder compararlos
+ * (por ejemplo, para reconocer que quien pidió por el catálogo público ya
+ * es una clienta guardada).
+ *
+ * Los celulares en Colombia tienen 10 dígitos (empiezan por 3). Si después
+ * de quitar todo lo que no sea dígito quedan más de 10 y empieza por "57",
+ * se asume que es el indicativo y se recorta.
+ */
+function normalizar_telefono(string $telefono): string
+{
+    $digitos = (string) preg_replace('/\D+/', '', $telefono);
+    if (strlen($digitos) > 10 && str_starts_with($digitos, '57')) {
+        $digitos = substr($digitos, 2);
+    }
+    return $digitos;
+}
