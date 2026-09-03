@@ -210,9 +210,8 @@ $fotosActivas = [
     </label>
 
     <nav class="cp-chips" id="chips" aria-label="Marcas">
-      <a class="cp-chip activo" href="#" data-slug="__todas">Todas</a>
-      <?php foreach (array_keys($porMarca) as $marca): ?>
-        <a class="cp-chip" href="#marca-<?= cp_slug($marca) ?>" data-slug="marca-<?= cp_slug($marca) ?>"><?= e($nombreVisible[$marca] ?? $marca) ?></a>
+      <?php foreach (array_keys($porMarca) as $i => $marca): ?>
+        <a class="cp-chip<?= $i === 0 ? ' activo' : '' ?>" href="#marca-<?= cp_slug($marca) ?>" data-slug="marca-<?= cp_slug($marca) ?>"><?= e($nombreVisible[$marca] ?? $marca) ?></a>
       <?php endforeach; ?>
     </nav>
   </div>
@@ -734,14 +733,6 @@ document.getElementById('cpLimpiar').addEventListener('click', () => {
 
 /* --- Chips de marca --- */
 const chips = document.querySelectorAll('.cp-chip');
-chips.forEach(ch => ch.addEventListener('click', e => {
-  if (ch.dataset.slug === '__todas') {
-    e.preventDefault();
-    cpQ.value = '';
-    filtrarCatalogo();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-}));
 
 /* Chips de marca · sombra de scroll: difumina el borde donde hay más chips
    ocultos, para que el que queda a la vista no se vea "recortado" sino
