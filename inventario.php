@@ -18,6 +18,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         $error = 'Selecciona al menos un producto para eliminar.';
+    } elseif (($_POST['accion'] ?? '') === 'editar') {
+        if (actualizar_producto(
+            (string) ($_POST['sku'] ?? ''),
+            (string) ($_POST['marca'] ?? ''),
+            (string) ($_POST['nombre'] ?? ''),
+            (string) ($_POST['categoria'] ?? '')
+        )) {
+            header('Location: inventario.php?ok=editado');
+            exit;
+        }
+        $error = 'Escribe el nombre, elige una categoría válida, y verifica que el producto exista.';
     } else {
         $mensaje = agregar_producto(
             (string) ($_POST['sku'] ?? ''),
@@ -37,6 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if (($_GET['ok'] ?? '') === 'agregado') {
     $ok = 'Producto agregado al catálogo.';
+} elseif (($_GET['ok'] ?? '') === 'editado') {
+    $ok = 'Producto actualizado.';
 } elseif (($_GET['ok'] ?? '') === 'eliminados') {
     $n  = (int) ($_GET['n'] ?? 0);
     $ok = 'Se eliminó ' . $n . ' producto' . ($n === 1 ? '' : 's') . ' del catálogo.';
@@ -51,6 +64,8 @@ foreach ($porMarca as &$ps) {
     usort($ps, fn($a, $b) => sku_orden($a['sku']) <=> sku_orden($b['sku']));
 }
 unset($ps);
+
+$listaCategorias = categorias();
 
 // Si todavía no se importó storage/actualizar-2026-08-23-categorias.sql,
 // la columna no existe y la categoría no se puede guardar: se sigue
@@ -84,7 +99,7 @@ require __DIR__ . '/includes/cabecera.php';
     <p class="aviso neutro">
       <?= count($sinCategoria) ?> producto<?= count($sinCategoria) === 1 ? '' : 's' ?> sin categoría
       (no se pudo deducir del nombre). El catálogo público les muestra el nombre de la marca
-      en vez del tipo de producto hasta que se les asigne una desde la base de datos.
+      en vez del tipo de producto; selecciónalo abajo y usa "Editar" para asignarle una.
     </p>
   <?php endif; ?>
 
@@ -162,6 +177,7 @@ require __DIR__ . '/includes/cabecera.php';
       <input type="hidden" name="accion" value="eliminar">
       <input type="hidden" name="skus" id="skusEliminarProductos" value="">
       <label class="seleccionar-todo"><input type="checkbox" id="chkTodosProductos"> Seleccionar todos</label>
+      <button type="button" class="boton mini" id="btnEditarProducto" disabled>Editar</button>
       <button type="submit" class="boton mini peligro">Eliminar seleccionados</button>
     </form>
   <?php endif; ?>
@@ -202,13 +218,100 @@ require __DIR__ . '/includes/cabecera.php';
     </section>
   <?php endforeach; ?>
 
+  <div class="modal-fondo" id="modalEditarFondo" hidden>
+    <div class="modal-caja panel" role="dialog" aria-modal="true" aria-labelledby="modalEditarTitulo">
+      <h2 class="titulo-panel" id="modalEditarTitulo">Editar producto</h2>
+      <p class="modal-sku" id="modalEditarSkuTexto"></p>
+      <form method="post" action="inventario.php">
+        <input type="hidden" name="csrf" value="<?= e($token) ?>">
+        <input type="hidden" name="accion" value="editar">
+        <input type="hidden" name="sku" id="modalEditarSku">
+        <input type="hidden" name="marca" id="modalEditarMarca">
+
+        <div class="campo">
+          <label for="modalEditarNombre">Nombre</label>
+          <input type="text" id="modalEditarNombre" name="nombre" required>
+        </div>
+        <div class="campo">
+          <label for="modalEditarCategoria">Categoría</label>
+          <select id="modalEditarCategoria" name="categoria">
+            <option value="">Sin categoría</option>
+            <?php foreach (array_keys($listaCategorias) as $c): ?>
+              <option value="<?= e($c) ?>"><?= e($c) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+
+        <div class="modal-acciones">
+          <button type="button" class="boton mini fantasma" id="btnCancelarEditar">Cancelar</button>
+          <button type="submit" class="boton mini">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </main>
+
+<script>
+const PRODUCTOS_POR_SKU = <?= json_encode(array_column(catalogo(), null, 'sku'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+</script>
 
 <script>
 const chkTodosProductos = document.getElementById('chkTodosProductos');
 if (chkTodosProductos) {
   chkTodosProductos.addEventListener('change', () => {
     document.querySelectorAll('.chk-producto').forEach(chk => { chk.checked = chkTodosProductos.checked; });
+    actualizarBotonEditar();
+  });
+}
+
+/* Botón "Editar": solo funciona con exactamente un producto marcado.
+   Abre un modal centrado con nombre y categoría de ese producto. */
+const btnEditarProducto = document.getElementById('btnEditarProducto');
+const modalEditarFondo  = document.getElementById('modalEditarFondo');
+
+function productosMarcados() {
+  return Array.from(document.querySelectorAll('.chk-producto:checked'));
+}
+
+function actualizarBotonEditar() {
+  if (btnEditarProducto) {
+    btnEditarProducto.disabled = productosMarcados().length !== 1;
+  }
+}
+document.querySelectorAll('.chk-producto').forEach(chk => {
+  chk.addEventListener('change', actualizarBotonEditar);
+});
+
+function abrirModalEditar() {
+  const sku = productosMarcados()[0]?.value;
+  const p   = sku && PRODUCTOS_POR_SKU[sku];
+  if (!p) return;
+
+  document.getElementById('modalEditarSkuTexto').textContent = p.marca + ' · ' + sku;
+  document.getElementById('modalEditarSku').value             = sku;
+  document.getElementById('modalEditarMarca').value            = p.marca;
+  document.getElementById('modalEditarNombre').value           = p.nombre;
+  document.getElementById('modalEditarCategoria').value        = p.categoria || '';
+
+  modalEditarFondo.hidden = false;
+  document.getElementById('modalEditarNombre').focus();
+}
+
+function cerrarModalEditar() {
+  modalEditarFondo.hidden = true;
+}
+
+if (btnEditarProducto) {
+  btnEditarProducto.addEventListener('click', abrirModalEditar);
+}
+if (modalEditarFondo) {
+  document.getElementById('btnCancelarEditar').addEventListener('click', cerrarModalEditar);
+  modalEditarFondo.addEventListener('click', e => {
+    if (e.target === modalEditarFondo) cerrarModalEditar();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !modalEditarFondo.hidden) cerrarModalEditar();
   });
 }
 
