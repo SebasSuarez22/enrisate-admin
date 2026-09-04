@@ -179,7 +179,17 @@ function agregar_producto(string $sku, string $marca, string $nombre, int $preci
         'costo'     => $costo,
         'stock'     => 0,
     ];
-    guardar_catalogo($productos);
+    // El SKU, la marca y el nombre no tienen límite de largo validado
+    // arriba (el esquema real vive fuera del repo, en storage/esquema.sql,
+    // que no se versiona). Si algo llega más largo de lo que la columna
+    // acepta, MySQL rechaza el INSERT con una excepción — sin este catch
+    // eso tumbaba la página entera con la traza de PHP a la vista, en vez
+    // de un aviso normal.
+    try {
+        guardar_catalogo($productos);
+    } catch (PDOException $e) {
+        return 'No se pudo guardar: revisa que el SKU, la marca y el nombre no sean demasiado largos.';
+    }
 
     return '';
 }
@@ -234,7 +244,17 @@ function actualizar_producto(string $sku, string $marca, string $nombre, ?string
     }
     unset($p);
     if ($hallado) {
-        guardar_catalogo($productos);
+        // Mismo caso que en agregar_producto(): un nombre o marca más
+        // largo de lo que la columna acepta tumbaba la página con la
+        // traza de PHP en vez de un aviso. Al editar no hay un mensaje
+        // específico que devolver (la función solo entrega bool), así
+        // que se trata igual que "no se pudo": el llamador ya muestra un
+        // aviso genérico para ese caso.
+        try {
+            guardar_catalogo($productos);
+        } catch (PDOException $e) {
+            return false;
+        }
     }
     return $hallado;
 }
