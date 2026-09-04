@@ -29,6 +29,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         $error = 'Escribe la marca y el nombre, elige una categoría válida, y verifica que el producto exista.';
+    } elseif (($_POST['accion'] ?? '') === 'editar_multiple') {
+        $actualizados = actualizar_productos(
+            (array) ($_POST['marca'] ?? []),
+            (array) ($_POST['nombre'] ?? []),
+            (array) ($_POST['categoria'] ?? [])
+        );
+        if ($actualizados > 0) {
+            header('Location: inventario.php?ok=editados&n=' . $actualizados);
+            exit;
+        }
+        $error = 'No se guardó ningún cambio: revisa que marca y nombre no queden vacíos y que la categoría sea válida.';
     } else {
         $mensaje = agregar_producto(
             (string) ($_POST['sku'] ?? ''),
@@ -50,6 +61,9 @@ if (($_GET['ok'] ?? '') === 'agregado') {
     $ok = 'Producto agregado al catálogo.';
 } elseif (($_GET['ok'] ?? '') === 'editado') {
     $ok = 'Producto actualizado.';
+} elseif (($_GET['ok'] ?? '') === 'editados') {
+    $n  = (int) ($_GET['n'] ?? 0);
+    $ok = 'Se guardó ' . $n . ' producto' . ($n === 1 ? '' : 's') . ' editado' . ($n === 1 ? '' : 's') . '.';
 } elseif (($_GET['ok'] ?? '') === 'eliminados') {
     $n  = (int) ($_GET['n'] ?? 0);
     $ok = 'Se eliminó ' . $n . ' producto' . ($n === 1 ? '' : 's') . ' del catálogo.';
@@ -187,75 +201,73 @@ require __DIR__ . '/includes/cabecera.php';
       <input type="hidden" name="skus" id="skusEliminarProductos" value="">
       <label class="seleccionar-todo"><input type="checkbox" id="chkTodosProductos"> Seleccionar todos</label>
       <button type="submit" class="boton mini peligro">Eliminar seleccionados</button>
+      <button type="submit" class="boton mini" id="btnGuardarCambios" form="formEditarProductos" disabled>Guardar cambios</button>
     </form>
   <?php endif; ?>
 
-  <?php foreach ($porMarca as $marca => $ps): ?>
-    <section class="panel panel-inventario" data-marca="<?= e($marca) ?>">
-      <h2 class="titulo-panel"><?= e($marca) ?></h2>
-      <div class="tabla-scroll">
-      <table class="lineas">
-        <thead>
-          <tr>
-            <th></th>
-            <th>Producto</th>
-            <th>Categoría</th>
-            <th class="num">Precio</th>
-            <th class="num">Costo</th>
-            <th class="num">Margen</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($ps as $p):
-            $margen = $p['precio'] - $p['costo'];
-            $pct    = $p['precio'] > 0 ? round($margen / $p['precio'] * 100) : 0;
-          ?>
+  <form method="post" action="inventario.php" id="formEditarProductos">
+    <input type="hidden" name="csrf" value="<?= e($token) ?>">
+    <input type="hidden" name="accion" value="editar_multiple">
+
+    <?php foreach ($porMarca as $marca => $ps): ?>
+      <section class="panel panel-inventario" data-marca="<?= e($marca) ?>">
+        <h2 class="titulo-panel"><?= e($marca) ?></h2>
+        <div class="tabla-scroll">
+        <table class="lineas">
+          <thead>
             <tr>
-              <td><input type="checkbox" class="chk-producto" value="<?= e($p['sku']) ?>" aria-label="Seleccionar <?= e($p['nombre']) ?>"></td>
-              <td>
-                <?= e($p['nombre']) ?>
-                <span class="sku"><?= e($p['sku']) ?></span>
-              </td>
-              <td>
-                <?php $catEfectiva = categoria_de($p); ?>
-                <?php if ($catEfectiva === ''): ?>
-                  <span class="sku">sin categoría</span>
-                <?php else: ?>
-                  <?= e($catEfectiva) ?>
-                  <?php if (trim((string) ($p['categoria'] ?? '')) === ''): ?>
-                    <span class="sku">deducida</span>
+              <th></th>
+              <th>Producto</th>
+              <th>Categoría</th>
+              <th class="num">Precio</th>
+              <th class="num">Costo</th>
+              <th class="num">Margen</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($ps as $p):
+              $margen = $p['precio'] - $p['costo'];
+              $pct    = $p['precio'] > 0 ? round($margen / $p['precio'] * 100) : 0;
+            ?>
+              <tr>
+                <td><input type="checkbox" class="chk-producto" value="<?= e($p['sku']) ?>" aria-label="Seleccionar <?= e($p['nombre']) ?>"></td>
+                <td>
+                  <?= e($p['nombre']) ?>
+                  <span class="sku"><?= e($p['sku']) ?></span>
+                </td>
+                <td>
+                  <?php $catEfectiva = categoria_de($p); ?>
+                  <?php if ($catEfectiva === ''): ?>
+                    <span class="sku">sin categoría</span>
+                  <?php else: ?>
+                    <?= e($catEfectiva) ?>
+                    <?php if (trim((string) ($p['categoria'] ?? '')) === ''): ?>
+                      <span class="sku">deducida</span>
+                    <?php endif; ?>
                   <?php endif; ?>
-                <?php endif; ?>
-              </td>
-              <td class="num"><?= pesos($p['precio']) ?></td>
-              <td class="num"><?= pesos($p['costo']) ?></td>
-              <td class="num"><?= pesos($margen) ?> <span class="sku"><?= $pct ?>%</span></td>
-              <td class="num acciones-inventario">
-                <form method="post" action="inventario.php" class="form-editar-producto">
-                  <input type="hidden" name="csrf" value="<?= e($token) ?>">
-                  <input type="hidden" name="accion" value="editar">
-                  <input type="hidden" name="sku" value="<?= e($p['sku']) ?>">
-                  <input type="text" name="marca" value="<?= e($p['marca']) ?>" aria-label="Marca de <?= e($p['nombre']) ?>">
-                  <input type="text" name="nombre" value="<?= e($p['nombre']) ?>" aria-label="Nombre de <?= e($p['nombre']) ?>">
-                  <select name="categoria" aria-label="Categoría de <?= e($p['nombre']) ?>">
+                </td>
+                <td class="num"><?= pesos($p['precio']) ?></td>
+                <td class="num"><?= pesos($p['costo']) ?></td>
+                <td class="num"><?= pesos($margen) ?> <span class="sku"><?= $pct ?>%</span></td>
+                <td class="num acciones-inventario">
+                  <input type="text" name="marca[<?= e($p['sku']) ?>]" value="<?= e($p['marca']) ?>" aria-label="Marca de <?= e($p['nombre']) ?>">
+                  <input type="text" name="nombre[<?= e($p['sku']) ?>]" value="<?= e($p['nombre']) ?>" aria-label="Nombre de <?= e($p['nombre']) ?>">
+                  <select name="categoria[<?= e($p['sku']) ?>]" aria-label="Categoría de <?= e($p['nombre']) ?>">
                     <option value="">Sin categoría</option>
                     <?php foreach (array_keys($listaCategorias) as $c): ?>
                       <option value="<?= e($c) ?>"<?= ($p['categoria'] ?? '') === $c ? ' selected' : '' ?>><?= e($c) ?></option>
                     <?php endforeach; ?>
                   </select>
-                  <button type="submit" class="boton-icono" title="Guardar cambios de <?= e($p['nombre']) ?>" aria-label="Guardar cambios de <?= e($p['nombre']) ?>">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l4.5 4.5L20 6"/></svg>
-                  </button>
-                </form>
-              </td>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-      </div>
-    </section>
-  <?php endforeach; ?>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+        </div>
+      </section>
+    <?php endforeach; ?>
+  </form>
 
 </main>
 
@@ -280,6 +292,41 @@ function prepararEliminarProductos(form) {
   document.getElementById('skusEliminarProductos').value = seleccionados.map(chk => chk.value).join(',');
   return true;
 }
+
+/* Un solo botón "Guardar cambios" para toda la tabla: se activa solo
+   cuando algún campo se editó, en vez de tener un botón de guardar por
+   fila. Cuenta productos distintos, no campos, para el número del botón. */
+(function () {
+  const formEditar = document.getElementById('formEditarProductos');
+  const btnGuardar  = document.getElementById('btnGuardarCambios');
+  if (!formEditar || !btnGuardar) return;
+
+  const campos   = Array.from(formEditar.querySelectorAll('input[type="text"], select'));
+  const original = new Map(campos.map(c => [c, c.value]));
+
+  function skuDe(campo) {
+    const m = campo.name.match(/\[(.+)\]$/);
+    return m ? m[1] : null;
+  }
+
+  function actualizarBotonGuardar() {
+    const skusCambiados = new Set();
+    campos.forEach(c => {
+      if (c.value !== original.get(c)) {
+        const sku = skuDe(c);
+        if (sku) skusCambiados.add(sku);
+      }
+    });
+    const n = skusCambiados.size;
+    btnGuardar.disabled    = n === 0;
+    btnGuardar.textContent = n > 0 ? 'Guardar cambios (' + n + ')' : 'Guardar cambios';
+  }
+
+  campos.forEach(c => {
+    c.addEventListener('input', actualizarBotonGuardar);
+    c.addEventListener('change', actualizarBotonGuardar);
+  });
+})();
 
 (function () {
   const pista = document.getElementById('carruselPista');
