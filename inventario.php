@@ -169,9 +169,8 @@ require __DIR__ . '/includes/cabecera.php';
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
         </button>
         <div class="carrusel-pista" id="carruselPista" role="tablist" aria-label="Ir a una sección">
-          <button type="button" class="chip-marca activa" data-marca="" role="tab" aria-selected="true">Todas</button>
-          <?php foreach ($porMarca as $marca => $ps): ?>
-            <button type="button" class="chip-marca" data-marca="<?= e($marca) ?>" role="tab" aria-selected="false">
+          <?php foreach (array_keys($porMarca) as $i => $marca): $ps = $porMarca[$marca]; ?>
+            <button type="button" class="chip-marca<?= $i === 0 ? ' activa' : '' ?>" data-marca="<?= e($marca) ?>" role="tab" aria-selected="<?= $i === 0 ? 'true' : 'false' ?>">
               <?= e($marca) ?> <span class="chip-contador"><?= count($ps) ?></span>
             </button>
           <?php endforeach; ?>
@@ -291,7 +290,7 @@ function prepararEliminarProductos(form) {
   const input     = document.getElementById('buscarProductos');
   const btnBuscar = document.getElementById('btnBuscarProductos');
   const contador  = document.getElementById('contadorProductos');
-  let marcaActiva = '';
+  let marcaActiva = chips.length ? (chips[0].dataset.marca || '') : '';
 
   function aplicarFiltros() {
     const q = (input.value || '').trim().toLowerCase();
@@ -343,6 +342,8 @@ function prepararEliminarProductos(form) {
   const flechaDer = document.getElementById('carruselDer');
   if (flechaIzq) flechaIzq.addEventListener('click', () => pista.scrollBy({ left: -240, behavior: 'smooth' }));
   if (flechaDer) flechaDer.addEventListener('click', () => pista.scrollBy({ left: 240, behavior: 'smooth' }));
+
+  aplicarFiltros();
 })();
 </script>
 
