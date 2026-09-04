@@ -143,15 +143,6 @@ require __DIR__ . '/includes/cabecera.php';
         <input type="text" id="nNombre" name="nombre" placeholder="Shampoo Nuevo" required>
       </div>
       <div class="campo">
-        <label for="nCategoria">Categoría</label>
-        <select id="nCategoria" name="categoria">
-          <option value="">Deducir del nombre</option>
-          <?php foreach (array_keys($listaCategorias) as $c): ?>
-            <option value="<?= e($c) ?>"><?= e($c) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <div class="campo">
         <label for="nPrecio">Precio</label>
         <input type="number" id="nPrecio" name="precio" min="0" step="1000" value="0" required>
       </div>
