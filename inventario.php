@@ -18,28 +18,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         $error = 'Selecciona al menos un producto para eliminar.';
-    } elseif (($_POST['accion'] ?? '') === 'editar') {
-        if (actualizar_producto(
-            (string) ($_POST['sku'] ?? ''),
-            (string) ($_POST['marca'] ?? ''),
-            (string) ($_POST['nombre'] ?? ''),
-            (string) ($_POST['categoria'] ?? '')
-        )) {
-            header('Location: inventario.php?ok=editado');
-            exit;
-        }
-        $error = 'Escribe la marca y el nombre, elige una categoría válida, y verifica que el producto exista.';
-    } elseif (($_POST['accion'] ?? '') === 'editar_multiple') {
-        $actualizados = actualizar_productos(
-            (array) ($_POST['marca'] ?? []),
-            (array) ($_POST['nombre'] ?? []),
-            (array) ($_POST['categoria'] ?? [])
-        );
-        if ($actualizados > 0) {
-            header('Location: inventario.php?ok=editados&n=' . $actualizados);
-            exit;
-        }
-        $error = 'No se guardó ningún cambio: revisa que marca y nombre no queden vacíos y que la categoría sea válida.';
     } else {
         $mensaje = agregar_producto(
             (string) ($_POST['sku'] ?? ''),
@@ -59,11 +37,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if (($_GET['ok'] ?? '') === 'agregado') {
     $ok = 'Producto agregado al catálogo.';
-} elseif (($_GET['ok'] ?? '') === 'editado') {
-    $ok = 'Producto actualizado.';
-} elseif (($_GET['ok'] ?? '') === 'editados') {
-    $n  = (int) ($_GET['n'] ?? 0);
-    $ok = 'Se guardó ' . $n . ' producto' . ($n === 1 ? '' : 's') . ' editado' . ($n === 1 ? '' : 's') . '.';
 } elseif (($_GET['ok'] ?? '') === 'eliminados') {
     $n  = (int) ($_GET['n'] ?? 0);
     $ok = 'Se eliminó ' . $n . ' producto' . ($n === 1 ? '' : 's') . ' del catálogo.';
@@ -78,8 +51,6 @@ foreach ($porMarca as &$ps) {
     usort($ps, fn($a, $b) => sku_orden($a['sku']) <=> sku_orden($b['sku']));
 }
 unset($ps);
-
-$listaCategorias = categorias();
 
 // Si todavía no se importó storage/actualizar-2026-08-23-categorias.sql,
 // la columna no existe y la categoría no se puede guardar: se sigue
@@ -105,15 +76,15 @@ require __DIR__ . '/includes/cabecera.php';
   <?php if (!$hayColumnaCategoria): ?>
     <p class="aviso" role="alert">
       Falta importar <code>storage/actualizar-2026-08-23-categorias.sql</code> desde phpMyAdmin.
-      Mientras tanto la categoría se deduce del nombre y el desplegable no guarda nada.
+      Mientras tanto la categoría se deduce del nombre.
     </p>
   <?php endif; ?>
 
   <?php if ($hayColumnaCategoria && $sinCategoria): ?>
     <p class="aviso neutro">
-      <?= count($sinCategoria) ?> producto<?= count($sinCategoria) === 1 ? '' : 's' ?> sin categoría.
-      El catálogo público les muestra el nombre de la marca en vez del tipo de producto;
-      elígeles una abajo para que salgan con su ícono y su color.
+      <?= count($sinCategoria) ?> producto<?= count($sinCategoria) === 1 ? '' : 's' ?> sin categoría
+      (no se pudo deducir del nombre). El catálogo público les muestra el nombre de la marca
+      en vez del tipo de producto hasta que se les asigne una desde la base de datos.
     </p>
   <?php endif; ?>
 
@@ -192,61 +163,44 @@ require __DIR__ . '/includes/cabecera.php';
       <input type="hidden" name="skus" id="skusEliminarProductos" value="">
       <label class="seleccionar-todo"><input type="checkbox" id="chkTodosProductos"> Seleccionar todos</label>
       <button type="submit" class="boton mini peligro">Eliminar seleccionados</button>
-      <button type="submit" class="boton mini" id="btnGuardarCambios" form="formEditarProductos" disabled>Guardar cambios</button>
     </form>
   <?php endif; ?>
 
-  <form method="post" action="inventario.php" id="formEditarProductos">
-    <input type="hidden" name="csrf" value="<?= e($token) ?>">
-    <input type="hidden" name="accion" value="editar_multiple">
-
-    <?php foreach ($porMarca as $marca => $ps): ?>
-      <section class="panel panel-inventario" data-marca="<?= e($marca) ?>">
-        <h2 class="titulo-panel"><?= e($marca) ?></h2>
-        <div class="tabla-scroll">
-        <table class="lineas">
-          <thead>
+  <?php foreach ($porMarca as $marca => $ps): ?>
+    <section class="panel panel-inventario" data-marca="<?= e($marca) ?>">
+      <h2 class="titulo-panel"><?= e($marca) ?></h2>
+      <div class="tabla-scroll">
+      <table class="lineas">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Producto</th>
+            <th class="num">Precio</th>
+            <th class="num">Costo</th>
+            <th class="num">Margen</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($ps as $p):
+            $margen = $p['precio'] - $p['costo'];
+            $pct    = $p['precio'] > 0 ? round($margen / $p['precio'] * 100) : 0;
+          ?>
             <tr>
-              <th></th>
-              <th>Producto</th>
-              <th class="num">Precio</th>
-              <th class="num">Costo</th>
-              <th class="num">Margen</th>
-              <th></th>
+              <td><input type="checkbox" class="chk-producto" value="<?= e($p['sku']) ?>" aria-label="Seleccionar <?= e($p['nombre']) ?>"></td>
+              <td>
+                <?= e($p['nombre']) ?>
+                <span class="sku"><?= e($p['sku']) ?></span>
+              </td>
+              <td class="num"><?= pesos($p['precio']) ?></td>
+              <td class="num"><?= pesos($p['costo']) ?></td>
+              <td class="num"><?= pesos($margen) ?> <span class="sku"><?= $pct ?>%</span></td>
             </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($ps as $p):
-              $margen = $p['precio'] - $p['costo'];
-              $pct    = $p['precio'] > 0 ? round($margen / $p['precio'] * 100) : 0;
-            ?>
-              <tr>
-                <td><input type="checkbox" class="chk-producto" value="<?= e($p['sku']) ?>" aria-label="Seleccionar <?= e($p['nombre']) ?>"></td>
-                <td>
-                  <?= e($p['nombre']) ?>
-                  <span class="sku"><?= e($p['sku']) ?></span>
-                </td>
-                <td class="num"><?= pesos($p['precio']) ?></td>
-                <td class="num"><?= pesos($p['costo']) ?></td>
-                <td class="num"><?= pesos($margen) ?> <span class="sku"><?= $pct ?>%</span></td>
-                <td class="num acciones-inventario">
-                  <input type="hidden" name="marca[<?= e($p['sku']) ?>]" value="<?= e($p['marca']) ?>">
-                  <input type="text" name="nombre[<?= e($p['sku']) ?>]" value="<?= e($p['nombre']) ?>" aria-label="Nombre de <?= e($p['nombre']) ?>">
-                  <select name="categoria[<?= e($p['sku']) ?>]" aria-label="Categoría de <?= e($p['nombre']) ?>">
-                    <option value="">Sin categoría</option>
-                    <?php foreach (array_keys($listaCategorias) as $c): ?>
-                      <option value="<?= e($c) ?>"<?= ($p['categoria'] ?? '') === $c ? ' selected' : '' ?>><?= e($c) ?></option>
-                    <?php endforeach; ?>
-                  </select>
-                </td>
-              </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-        </div>
-      </section>
-    <?php endforeach; ?>
-  </form>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+      </div>
+    </section>
+  <?php endforeach; ?>
 
 </main>
 
@@ -271,41 +225,6 @@ function prepararEliminarProductos(form) {
   document.getElementById('skusEliminarProductos').value = seleccionados.map(chk => chk.value).join(',');
   return true;
 }
-
-/* Un solo botón "Guardar cambios" para toda la tabla: se activa solo
-   cuando algún campo se editó, en vez de tener un botón de guardar por
-   fila. Cuenta productos distintos, no campos, para el número del botón. */
-(function () {
-  const formEditar = document.getElementById('formEditarProductos');
-  const btnGuardar  = document.getElementById('btnGuardarCambios');
-  if (!formEditar || !btnGuardar) return;
-
-  const campos   = Array.from(formEditar.querySelectorAll('input[type="text"], select'));
-  const original = new Map(campos.map(c => [c, c.value]));
-
-  function skuDe(campo) {
-    const m = campo.name.match(/\[(.+)\]$/);
-    return m ? m[1] : null;
-  }
-
-  function actualizarBotonGuardar() {
-    const skusCambiados = new Set();
-    campos.forEach(c => {
-      if (c.value !== original.get(c)) {
-        const sku = skuDe(c);
-        if (sku) skusCambiados.add(sku);
-      }
-    });
-    const n = skusCambiados.size;
-    btnGuardar.disabled    = n === 0;
-    btnGuardar.textContent = n > 0 ? 'Guardar cambios (' + n + ')' : 'Guardar cambios';
-  }
-
-  campos.forEach(c => {
-    c.addEventListener('input', actualizarBotonGuardar);
-    c.addEventListener('change', actualizarBotonGuardar);
-  });
-})();
 
 (function () {
   const pista = document.getElementById('carruselPista');

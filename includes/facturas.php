@@ -239,53 +239,6 @@ function actualizar_producto(string $sku, string $marca, string $nombre, ?string
     return $hallado;
 }
 
-/**
- * Actualiza marca, nombre y categoría de varios productos a la vez, en un
- * solo guardado. $marcaPorSku, $nombrePorSku y $categoriaPorSku vienen
- * indexados por SKU (así es como llegan de un formulario con name="marca[SKU]").
- * Ignora silenciosamente los SKUs con marca/nombre vacíos o categoría
- * inválida (igual que actualizar_producto). Devuelve cuántos productos
- * quedaron actualizados.
- */
-function actualizar_productos(array $marcaPorSku, array $nombrePorSku, array $categoriaPorSku): int
-{
-    $productos    = catalogo();
-    $conCategoria = productos_tiene_categoria();
-    $actualizados = 0;
-
-    foreach ($productos as &$p) {
-        $sku = $p['sku'];
-        if (!array_key_exists($sku, $marcaPorSku)) {
-            continue;
-        }
-        $marca  = trim((string) $marcaPorSku[$sku]);
-        $nombre = trim((string) ($nombrePorSku[$sku] ?? ''));
-        if ($marca === '' || $nombre === '') {
-            continue;
-        }
-        $categoria = null;
-        if ($conCategoria) {
-            $categoria = trim((string) ($categoriaPorSku[$sku] ?? ''));
-            if (!categoria_valida($categoria)) {
-                continue;
-            }
-        }
-
-        $p['marca']  = $marca;
-        $p['nombre'] = $nombre;
-        if ($categoria !== null) {
-            $p['categoria'] = $categoria;
-        }
-        $actualizados++;
-    }
-    unset($p);
-
-    if ($actualizados > 0) {
-        guardar_catalogo($productos);
-    }
-    return $actualizados;
-}
-
 /** Elimina varios productos del catálogo por SKU. Devuelve cuántos encontró y quitó. */
 function eliminar_productos(array $skus): int
 {
