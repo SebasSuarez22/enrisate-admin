@@ -118,11 +118,11 @@ require __DIR__ . '/includes/cabecera.php';
     <?php if (!$clientes): ?>
       <p class="subsaludo">Todavía no hay clientas en la lista.</p>
     <?php else: ?>
-      <form method="post" action="clientes.php" id="form-eliminar-clientes" class="barra-eliminar" onsubmit="return prepararEliminarClientes(this);">
+      <form method="post" action="clientes.php" id="form-eliminar-clientes" class="barra-eliminar">
         <input type="hidden" name="csrf" value="<?= e($token) ?>">
         <input type="hidden" name="accion" value="eliminar">
         <input type="hidden" name="ids" id="idsEliminarClientes" value="">
-        <button type="button" id="btnEditarSeleccionada" class="boton mini">Editar seleccionada</button>
+        <button type="button" id="btnEditarSeleccionada" class="boton mini" disabled>Editar seleccionada</button>
         <button type="submit" class="boton mini peligro">Eliminar seleccionadas</button>
       </form>
       <div class="tabla-scroll">
@@ -182,54 +182,41 @@ require __DIR__ . '/includes/cabecera.php';
 </main>
 
 <script>
+/* Seleccionar todas, confirmar antes de borrar y habilitar "Editar"
+   solo con una marcada: todo eso vive en assets/js/seleccion-lote.js,
+   compartido con Productos. Acá solo va lo propio de esta página:
+   mostrar la fila de edición de la clienta elegida. */
+const loteClientes = seleccionEnLote({
+  item:         '.chk-cliente',
+  chkTodos:     '#chkTodosClientes',
+  formEliminar: '#form-eliminar-clientes',
+  campoValores: '#idsEliminarClientes',
+  btnEditar:    '#btnEditarSeleccionada',
+  alEditar: id => {
+    document.getElementById('vista-' + id).hidden   = true;
+    document.getElementById('edicion-' + id).hidden = false;
+    document.getElementById('edicion-' + id).scrollIntoView({ behavior: 'smooth', block: 'center' });
+  },
+  textos: {
+    ninguno: 'Selecciona al menos una clienta para eliminar.',
+    confirmar: n => n === 1
+      ? '¿Eliminar la clienta seleccionada? Esta acción no se puede deshacer.'
+      : '¿Eliminar las ' + n + ' clientas seleccionadas? Esta acción no se puede deshacer.',
+  },
+});
+
+/* Cancelar una edición vuelve a mostrar la fila normal y desmarca la
+   casilla. Como desmarcarla por código no dispara "change", hay que
+   avisarle a la selección para que el botón "Editar" se deshabilite. */
 document.querySelectorAll('.btn-cancelar-cliente').forEach(btn => {
   btn.addEventListener('click', () => {
     document.getElementById('vista-' + btn.dataset.id).hidden   = false;
     document.getElementById('edicion-' + btn.dataset.id).hidden = true;
     const chk = document.getElementById('chk-' + btn.dataset.id);
     if (chk) chk.checked = false;
+    loteClientes.refrescar();
   });
 });
-
-const btnEditarSeleccionada = document.getElementById('btnEditarSeleccionada');
-if (btnEditarSeleccionada) {
-  btnEditarSeleccionada.addEventListener('click', () => {
-    const seleccionadas = Array.from(document.querySelectorAll('.chk-cliente:checked'));
-    if (seleccionadas.length === 0) {
-      alert('Selecciona una clienta para editar.');
-      return;
-    }
-    if (seleccionadas.length > 1) {
-      alert('Selecciona solo una clienta a la vez para editar.');
-      return;
-    }
-    const id = seleccionadas[0].value;
-    document.getElementById('vista-' + id).hidden   = true;
-    document.getElementById('edicion-' + id).hidden = false;
-    document.getElementById('edicion-' + id).scrollIntoView({ behavior: 'smooth', block: 'center' });
-  });
-}
-
-const chkTodosClientes = document.getElementById('chkTodosClientes');
-if (chkTodosClientes) {
-  chkTodosClientes.addEventListener('change', () => {
-    document.querySelectorAll('.chk-cliente').forEach(chk => { chk.checked = chkTodosClientes.checked; });
-  });
-}
-
-function prepararEliminarClientes(form) {
-  const seleccionadas = Array.from(document.querySelectorAll('.chk-cliente:checked'));
-  if (seleccionadas.length === 0) {
-    alert('Selecciona al menos una clienta para eliminar.');
-    return false;
-  }
-  const plural = seleccionadas.length === 1 ? 'la clienta seleccionada' : 'las ' + seleccionadas.length + ' clientas seleccionadas';
-  if (!confirm('¿Eliminar ' + plural + '? Esta acción no se puede deshacer.')) {
-    return false;
-  }
-  document.getElementById('idsEliminarClientes').value = seleccionadas.map(chk => chk.value).join(',');
-  return true;
-}
 </script>
 
 </body>

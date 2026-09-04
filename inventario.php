@@ -178,7 +178,7 @@ require __DIR__ . '/includes/cabecera.php';
       </div>
     </section>
 
-    <form method="post" action="inventario.php" id="form-eliminar-productos" class="barra-eliminar" onsubmit="return prepararEliminarProductos(this);">
+    <form method="post" action="inventario.php" id="form-eliminar-productos" class="barra-eliminar">
       <input type="hidden" name="csrf" value="<?= e($token) ?>">
       <input type="hidden" name="accion" value="eliminar">
       <input type="hidden" name="skus" id="skusEliminarProductos" value="">
@@ -264,35 +264,14 @@ const PRODUCTOS_POR_SKU = <?= json_encode(array_column(catalogo(), null, 'sku'),
 </script>
 
 <script>
-const chkTodosProductos = document.getElementById('chkTodosProductos');
-if (chkTodosProductos) {
-  chkTodosProductos.addEventListener('change', () => {
-    document.querySelectorAll('.chk-producto').forEach(chk => { chk.checked = chkTodosProductos.checked; });
-    actualizarBotonEditar();
-  });
-}
+/* Seleccionar todos, confirmar antes de borrar y habilitar "Editar"
+   solo con uno marcado: todo eso vive en assets/js/seleccion-lote.js,
+   compartido con Clientes. Acá solo va lo propio de esta página: el
+   modal de edición. */
+const modalEditarFondo = document.getElementById('modalEditarFondo');
 
-/* Botón "Editar": solo funciona con exactamente un producto marcado.
-   Abre un modal centrado con nombre y categoría de ese producto. */
-const btnEditarProducto = document.getElementById('btnEditarProducto');
-const modalEditarFondo  = document.getElementById('modalEditarFondo');
-
-function productosMarcados() {
-  return Array.from(document.querySelectorAll('.chk-producto:checked'));
-}
-
-function actualizarBotonEditar() {
-  if (btnEditarProducto) {
-    btnEditarProducto.disabled = productosMarcados().length !== 1;
-  }
-}
-document.querySelectorAll('.chk-producto').forEach(chk => {
-  chk.addEventListener('change', actualizarBotonEditar);
-});
-
-function abrirModalEditar() {
-  const sku = productosMarcados()[0]?.value;
-  const p   = sku && PRODUCTOS_POR_SKU[sku];
+function abrirModalEditar(sku) {
+  const p = PRODUCTOS_POR_SKU[sku];
   if (!p) return;
 
   document.getElementById('modalEditarSkuTexto').textContent = p.marca + ' · ' + sku;
@@ -310,9 +289,6 @@ function cerrarModalEditar() {
   modalEditarFondo.hidden = true;
 }
 
-if (btnEditarProducto) {
-  btnEditarProducto.addEventListener('click', abrirModalEditar);
-}
 if (modalEditarFondo) {
   document.getElementById('btnCancelarEditar').addEventListener('click', cerrarModalEditar);
   modalEditarFondo.addEventListener('click', e => {
@@ -323,19 +299,20 @@ if (modalEditarFondo) {
   });
 }
 
-function prepararEliminarProductos(form) {
-  const seleccionados = Array.from(document.querySelectorAll('.chk-producto:checked'));
-  if (seleccionados.length === 0) {
-    alert('Selecciona al menos un producto para eliminar.');
-    return false;
-  }
-  const plural = seleccionados.length === 1 ? 'el producto seleccionado' : 'los ' + seleccionados.length + ' productos seleccionados';
-  if (!confirm('¿Eliminar ' + plural + ' del catálogo? Esta acción no se puede deshacer.')) {
-    return false;
-  }
-  document.getElementById('skusEliminarProductos').value = seleccionados.map(chk => chk.value).join(',');
-  return true;
-}
+seleccionEnLote({
+  item:         '.chk-producto',
+  chkTodos:     '#chkTodosProductos',
+  formEliminar: '#form-eliminar-productos',
+  campoValores: '#skusEliminarProductos',
+  btnEditar:    '#btnEditarProducto',
+  alEditar:     abrirModalEditar,
+  textos: {
+    ninguno: 'Selecciona al menos un producto para eliminar.',
+    confirmar: n => n === 1
+      ? '¿Eliminar el producto seleccionado del catálogo? Esta acción no se puede deshacer.'
+      : '¿Eliminar los ' + n + ' productos seleccionados del catálogo? Esta acción no se puede deshacer.',
+  },
+});
 
 (function () {
   const pista = document.getElementById('carruselPista');

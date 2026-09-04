@@ -21,6 +21,9 @@ $barraVolver  = $barraVolver ?? false;
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/enrisate.css?v=<?= filemtime(__DIR__ . '/../assets/css/enrisate.css') ?>">
+<!-- Solo define seleccionEnLote(); no toca el DOM al cargar, así que va
+     sin defer y queda lista para el <script> del final de cada página. -->
+<script src="assets/js/seleccion-lote.js?v=<?= filemtime(__DIR__ . '/../assets/js/seleccion-lote.js') ?>"></script>
 </head>
 <body>
 
