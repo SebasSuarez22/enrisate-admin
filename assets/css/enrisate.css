@@ -946,13 +946,38 @@ a.boton-icono { text-decoration: none; }
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   flex-wrap: wrap;
 }
-.acciones-inventario input[type="text"] {
-  width: 110px;
-  padding: 8px 9px;
+/* Campos "fantasma": se leen como texto plano hasta que el mouse pasa
+   por encima o se enfocan, para no llenar la fila de cajas de formulario
+   una junto a otra. El marco champaña de foco es el mismo que usa el
+   resto del sitio (buscador, campos del panel "Agregar producto"). */
+.acciones-inventario input[type="text"],
+.acciones-inventario select {
+  width: auto;
+  max-width: 108px;
+  padding: 6px 8px;
   font-size: 13px;
+  color: var(--marfil-70);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-campo);
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.acciones-inventario select { max-width: 128px; }
+.acciones-inventario input[type="text"]:hover,
+.acciones-inventario select:hover {
+  background: rgba(21, 12, 18, 0.45);
+  border-color: rgba(243, 234, 226, 0.12);
+  color: var(--marfil);
+}
+.acciones-inventario input[type="text"]:focus-visible,
+.acciones-inventario select:focus-visible {
+  background: rgba(21, 12, 18, 0.62);
+  border-color: var(--champana);
+  color: var(--marfil);
+  box-shadow: 0 0 0 3px rgba(224, 184, 126, 0.16);
 }
 
 /* Buscar y navegar por sección: input + botón de búsqueda (reutiliza
