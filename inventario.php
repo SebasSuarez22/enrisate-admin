@@ -138,13 +138,17 @@ require __DIR__ . '/includes/cabecera.php';
         <label for="nNombre">Nombre</label>
         <input type="text" id="nNombre" name="nombre" placeholder="Shampoo Nuevo" required>
       </div>
+      <!-- step="1", no "1000": con el paso en 1000 el navegador rechazaba
+           en silencio cualquier valor que no fuera múltiplo de mil, y 13
+           productos del catálogo tienen costos como 32.500 o 30.500. El
+           formulario simplemente no se enviaba. -->
       <div class="campo">
         <label for="nPrecio">Precio</label>
-        <input type="number" id="nPrecio" name="precio" min="0" step="1000" value="0" required>
+        <input type="number" id="nPrecio" name="precio" min="0" step="1" value="0" required>
       </div>
       <div class="campo">
         <label for="nCosto">Costo</label>
-        <input type="number" id="nCosto" name="costo" min="0" step="1000" value="0" required>
+        <input type="number" id="nCosto" name="costo" min="0" step="1" value="0" required>
       </div>
 
       <button type="submit" class="boton mini">Agregar producto</button>
@@ -254,11 +258,11 @@ require __DIR__ . '/includes/cabecera.php';
         <div class="rejilla-campos">
           <div class="campo">
             <label for="modalEditarPrecio">Precio</label>
-            <input type="number" id="modalEditarPrecio" name="precio" min="0" step="1000" required>
+            <input type="number" id="modalEditarPrecio" name="precio" min="0" step="1" required>
           </div>
           <div class="campo">
             <label for="modalEditarCosto">Costo</label>
-            <input type="number" id="modalEditarCosto" name="costo" min="0" step="1000" required>
+            <input type="number" id="modalEditarCosto" name="costo" min="0" step="1" required>
           </div>
         </div>
 
