@@ -22,17 +22,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sku = (string) ($_POST['sku'] ?? '');
         // La categoría no se toca desde este formulario (se omite el 4º
         // argumento a propósito, así actualizar_producto la deja como está).
-        $nombreOk = actualizar_producto(
-            $sku,
-            (string) ($_POST['marca'] ?? ''),
-            (string) ($_POST['nombre'] ?? '')
-        );
-        $precioOk = actualizar_precio_costo(
-            $sku,
-            (int) ($_POST['precio'] ?? 0),
-            (int) ($_POST['costo'] ?? 0)
-        );
-        if ($nombreOk && $precioOk) {
+        // El precio y el costo se guardan SOLO si el nombre pasó: al
+        // revés quedaba una escritura a medias — el nombre rechazado por
+        // vacío pero el precio ya guardado, y la página mostrando error
+        // como si no se hubiera cambiado nada.
+        if (actualizar_producto(
+                $sku,
+                (string) ($_POST['marca'] ?? ''),
+                (string) ($_POST['nombre'] ?? '')
+            )
+            && actualizar_precio_costo(
+                $sku,
+                (int) ($_POST['precio'] ?? 0),
+                (int) ($_POST['costo'] ?? 0)
+            )
+        ) {
             header('Location: inventario.php?ok=editado');
             exit;
         }
@@ -182,8 +186,9 @@ require __DIR__ . '/includes/cabecera.php';
       <input type="hidden" name="csrf" value="<?= e($token) ?>">
       <input type="hidden" name="accion" value="eliminar">
       <input type="hidden" name="skus" id="skusEliminarProductos" value="">
-      <label class="seleccionar-todo"><input type="checkbox" id="chkTodosProductos"> Seleccionar todos</label>
-      <button type="button" class="boton mini" id="btnEditarProducto" disabled>Editar</button>
+      <!-- Editar es por fila (el lápiz al final de cada producto). Acá
+           solo queda la selección múltiple, que sirve para eliminar. -->
+      <label class="seleccionar-todo"><input type="checkbox" id="chkTodosProductos"> Seleccionar todos los visibles</label>
       <button type="submit" class="boton mini peligro">Eliminar seleccionados</button>
     </form>
   <?php endif; ?>
@@ -200,6 +205,7 @@ require __DIR__ . '/includes/cabecera.php';
             <th class="num">Precio</th>
             <th class="num">Costo</th>
             <th class="num">Margen</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -216,6 +222,13 @@ require __DIR__ . '/includes/cabecera.php';
               <td class="num"><?= pesos($p['precio']) ?></td>
               <td class="num"><?= pesos($p['costo']) ?></td>
               <td class="num"><?= pesos($margen) ?> <span class="sku"><?= $pct ?>%</span></td>
+              <td class="num">
+                <button type="button" class="boton-icono fantasma btn-editar-fila"
+                        data-sku="<?= e($p['sku']) ?>"
+                        title="Editar <?= e($p['nombre']) ?>" aria-label="Editar <?= e($p['nombre']) ?>">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l4 4"/></svg>
+                </button>
+              </td>
             </tr>
           <?php endforeach; ?>
         </tbody>
@@ -264,10 +277,9 @@ const PRODUCTOS_POR_SKU = <?= json_encode(array_column(catalogo(), null, 'sku'),
 </script>
 
 <script>
-/* Seleccionar todos, confirmar antes de borrar y habilitar "Editar"
-   solo con uno marcado: todo eso vive en assets/js/seleccion-lote.js,
-   compartido con Clientes. Acá solo va lo propio de esta página: el
-   modal de edición. */
+/* Seleccionar los visibles y confirmar antes de borrar viven en
+   assets/js/seleccion-lote.js, compartido con Clientes. Acá va lo
+   propio de esta página: el modal de edición y el lápiz de cada fila. */
 const modalEditarFondo = document.getElementById('modalEditarFondo');
 
 function abrirModalEditar(sku) {
@@ -299,13 +311,18 @@ if (modalEditarFondo) {
   });
 }
 
-seleccionEnLote({
+/* Editar es por fila: el lápiz de cada producto abre el modal de ese
+   producto, sin marcar nada ni subir hasta la barra de arriba. */
+document.querySelectorAll('.btn-editar-fila').forEach(btn => {
+  btn.addEventListener('click', () => abrirModalEditar(btn.dataset.sku));
+});
+
+/* La selección múltiple queda solo para eliminar. */
+const loteProductos = seleccionEnLote({
   item:         '.chk-producto',
   chkTodos:     '#chkTodosProductos',
   formEliminar: '#form-eliminar-productos',
   campoValores: '#skusEliminarProductos',
-  btnEditar:    '#btnEditarProducto',
-  alEditar:     abrirModalEditar,
   textos: {
     ninguno: 'Selecciona al menos un producto para eliminar.',
     confirmar: n => n === 1
@@ -327,15 +344,21 @@ seleccionEnLote({
 
   function aplicarFiltros() {
     const q = (input.value || '').trim().toLowerCase();
+    /* Buscando se mira TODO el catálogo, no solo la sección abierta:
+       antes, buscar "Rapunzel" estando en Accesorios devolvía "0
+       productos" aunque el producto existiera en otra marca. El
+       carrusel filtra cuando no hay búsqueda; la búsqueda manda cuando
+       la hay. */
+    const buscando = q !== '';
     let visibles = 0;
 
     secciones.forEach(sec => {
       const marca = sec.dataset.marca || '';
-      const seccionCoincideMarca = marcaActiva === '' || marca === marcaActiva;
+      const seccionCoincideMarca = buscando || marcaActiva === '' || marca === marcaActiva;
       let filasVisibles = 0;
 
       sec.querySelectorAll('tbody tr').forEach(fila => {
-        const coincide = q === '' || fila.textContent.toLowerCase().includes(q);
+        const coincide = !buscando || fila.textContent.toLowerCase().includes(q);
         fila.style.display = coincide ? '' : 'none';
         if (coincide) filasVisibles++;
       });
@@ -347,9 +370,13 @@ seleccionEnLote({
 
     if (contador) {
       const plural = visibles === 1 ? 'producto' : 'productos';
-      const donde  = marcaActiva ? ' en ' + marcaActiva : ' en todas las secciones';
+      const donde  = buscando ? ' en todo el catálogo'
+                              : (marcaActiva ? ' en ' + marcaActiva : ' en todas las secciones');
       contador.textContent = visibles + ' ' + plural + donde;
     }
+
+    /* Lo que se acaba de ocultar no debe quedar marcado. */
+    loteProductos.limpiarOcultas();
   }
 
   chips.forEach(chip => {

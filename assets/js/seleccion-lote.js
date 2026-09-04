@@ -26,7 +26,16 @@
  * @param {object}  [op.textos]       { ninguno: string, confirmar: (n) => string }
  */
 function seleccionEnLote(op) {
-  const casillas = () => Array.from(document.querySelectorAll(op.item));
+  /* Solo cuentan las casillas que el usuario está viendo. En Productos
+     las secciones de otras marcas quedan ocultas por el carrusel y las
+     filas que no coinciden con la búsqueda también: sin este filtro,
+     "seleccionar todos" marcaba las 102 filas del documento y
+     "Eliminar" borraba productos que no estaban a la vista.
+     offsetParent es null cuando el elemento o algún ancestro está en
+     display:none o con el atributo hidden, que es justo como se ocultan. */
+  const visible  = c => c.offsetParent !== null;
+  const todasLas = () => Array.from(document.querySelectorAll(op.item));
+  const casillas = () => todasLas().filter(visible);
   const marcadas = () => casillas().filter(c => c.checked);
 
   const botonEditar = op.btnEditar ? document.querySelector(op.btnEditar) : null;
@@ -46,7 +55,10 @@ function seleccionEnLote(op) {
     });
   }
 
-  casillas().forEach(c => c.addEventListener('change', refrescarEditar));
+  /* Los listeners van a todas, visibles o no: una fila oculta ahora
+     puede estar a la vista después de cambiar de sección o de borrar la
+     búsqueda, y ya tendría que responder. */
+  todasLas().forEach(c => c.addEventListener('change', refrescarEditar));
   refrescarEditar();
 
   if (botonEditar && op.alEditar) {
@@ -73,9 +85,21 @@ function seleccionEnLote(op) {
     });
   }
 
+  /* Al filtrar (cambiar de sección del carrusel o escribir en el
+     buscador) las filas que se ocultan pueden quedar marcadas. Aunque
+     ya no cuentan para eliminar —casillas() solo mira las visibles—,
+     dejarlas marcadas confunde al volver a la sección y descuadra la
+     casilla de "seleccionar todos". La página llama a esto después de
+     filtrar. */
+  function limpiarOcultas() {
+    todasLas().forEach(c => { if (!visible(c)) c.checked = false; });
+    if (todos) todos.checked = false;
+    refrescarEditar();
+  }
+
   /* Marcar o desmarcar una casilla desde JS (por ejemplo, al cancelar una
      edición) no dispara el evento "change", así que el estado del botón
      se quedaría desactualizado. La página llama a refrescar() en esos
      casos. */
-  return { refrescar: refrescarEditar };
+  return { refrescar: refrescarEditar, limpiarOcultas };
 }
