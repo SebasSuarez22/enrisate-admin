@@ -233,13 +233,14 @@ require __DIR__ . '/includes/cabecera.php';
           <input type="text" id="modalEditarNombre" name="nombre" required>
         </div>
         <div class="campo">
-          <label for="modalEditarCategoria">Categoría</label>
-          <select id="modalEditarCategoria" name="categoria">
-            <option value="">Sin categoría</option>
+          <label>Categoría</label>
+          <div class="chips-categoria" id="modalEditarCategoriaChips" role="radiogroup" aria-label="Categoría">
+            <button type="button" class="chip-marca" data-valor="">Sin categoría</button>
             <?php foreach (array_keys($listaCategorias) as $c): ?>
-              <option value="<?= e($c) ?>"><?= e($c) ?></option>
+              <button type="button" class="chip-marca" data-valor="<?= e($c) ?>"><?= e($c) ?></button>
             <?php endforeach; ?>
-          </select>
+          </div>
+          <input type="hidden" id="modalEditarCategoria" name="categoria">
         </div>
 
         <div class="modal-acciones">
@@ -283,6 +284,17 @@ document.querySelectorAll('.chk-producto').forEach(chk => {
   chk.addEventListener('change', actualizarBotonEditar);
 });
 
+const inputCategoria = document.getElementById('modalEditarCategoria');
+const chipsCategoria = Array.from(document.querySelectorAll('#modalEditarCategoriaChips .chip-marca'));
+
+function elegirCategoria(valor) {
+  inputCategoria.value = valor;
+  chipsCategoria.forEach(chip => chip.classList.toggle('activa', chip.dataset.valor === valor));
+}
+chipsCategoria.forEach(chip => {
+  chip.addEventListener('click', () => elegirCategoria(chip.dataset.valor));
+});
+
 function abrirModalEditar() {
   const sku = productosMarcados()[0]?.value;
   const p   = sku && PRODUCTOS_POR_SKU[sku];
@@ -292,7 +304,7 @@ function abrirModalEditar() {
   document.getElementById('modalEditarSku').value             = sku;
   document.getElementById('modalEditarMarca').value            = p.marca;
   document.getElementById('modalEditarNombre').value           = p.nombre;
-  document.getElementById('modalEditarCategoria').value        = p.categoria || '';
+  elegirCategoria(p.categoria || '');
 
   modalEditarFondo.hidden = false;
   document.getElementById('modalEditarNombre').focus();

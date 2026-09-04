@@ -987,6 +987,16 @@ a.boton-icono { text-decoration: none; }
 }
 .modal-acciones .boton { width: auto; margin-top: 0; }
 
+/* Categoría del modal como chips (reutiliza .chip-marca), en vez de un
+   <select> que hay que abrir para ver las opciones: se acomodan en
+   varias líneas dentro del ancho angosto del modal. */
+.chips-categoria {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chips-categoria .chip-marca { padding: 7px 12px; font-size: 12.5px; }
+
 /* Buscar y navegar por sección: input + botón de búsqueda (reutiliza
    .form-busqueda) y, debajo, un carrusel horizontal de chips —uno por
    marca— para saltar a una sola sección en vez de desplazarse por todo
