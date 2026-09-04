@@ -19,16 +19,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $error = 'Selecciona al menos un producto para eliminar.';
     } elseif (($_POST['accion'] ?? '') === 'editar') {
-        if (actualizar_producto(
-            (string) ($_POST['sku'] ?? ''),
+        $sku = (string) ($_POST['sku'] ?? '');
+        // La categoría no se toca desde este formulario (se omite el 4º
+        // argumento a propósito, así actualizar_producto la deja como está).
+        $nombreOk = actualizar_producto(
+            $sku,
             (string) ($_POST['marca'] ?? ''),
-            (string) ($_POST['nombre'] ?? ''),
-            (string) ($_POST['categoria'] ?? '')
-        )) {
+            (string) ($_POST['nombre'] ?? '')
+        );
+        $precioOk = actualizar_precio_costo(
+            $sku,
+            (int) ($_POST['precio'] ?? 0),
+            (int) ($_POST['costo'] ?? 0)
+        );
+        if ($nombreOk && $precioOk) {
             header('Location: inventario.php?ok=editado');
             exit;
         }
-        $error = 'Escribe el nombre, elige una categoría válida, y verifica que el producto exista.';
+        $error = 'Escribe el nombre y verifica que el producto exista.';
     } else {
         $mensaje = agregar_producto(
             (string) ($_POST['sku'] ?? ''),
@@ -65,8 +73,6 @@ foreach ($porMarca as &$ps) {
 }
 unset($ps);
 
-$listaCategorias = categorias();
-
 // Si todavía no se importó storage/actualizar-2026-08-23-categorias.sql,
 // la columna no existe y la categoría no se puede guardar: se sigue
 // deduciendo del nombre. Avisarlo aquí evita que parezca que el
@@ -86,7 +92,7 @@ require __DIR__ . '/includes/cabecera.php';
 
 <main class="lienzo ancho">
   <h1 class="saludo">Productos</h1>
-  <p class="subsaludo">Todos los productos del catálogo. Agrega los nuevos aquí; el precio y el costo se editan en Márgenes.</p>
+  <p class="subsaludo">Todos los productos del catálogo. Agrega los nuevos aquí; para editar uno existente, márcalo abajo y usa "Editar".</p>
 
   <?php if (!$hayColumnaCategoria): ?>
     <p class="aviso" role="alert">
@@ -99,7 +105,7 @@ require __DIR__ . '/includes/cabecera.php';
     <p class="aviso neutro">
       <?= count($sinCategoria) ?> producto<?= count($sinCategoria) === 1 ? '' : 's' ?> sin categoría
       (no se pudo deducir del nombre). El catálogo público les muestra el nombre de la marca
-      en vez del tipo de producto; selecciónalo abajo y usa "Editar" para asignarle una.
+      en vez del tipo de producto hasta que se les asigne una desde la base de datos.
     </p>
   <?php endif; ?>
 
@@ -232,15 +238,15 @@ require __DIR__ . '/includes/cabecera.php';
           <label for="modalEditarNombre">Nombre</label>
           <input type="text" id="modalEditarNombre" name="nombre" required>
         </div>
-        <div class="campo">
-          <label>Categoría</label>
-          <div class="chips-categoria" id="modalEditarCategoriaChips" role="radiogroup" aria-label="Categoría">
-            <button type="button" class="chip-marca" data-valor="">Sin categoría</button>
-            <?php foreach (array_keys($listaCategorias) as $c): ?>
-              <button type="button" class="chip-marca" data-valor="<?= e($c) ?>"><?= e($c) ?></button>
-            <?php endforeach; ?>
+        <div class="rejilla-campos">
+          <div class="campo">
+            <label for="modalEditarPrecio">Precio</label>
+            <input type="number" id="modalEditarPrecio" name="precio" min="0" step="1000" required>
           </div>
-          <input type="hidden" id="modalEditarCategoria" name="categoria">
+          <div class="campo">
+            <label for="modalEditarCosto">Costo</label>
+            <input type="number" id="modalEditarCosto" name="costo" min="0" step="1000" required>
+          </div>
         </div>
 
         <div class="modal-acciones">
@@ -284,17 +290,6 @@ document.querySelectorAll('.chk-producto').forEach(chk => {
   chk.addEventListener('change', actualizarBotonEditar);
 });
 
-const inputCategoria = document.getElementById('modalEditarCategoria');
-const chipsCategoria = Array.from(document.querySelectorAll('#modalEditarCategoriaChips .chip-marca'));
-
-function elegirCategoria(valor) {
-  inputCategoria.value = valor;
-  chipsCategoria.forEach(chip => chip.classList.toggle('activa', chip.dataset.valor === valor));
-}
-chipsCategoria.forEach(chip => {
-  chip.addEventListener('click', () => elegirCategoria(chip.dataset.valor));
-});
-
 function abrirModalEditar() {
   const sku = productosMarcados()[0]?.value;
   const p   = sku && PRODUCTOS_POR_SKU[sku];
@@ -304,7 +299,8 @@ function abrirModalEditar() {
   document.getElementById('modalEditarSku').value             = sku;
   document.getElementById('modalEditarMarca').value            = p.marca;
   document.getElementById('modalEditarNombre').value           = p.nombre;
-  elegirCategoria(p.categoria || '');
+  document.getElementById('modalEditarPrecio').value           = p.precio;
+  document.getElementById('modalEditarCosto').value            = p.costo;
 
   modalEditarFondo.hidden = false;
   document.getElementById('modalEditarNombre').focus();
