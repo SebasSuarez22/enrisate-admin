@@ -834,7 +834,7 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   gap: 8px;
   margin-bottom: 16px;
 }
-.form-busqueda .campo { flex: 1; margin-bottom: 0; }
+.form-busqueda .campo { flex: 1; margin-bottom: 0; margin-top: 0; }
 
 /* Cabecera de panel: título + una acción suelta (ej. "Descargar Excel"),
    en la misma línea en vez de una debajo de la otra — así la acción del
