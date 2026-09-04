@@ -209,7 +209,6 @@ require __DIR__ . '/includes/cabecera.php';
             <tr>
               <th></th>
               <th>Producto</th>
-              <th>Categoría</th>
               <th class="num">Precio</th>
               <th class="num">Costo</th>
               <th class="num">Margen</th>
@@ -226,17 +225,6 @@ require __DIR__ . '/includes/cabecera.php';
                 <td>
                   <?= e($p['nombre']) ?>
                   <span class="sku"><?= e($p['sku']) ?></span>
-                </td>
-                <td>
-                  <?php $catEfectiva = categoria_de($p); ?>
-                  <?php if ($catEfectiva === ''): ?>
-                    <span class="sku">sin categoría</span>
-                  <?php else: ?>
-                    <?= e($catEfectiva) ?>
-                    <?php if (trim((string) ($p['categoria'] ?? '')) === ''): ?>
-                      <span class="sku">deducida</span>
-                    <?php endif; ?>
-                  <?php endif; ?>
                 </td>
                 <td class="num"><?= pesos($p['precio']) ?></td>
                 <td class="num"><?= pesos($p['costo']) ?></td>
