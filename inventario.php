@@ -230,7 +230,7 @@ require __DIR__ . '/includes/cabecera.php';
                 <td class="num"><?= pesos($p['costo']) ?></td>
                 <td class="num"><?= pesos($margen) ?> <span class="sku"><?= $pct ?>%</span></td>
                 <td class="num acciones-inventario">
-                  <input type="text" name="marca[<?= e($p['sku']) ?>]" value="<?= e($p['marca']) ?>" aria-label="Marca de <?= e($p['nombre']) ?>">
+                  <input type="hidden" name="marca[<?= e($p['sku']) ?>]" value="<?= e($p['marca']) ?>">
                   <input type="text" name="nombre[<?= e($p['sku']) ?>]" value="<?= e($p['nombre']) ?>" aria-label="Nombre de <?= e($p['nombre']) ?>">
                   <select name="categoria[<?= e($p['sku']) ?>]" aria-label="Categoría de <?= e($p['nombre']) ?>">
                     <option value="">Sin categoría</option>
