@@ -91,7 +91,7 @@ require __DIR__ . '/includes/cabecera.php';
               <td class="num"><?= pesos((int) ($p['total'] ?? 0)) ?></td>
               <td><?= e(fecha_larga(substr((string) ($p['creado'] ?? ''), 0, 10))) ?></td>
               <td class="num acciones-pedido">
-                <a class="boton mini" href="facturar.php?desde_pedido=<?= e($p['numero']) ?>">Confirmar y facturar</a>
+                <a class="boton compacto" href="facturar.php?desde_pedido=<?= e($p['numero']) ?>">Confirmar y facturar</a>
                 <form method="post" action="pedidos.php" class="en-linea"
                       onsubmit="return confirm('¿Descartar el pedido de <?= e($p['cliente']) ?>? No se puede deshacer.');">
                   <input type="hidden" name="csrf" value="<?= e($token) ?>">

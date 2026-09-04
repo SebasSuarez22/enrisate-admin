@@ -29,6 +29,23 @@
   --sp-bloque: 20px;   /* separación entre bloques apilados (panel, kpis…) */
   --sp-divisor: 40px;  /* separación mayor antes de un divisor de sección */
   --pad-card: 24px;    /* relleno interno de paneles y tarjetas */
+
+  /* Escala de espaciado: todo múltiplo de 4. Antes convivían 2, 5, 6, 7,
+     9, 11, 13, 22, 26 y 30px sueltos — diferencias de 1px que no se
+     perciben una por una, pero que impiden que las cosas se alineen. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* Altura única de control. Todo lo que puede ir junto en una fila
+     (input, select, botón, botón de ícono) mide lo mismo, para que no
+     queden desalineados por 2 o 3px. 44px es el objetivo táctil mínimo. */
+  --alto-control:          44px;
+  --alto-control-mini:     38px;
+  --alto-control-compacto: 32px;
 }
 
 * { box-sizing: border-box; }
@@ -189,11 +206,29 @@ body {
 
 .envoltura { position: relative; }
 
-.campo input {
+/* Base de TODO control de formulario, por tipo. Antes no existía una
+   base: cada contenedor volvía a declarar fondo, borde y color por su
+   cuenta — y a algunos se les olvidó, así que los inputs de Márgenes
+   (.form-precios) y del descuento en Facturar (.panel-descuento) salían
+   con el blanco por defecto del navegador sobre el fondo oscuro.
+   Además convivían dos reglas con medidas distintas: un input de texto
+   daba ~46px de alto y uno numérico o un <select> ~43px, aunque
+   estuvieran lado a lado (ej. Nombre contra Precio y Costo en el modal
+   de Productos). De aquí en adelante los contenedores solo ajustan
+   ancho o tamaño; el aspecto se define una sola vez, acá. */
+input[type="text"],
+input[type="number"],
+input[type="tel"],
+input[type="date"],
+input[type="search"],
+input[type="password"],
+input[type="email"],
+select {
   width: 100%;
-  padding: 13px 14px;
+  min-height: var(--alto-control);
+  padding: 11px 14px;
   font-family: var(--texto);
-  font-size: 15px;
+  font-size: 14.5px;
   color: var(--marfil);
   background: rgba(21, 12, 18, 0.62);
   border: 1px solid rgba(243, 234, 226, 0.12);
@@ -204,7 +239,9 @@ body {
 
 .campo input::placeholder { color: rgba(243, 234, 226, 0.24); }
 
-.campo input:hover { border-color: rgba(243, 234, 226, 0.22); }
+.campo input:hover,
+select:hover,
+.buscador input[type="text"]:hover { border-color: rgba(243, 234, 226, 0.22); }
 
 .campo input:focus-visible {
   border-color: var(--champana);
@@ -248,8 +285,9 @@ body {
 /* --- Botón --- */
 .boton {
   width: 100%;
-  margin-top: 8px;
-  padding: 14px;
+  min-height: var(--alto-control);
+  margin-top: var(--sp-2);
+  padding: 12px 18px;
   font-family: var(--texto);
   font-size: 14.5px;
   font-weight: 700;
@@ -342,10 +380,19 @@ a.boton { display: inline-block; text-decoration: none; }
   letter-spacing: 0.08em;
   color: var(--marfil-40);
 }
+/* Acción secundaria chica (Salir, Volver, Ver, Anular, Descartar…).
+   Mide exactamente lo mismo que .boton.compacto para que, cuando caen
+   juntos en una celda, no queden escalonados por un par de píxeles.
+   inline-flex porque varios son <a>, y en un inline el min-height se
+   ignora. */
 .salir {
-  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--alto-control-compacto);
+  padding: 6px 12px;
   font-family: var(--texto);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--marfil-70);
   text-decoration: none;
@@ -585,17 +632,8 @@ a.boton { display: inline-block; text-decoration: none; }
 }
 .vacio-sug { padding: 10px 11px; color: var(--marfil-40); font-size: 13px; cursor: default; }
 
-select, .buscador input[type="text"], .fila-agregar input[type="number"], .campo input[type="number"], .campo input[type="date"], .campo input[type="tel"] {
-  width: 100%;
-  padding: 12px 13px;
-  font-family: var(--texto);
-  font-size: 14px;
-  color: var(--marfil);
-  background: rgba(21, 12, 18, 0.62);
-  border: 1px solid rgba(243, 234, 226, 0.12);
-  border-radius: var(--r-campo);
-  outline: none;
-}
+/* El tamaño de estos controles se define arriba, junto con .campo input,
+   en una sola regla compartida. */
 select:focus-visible,
 .buscador input:focus-visible,
 .campo input:focus-visible {
@@ -606,11 +644,23 @@ select:focus-visible,
 select option, select optgroup { background: #241521; color: var(--marfil); }
 .campo input:read-only { color: var(--marfil-40); background: rgba(21, 12, 18, 0.32); }
 
+/* Tres tamaños de botón, y solo tres. Antes "mini" significaba cuatro
+   medidas distintas según en qué contenedor cayera (.form-stock,
+   .form-precios y .acciones-pedido lo redefinían cada uno por su lado,
+   ya desincronizados entre sí: 8px/12px aquí, 8px/14px allá). */
 .boton.mini {
   width: auto;
+  min-height: var(--alto-control-mini);
   margin: 0;
-  padding: 12px 18px;
+  padding: 9px 16px;
   font-size: 13.5px;
+}
+.boton.compacto {
+  width: auto;
+  min-height: var(--alto-control-compacto);
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 12px;
 }
 
 /* Envuelve cada <table class="lineas"> para que en pantallas angostas
@@ -739,18 +789,6 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
 .rejilla-campos .campo { margin-bottom: 0; }
 .rejilla-campos .boton.mini { align-self: start; }
 
-.form-stock {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-}
-.form-stock input[type="number"] {
-  width: 64px;
-  padding: 8px 9px;
-  font-size: 13px;
-}
-.form-stock .boton.mini { padding: 8px 12px; font-size: 12px; }
-
 .etiqueta.agotado { color: var(--alerta); border-color: rgba(228, 137, 154, 0.45); }
 .etiqueta.bajo    { color: var(--champana); border-color: var(--linea); }
 
@@ -766,28 +804,24 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
 .lineas tr.fila-anulada td { opacity: 0.5; }
 .lineas tr.fila-anulada td:first-child { text-decoration: line-through; }
 
-.form-abono {
+/* Formularios en línea dentro de una celda (registrar abono en Cartera,
+   precio y costo en Márgenes, descuento en Facturar). Solo fijan el
+   ancho del campo: el fondo, el borde y el alto salen de la regla base
+   de controles, así ninguno vuelve a quedar sin estilo ni a media
+   altura respecto de los botones que lo acompañan en la fila. */
+.form-abono,
+.form-precios {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
 }
-.form-abono input[type="number"] {
-  width: 110px;
-  padding: 8px 9px;
-  font-family: var(--texto);
-  font-size: 13px;
-  text-align: right;
-  color: var(--marfil);
-  background: rgba(21, 12, 18, 0.62);
-  border: 1px solid rgba(243, 234, 226, 0.12);
-  border-radius: var(--r-campo);
-  outline: none;
-}
-.form-abono input[type="number"]:focus-visible {
-  border-color: var(--champana);
-  box-shadow: 0 0 0 3px rgba(224, 184, 126, 0.16);
-}
+.form-abono input[type="number"],
+.form-precios input[type="number"] { text-align: right; }
+.form-abono input[type="number"]   { width: 120px; }
+/* El botón de la fila iguala el alto del campo que tiene al lado. */
+.form-abono .boton,
+.form-precios .boton { min-height: var(--alto-control); }
 
 /* Acciones en una celda del historial (Ver + Anular/Reactivar) */
 .acciones-factura { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
@@ -822,25 +856,18 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
+  min-height: var(--alto-control);
   box-sizing: border-box;
 }
 
 .saldo-favor { color: #8FCB9B; font-weight: 600; }
 
 /* Acciones en una celda de "Pedidos por revisar" (Confirmar y facturar +
-   Descartar): mismo alto compacto para los dos botones, en vez del tamaño
-   de .acciones-cartera (pensado para la tabla de cartera, con un botón
-   suelto en la celda en lugar de uno envuelto en un <form>). */
-.acciones-pedido { display: flex; flex-wrap: nowrap; gap: 10px; justify-content: flex-end; align-items: center; }
+   Descartar): usan .boton.compacto, el tamaño chico del sistema, en vez
+   de redefinir "mini" por su cuenta como hacían antes. */
+.acciones-pedido { display: flex; flex-wrap: nowrap; gap: var(--sp-2); justify-content: flex-end; align-items: center; }
 .acciones-pedido .en-linea { display: inline; margin: 0; flex-shrink: 0; }
-.acciones-pedido .boton.mini {
-  padding: 8px 14px;
-  font-size: 12.5px;
-  min-height: 0;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
+.acciones-pedido .boton { white-space: nowrap; flex-shrink: 0; }
 
 .form-busqueda {
   display: flex;
@@ -921,17 +948,9 @@ a.boton-icono { text-decoration: none; }
 /* =========================================================
    Márgenes
    ========================================================= */
-.form-precios {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-}
-.form-precios input[type="number"] {
-  width: 84px;
-  padding: 8px 9px;
-  font-size: 13px;
-}
-.form-precios .boton.mini { padding: 8px 12px; font-size: 12px; }
+/* El aspecto y el alto vienen de la base de controles; .form-precios
+   solo define su disposición (arriba, junto a .form-abono) y el ancho. */
+.form-precios input[type="number"] { width: 96px; }
 
 /* Botón "Traer clientas de facturación", suelto arriba de la tabla en
    Clientes — mismo espaciado de bloque que usa el resto de la página
