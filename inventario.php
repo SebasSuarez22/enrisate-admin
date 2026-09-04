@@ -151,6 +151,37 @@ require __DIR__ . '/includes/cabecera.php';
   </section>
 
   <?php if ($porMarca): ?>
+    <section class="panel panel-buscador-productos">
+      <div class="panel-header">
+        <h2 class="titulo-panel">Buscar y navegar</h2>
+        <span class="contador-productos" id="contadorProductos"><?= count(catalogo()) ?> productos en <?= count($porMarca) ?> secciones</span>
+      </div>
+
+      <form class="form-busqueda" onsubmit="return false;">
+        <div class="campo apretado">
+          <input type="search" id="buscarProductos" placeholder="Buscar por nombre, SKU o categoría…" autocomplete="off">
+        </div>
+        <button type="button" class="boton mini" id="btnBuscarProductos">Buscar</button>
+      </form>
+
+      <div class="carrusel-marcas">
+        <button type="button" class="boton-icono fantasma carrusel-flecha" id="carruselIzq" aria-label="Ver secciones anteriores">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="carrusel-pista" id="carruselPista" role="tablist" aria-label="Ir a una sección">
+          <button type="button" class="chip-marca activa" data-marca="" role="tab" aria-selected="true">Todas</button>
+          <?php foreach ($porMarca as $marca => $ps): ?>
+            <button type="button" class="chip-marca" data-marca="<?= e($marca) ?>" role="tab" aria-selected="false">
+              <?= e($marca) ?> <span class="chip-contador"><?= count($ps) ?></span>
+            </button>
+          <?php endforeach; ?>
+        </div>
+        <button type="button" class="boton-icono fantasma carrusel-flecha" id="carruselDer" aria-label="Ver más secciones">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </section>
+
     <form method="post" action="inventario.php" id="form-eliminar-productos" class="barra-eliminar" onsubmit="return prepararEliminarProductos(this);">
       <input type="hidden" name="csrf" value="<?= e($token) ?>">
       <input type="hidden" name="accion" value="eliminar">
@@ -161,7 +192,7 @@ require __DIR__ . '/includes/cabecera.php';
   <?php endif; ?>
 
   <?php foreach ($porMarca as $marca => $ps): ?>
-    <section class="panel panel-inventario">
+    <section class="panel panel-inventario" data-marca="<?= e($marca) ?>">
       <h2 class="titulo-panel"><?= e($marca) ?></h2>
       <div class="tabla-scroll">
       <table class="lineas">
@@ -214,7 +245,9 @@ require __DIR__ . '/includes/cabecera.php';
                       <option value="<?= e($c) ?>"<?= ($p['categoria'] ?? '') === $c ? ' selected' : '' ?>><?= e($c) ?></option>
                     <?php endforeach; ?>
                   </select>
-                  <button type="submit" class="boton mini">Guardar</button>
+                  <button type="submit" class="boton-icono" title="Guardar cambios de <?= e($p['nombre']) ?>" aria-label="Guardar cambios de <?= e($p['nombre']) ?>">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l4.5 4.5L20 6"/></svg>
+                  </button>
                 </form>
               </td>
             </tr>
@@ -248,6 +281,69 @@ function prepararEliminarProductos(form) {
   document.getElementById('skusEliminarProductos').value = seleccionados.map(chk => chk.value).join(',');
   return true;
 }
+
+(function () {
+  const pista = document.getElementById('carruselPista');
+  if (!pista) return;
+
+  const chips     = Array.from(pista.querySelectorAll('.chip-marca'));
+  const secciones = Array.from(document.querySelectorAll('.panel-inventario'));
+  const input     = document.getElementById('buscarProductos');
+  const btnBuscar = document.getElementById('btnBuscarProductos');
+  const contador  = document.getElementById('contadorProductos');
+  let marcaActiva = '';
+
+  function aplicarFiltros() {
+    const q = (input.value || '').trim().toLowerCase();
+    let visibles = 0;
+
+    secciones.forEach(sec => {
+      const marca = sec.dataset.marca || '';
+      const seccionCoincideMarca = marcaActiva === '' || marca === marcaActiva;
+      let filasVisibles = 0;
+
+      sec.querySelectorAll('tbody tr').forEach(fila => {
+        const coincide = q === '' || fila.textContent.toLowerCase().includes(q);
+        fila.style.display = coincide ? '' : 'none';
+        if (coincide) filasVisibles++;
+      });
+
+      const mostrarSeccion = seccionCoincideMarca && filasVisibles > 0;
+      sec.hidden = !mostrarSeccion;
+      if (mostrarSeccion) visibles += filasVisibles;
+    });
+
+    if (contador) {
+      const plural = visibles === 1 ? 'producto' : 'productos';
+      const donde  = marcaActiva ? ' en ' + marcaActiva : ' en todas las secciones';
+      contador.textContent = visibles + ' ' + plural + donde;
+    }
+  }
+
+  chips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      marcaActiva = chip.dataset.marca || '';
+      chips.forEach(c => {
+        const activa = c === chip;
+        c.classList.toggle('activa', activa);
+        c.setAttribute('aria-selected', activa ? 'true' : 'false');
+      });
+      aplicarFiltros();
+      if (marcaActiva) {
+        const objetivo = document.querySelector('.panel-inventario[data-marca="' + CSS.escape(marcaActiva) + '"]');
+        if (objetivo) objetivo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  input.addEventListener('input', aplicarFiltros);
+  if (btnBuscar) btnBuscar.addEventListener('click', aplicarFiltros);
+
+  const flechaIzq = document.getElementById('carruselIzq');
+  const flechaDer = document.getElementById('carruselDer');
+  if (flechaIzq) flechaIzq.addEventListener('click', () => pista.scrollBy({ left: -240, behavior: 'smooth' }));
+  if (flechaDer) flechaDer.addEventListener('click', () => pista.scrollBy({ left: 240, behavior: 'smooth' }));
+})();
 </script>
 
 </body>

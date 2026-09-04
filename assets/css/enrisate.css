@@ -961,6 +961,81 @@ a.boton-icono { text-decoration: none; }
 }
 .form-editar-producto .boton.mini { padding: 8px 12px; font-size: 12px; }
 
+/* Buscar y navegar por sección: input + botón de búsqueda (reutiliza
+   .form-busqueda) y, debajo, un carrusel horizontal de chips —uno por
+   marca— para saltar a una sola sección en vez de desplazarse por todo
+   el listado. */
+.contador-productos {
+  font-family: var(--dato);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--marfil-40);
+  white-space: nowrap;
+}
+
+.carrusel-marcas {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.carrusel-flecha {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  transition: transform 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+.carrusel-flecha:hover { transform: scale(1.06); }
+.carrusel-flecha svg { width: 15px; height: 15px; }
+
+/* La pista se recorta con un degradado en los bordes (en vez de un corte
+   duro) para insinuar que hay más chips fuera de vista sin necesitar la
+   barra de scroll del navegador. */
+.carrusel-pista {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+  padding: 3px 4px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, transparent, #000 18px, #000 calc(100% - 18px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 18px, #000 calc(100% - 18px), transparent);
+}
+.carrusel-pista::-webkit-scrollbar { display: none; }
+
+.chip-marca {
+  flex: none;
+  scroll-snap-align: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 15px;
+  font-family: var(--texto);
+  font-size: 13px;
+  color: var(--marfil-70);
+  background: rgba(21, 12, 18, 0.5);
+  border: 1px solid rgba(243, 234, 226, 0.14);
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+.chip-marca:hover { border-color: var(--champana); color: var(--marfil); transform: translateY(-1px); }
+.chip-marca.activa {
+  color: #2A1622;
+  background: linear-gradient(135deg, var(--brillo), var(--champana) 62%, #D3A167);
+  border-color: transparent;
+}
+.chip-contador {
+  font-family: var(--dato);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+}
+.chip-marca.activa .chip-contador { opacity: 0.85; }
+
 /* =========================================================
    Reportes
    ========================================================= */
