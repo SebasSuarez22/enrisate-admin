@@ -968,24 +968,30 @@ a.boton-icono { text-decoration: none; }
   backdrop-filter: blur(4px);
 }
 .modal-fondo[hidden] { display: none; }
+/* Fondo sólido (no el degradado semitransparente de .panel): encima del
+   velo oscuro del modal, ese semitransparente dejaba asomar el patrón
+   decorativo de .escena detrás, como manchas dentro de la tarjeta. */
 .modal-caja {
   width: 100%;
   max-width: 380px;
+  background: linear-gradient(160deg, #33202C, #1D121A);
   box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.6);
 }
 .modal-sku {
-  margin: -10px 0 16px;
+  margin: -10px 0 18px;
   font-family: var(--dato);
   font-size: 12px;
   color: var(--marfil-40);
 }
 .modal-acciones {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
   margin-top: 4px;
 }
-.modal-acciones .boton { width: auto; margin-top: 0; }
+/* Mismo ancho para las dos: sin esto, cada botón medía justo lo que
+   pedía su propio texto y "Cancelar" (más largo) quedaba visiblemente
+   más ancho que "Guardar". */
+.modal-acciones .boton { flex: 1; width: auto; margin-top: 0; }
 
 /* Buscar y navegar por sección: input + botón de búsqueda (reutiliza
    .form-busqueda) y, debajo, un carrusel horizontal de chips —uno por
