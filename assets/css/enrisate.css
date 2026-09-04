@@ -787,7 +787,7 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   align-items: end;
 }
 .rejilla-campos .campo { margin-bottom: 0; }
-.rejilla-campos .boton.mini { align-self: start; }
+.rejilla-campos .boton.mini { align-self: end; }
 
 .etiqueta.agotado { color: var(--alerta); border-color: rgba(228, 137, 154, 0.45); }
 .etiqueta.bajo    { color: var(--champana); border-color: var(--linea); }
