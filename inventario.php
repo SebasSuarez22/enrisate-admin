@@ -118,10 +118,6 @@ $hayColumnaCategoria = productos_tiene_categoria();
 // lo que se escriba en el botón de descripción no se guarda.
 $hayColumnaDescripcion = productos_tiene_descripcion();
 
-// Productos que todavía no tienen categoría asignada ni se puede deducir
-// del nombre: son los que hay que clasificar a mano.
-$sinCategoria = array_values(array_filter(catalogo(), fn($p) => categoria_de($p) === ''));
-
 $token = csrf_token();
 
 $tituloPagina = 'Productos';
@@ -137,14 +133,6 @@ require __DIR__ . '/includes/cabecera.php';
     <p class="aviso" role="alert">
       Falta importar <code>storage/actualizar-2026-08-23-categorias.sql</code> desde phpMyAdmin.
       Mientras tanto la categoría se deduce del nombre.
-    </p>
-  <?php endif; ?>
-
-  <?php if ($hayColumnaCategoria && $sinCategoria): ?>
-    <p class="aviso neutro">
-      <?= count($sinCategoria) ?> producto<?= count($sinCategoria) === 1 ? '' : 's' ?> sin categoría
-      (no se pudo deducir del nombre). El catálogo público les muestra el nombre de la marca
-      en vez del tipo de producto hasta que se les asigne una desde la base de datos.
     </p>
   <?php endif; ?>
 
