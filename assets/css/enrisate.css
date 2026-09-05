@@ -685,12 +685,21 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   color: var(--marfil-40);
   border-bottom: 1px solid rgba(243, 234, 226, 0.08);
 }
+/* top, no middle: la fila mide lo que mide su celda más alta (el botón
+   de acción, 44px). Con "middle", una celda de una sola línea (Precio,
+   Costo) quedaba centrada en esa altura completa, mientras una celda de
+   dos líneas (nombre + SKU, o el monto + su % debajo) arranca arriba —
+   dos alturas de arranque distintas para números que deberían leerse en
+   la misma fila. "top" iguala el punto de partida de todas; la única
+   excepción es la casilla de selección, que si se queda arriba se ve
+   perdida en una fila alta y por eso vuelve a centrarse aparte. */
 .lineas td {
   padding: 13px 14px 13px 0;
   font-size: 14px;
-  vertical-align: middle;
+  vertical-align: top;
   border-bottom: 1px solid rgba(243, 234, 226, 0.06);
 }
+.lineas td:has(input[type="checkbox"]) { vertical-align: middle; }
 .lineas th:last-child, .lineas td:last-child { padding-right: 0; }
 .lineas .num { text-align: right; }
 .lineas .vacio td {
