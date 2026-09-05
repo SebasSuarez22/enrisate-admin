@@ -551,16 +551,14 @@ body.cp-con-carrito .cp-pie {
 .cp-hoja-cerrar svg { width: 16px; height: 16px; }
 .cp-hoja-cerrar:hover { background: var(--arena); }
 
-/* Logo de Enrísate en la ficha de producto: mismo tamaño y forma que
-   el círculo de cerrar, en la esquina opuesta. */
+/* Logo de Enrísate en la ficha de producto: mismo tamaño que el
+   círculo de cerrar, en la esquina opuesta, pero sin fondo ni borde
+   propio — el logo va directo sobre el blanco de la ficha. */
 .cp-hoja-logo {
   width: 44px; height: 44px; flex: none;
   display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--arena); border-radius: 50%;
-  background: var(--crema);
-  overflow: hidden;
 }
-.cp-hoja-logo img { width: 76%; height: 76%; object-fit: contain; }
+.cp-hoja-logo img { width: 100%; height: 100%; object-fit: contain; }
 
 .cp-hoja-cuerpo { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--sp-2) var(--sp-5) var(--sp-5); }
 
