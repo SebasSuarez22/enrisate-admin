@@ -21,7 +21,6 @@ $modulos = [
     ['Catálogo público', 'La vista sin login que ven las clientas. Arman su pedido y te llega por WhatsApp.', 'Listo', 'catalogo-publico.php', true],
     ['Cartera y reportes', 'Cuotas pendientes, historial de facturas y cómo va la ganancia y las ventas.', 'Listo', 'cartera.php'],
     ['Clientes',         'Nombre, teléfono y notas de cada clienta.',                          'Listo', 'clientes.php'],
-    ['Márgenes',         'Costo contra precio, producto por producto. Edítalos aquí.',         'Listo', 'margenes.php'],
 ];
 
 $tituloPagina = 'Panel';

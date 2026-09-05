@@ -41,6 +41,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         $error = 'Escribe el nombre y verifica que el producto exista.';
+    } elseif (($_POST['accion'] ?? '') === 'descripcion') {
+        $sku = (string) ($_POST['sku'] ?? '');
+        if (actualizar_descripcion($sku, (string) ($_POST['descripcion'] ?? ''))) {
+            header('Location: inventario.php?ok=descripcion');
+            exit;
+        }
+        $error = 'No encontré ese producto en el catálogo.';
     } else {
         $mensaje = agregar_producto(
             (string) ($_POST['sku'] ?? ''),
@@ -65,6 +72,8 @@ if (($_GET['ok'] ?? '') === 'agregado') {
 } elseif (($_GET['ok'] ?? '') === 'eliminados') {
     $n  = (int) ($_GET['n'] ?? 0);
     $ok = 'Se eliminó ' . $n . ' producto' . ($n === 1 ? '' : 's') . ' del catálogo.';
+} elseif (($_GET['ok'] ?? '') === 'descripcion') {
+    $ok = 'Descripción actualizada.';
 }
 
 $porMarca = [];
@@ -82,6 +91,11 @@ unset($ps);
 // deduciendo del nombre. Avisarlo aquí evita que parezca que el
 // desplegable "no funciona".
 $hayColumnaCategoria = productos_tiene_categoria();
+
+// Igual mecanismo que $hayColumnaCategoria: mientras no se importe
+// storage/actualizar-2026-09-05-descripcion.sql, la columna no existe y
+// lo que se escriba en el botón de descripción no se guarda.
+$hayColumnaDescripcion = productos_tiene_descripcion();
 
 // Productos que todavía no tienen categoría asignada ni se puede deducir
 // del nombre: son los que hay que clasificar a mano.
@@ -110,6 +124,13 @@ require __DIR__ . '/includes/cabecera.php';
       <?= count($sinCategoria) ?> producto<?= count($sinCategoria) === 1 ? '' : 's' ?> sin categoría
       (no se pudo deducir del nombre). El catálogo público les muestra el nombre de la marca
       en vez del tipo de producto hasta que se les asigne una desde la base de datos.
+    </p>
+  <?php endif; ?>
+
+  <?php if (!$hayColumnaDescripcion): ?>
+    <p class="aviso" role="alert">
+      Falta importar <code>storage/actualizar-2026-09-05-descripcion.sql</code> desde phpMyAdmin.
+      Mientras tanto, lo que escribas en el botón de descripción no se guarda.
     </p>
   <?php endif; ?>
 
@@ -210,6 +231,7 @@ require __DIR__ . '/includes/cabecera.php';
             <th class="num">Costo</th>
             <th class="num">Margen</th>
             <th></th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -231,6 +253,13 @@ require __DIR__ . '/includes/cabecera.php';
                         data-sku="<?= e($p['sku']) ?>"
                         title="Editar <?= e($p['nombre']) ?>" aria-label="Editar <?= e($p['nombre']) ?>">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l4 4"/></svg>
+                </button>
+              </td>
+              <td class="num">
+                <button type="button" class="boton-icono fantasma btn-descripcion-fila"
+                        data-sku="<?= e($p['sku']) ?>"
+                        title="Descripción de <?= e($p['nombre']) ?>" aria-label="Descripción de <?= e($p['nombre']) ?>">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5V8h4"/><path d="M8.5 12.5h6M8.5 16h4"/></svg>
                 </button>
               </td>
             </tr>
@@ -268,6 +297,28 @@ require __DIR__ . '/includes/cabecera.php';
 
         <div class="modal-acciones">
           <button type="button" class="boton mini fantasma" id="btnCancelarEditar">Cancelar</button>
+          <button type="submit" class="boton mini">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-fondo" id="modalDescripcionFondo" hidden>
+    <div class="modal-caja panel" role="dialog" aria-modal="true" aria-labelledby="modalDescripcionTitulo">
+      <h2 class="titulo-panel" id="modalDescripcionTitulo">Descripción del producto</h2>
+      <p class="modal-sku" id="modalDescripcionSkuTexto"></p>
+      <form method="post" action="inventario.php">
+        <input type="hidden" name="csrf" value="<?= e($token) ?>">
+        <input type="hidden" name="accion" value="descripcion">
+        <input type="hidden" name="sku" id="modalDescripcionSku">
+
+        <div class="campo">
+          <label for="modalDescripcionTexto">Descripción</label>
+          <textarea id="modalDescripcionTexto" name="descripcion" rows="4" placeholder="Ej: Shampoo reparador para cabello dañado, sin sulfatos, 250ml."></textarea>
+        </div>
+
+        <div class="modal-acciones">
+          <button type="button" class="boton mini fantasma" id="btnCancelarDescripcion">Cancelar</button>
           <button type="submit" class="boton mini">Guardar</button>
         </div>
       </form>
@@ -319,6 +370,41 @@ if (modalEditarFondo) {
    producto, sin marcar nada ni subir hasta la barra de arriba. */
 document.querySelectorAll('.btn-editar-fila').forEach(btn => {
   btn.addEventListener('click', () => abrirModalEditar(btn.dataset.sku));
+});
+
+/* Mismo patrón que el modal de editar, pero para la descripción de cada
+   producto: un botón por fila, un solo modal que se rellena según cuál
+   se apretó. */
+const modalDescripcionFondo = document.getElementById('modalDescripcionFondo');
+
+function abrirModalDescripcion(sku) {
+  const p = PRODUCTOS_POR_SKU[sku];
+  if (!p) return;
+
+  document.getElementById('modalDescripcionSkuTexto').textContent = p.marca + ' · ' + sku;
+  document.getElementById('modalDescripcionSku').value             = sku;
+  document.getElementById('modalDescripcionTexto').value           = p.descripcion || '';
+
+  modalDescripcionFondo.hidden = false;
+  document.getElementById('modalDescripcionTexto').focus();
+}
+
+function cerrarModalDescripcion() {
+  modalDescripcionFondo.hidden = true;
+}
+
+if (modalDescripcionFondo) {
+  document.getElementById('btnCancelarDescripcion').addEventListener('click', cerrarModalDescripcion);
+  modalDescripcionFondo.addEventListener('click', e => {
+    if (e.target === modalDescripcionFondo) cerrarModalDescripcion();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !modalDescripcionFondo.hidden) cerrarModalDescripcion();
+  });
+}
+
+document.querySelectorAll('.btn-descripcion-fila').forEach(btn => {
+  btn.addEventListener('click', () => abrirModalDescripcion(btn.dataset.sku));
 });
 
 /* La selección múltiple queda solo para eliminar. */

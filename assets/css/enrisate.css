@@ -223,6 +223,7 @@ input[type="date"],
 input[type="search"],
 input[type="password"],
 input[type="email"],
+textarea,
 select {
   width: 100%;
   min-height: var(--alto-control);
@@ -237,13 +238,18 @@ select {
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
-.campo input::placeholder { color: rgba(243, 234, 226, 0.24); }
+textarea { min-height: 96px; line-height: 1.5; resize: vertical; }
+
+.campo input::placeholder,
+.campo textarea::placeholder { color: rgba(243, 234, 226, 0.24); }
 
 .campo input:hover,
+.campo textarea:hover,
 select:hover,
 .buscador input[type="text"]:hover { border-color: rgba(243, 234, 226, 0.22); }
 
-.campo input:focus-visible {
+.campo input:focus-visible,
+.campo textarea:focus-visible {
   border-color: var(--champana);
   background: rgba(21, 12, 18, 0.85);
   box-shadow: 0 0 0 3px rgba(224, 184, 126, 0.16);
@@ -809,19 +815,15 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
    ancho del campo: el fondo, el borde y el alto salen de la regla base
    de controles, así ninguno vuelve a quedar sin estilo ni a media
    altura respecto de los botones que lo acompañan en la fila. */
-.form-abono,
-.form-precios {
+.form-abono {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: var(--sp-2);
 }
-.form-abono input[type="number"],
-.form-precios input[type="number"] { text-align: right; }
-.form-abono input[type="number"]   { width: 120px; }
+.form-abono input[type="number"] { text-align: right; width: 120px; }
 /* El botón de la fila iguala el alto del campo que tiene al lado. */
-.form-abono .boton,
-.form-precios .boton { min-height: var(--alto-control); }
+.form-abono .boton { min-height: var(--alto-control); }
 
 /* Acciones en una celda del historial (Ver + Anular/Reactivar) */
 .acciones-factura { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
@@ -944,13 +946,6 @@ a.boton-icono { text-decoration: none; }
 
 .form-editar-cliente { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 0; }
 .form-editar-cliente .campo { flex: 1 1 150px; margin-bottom: 0; }
-
-/* =========================================================
-   Márgenes
-   ========================================================= */
-/* El aspecto y el alto vienen de la base de controles; .form-precios
-   solo define su disposición (arriba, junto a .form-abono) y el ancho. */
-.form-precios input[type="number"] { width: 96px; }
 
 /* Botón "Traer clientas de facturación", suelto arriba de la tabla en
    Clientes — mismo espaciado de bloque que usa el resto de la página

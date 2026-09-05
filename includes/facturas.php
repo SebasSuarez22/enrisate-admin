@@ -39,6 +39,28 @@ function productos_tiene_categoria(): bool
 }
 
 /**
+ * ¿La tabla productos ya tiene la columna `descripcion`?
+ *
+ * La agrega storage/actualizar-2026-09-05-descripcion.sql. Mismo mecanismo
+ * defensivo que productos_tiene_categoria(): mientras no se haya
+ * importado, el catálogo sigue funcionando sin descripción.
+ */
+function productos_tiene_descripcion(): bool
+{
+    static $tiene = null;
+
+    if ($tiene === null) {
+        try {
+            $tiene = (bool) db()->query("SHOW COLUMNS FROM productos LIKE 'descripcion'")->fetch();
+        } catch (Throwable $e) {
+            $tiene = false;
+        }
+    }
+
+    return $tiene;
+}
+
+/**
  * Devuelve una referencia a la caché en memoria del catálogo, para que
  * catalogo() y guardar_catalogo() siempre vean el mismo estado dentro
  * de una misma petición.
@@ -48,9 +70,10 @@ function &catalogo_cache(): array
     static $cat = null;
 
     if ($cat === null) {
-        $columnaCategoria = productos_tiene_categoria() ? 'categoria, ' : '';
+        $columnaCategoria   = productos_tiene_categoria()   ? 'categoria, '   : '';
+        $columnaDescripcion = productos_tiene_descripcion() ? 'descripcion, ' : '';
         $filas = db()->query(
-            'SELECT sku, marca, nombre, ' . $columnaCategoria . 'precio, costo, stock
+            'SELECT sku, marca, nombre, ' . $columnaCategoria . $columnaDescripcion . 'precio, costo, stock
              FROM productos ORDER BY marca, nombre'
         )->fetchAll();
 
@@ -59,7 +82,8 @@ function &catalogo_cache(): array
                 'sku'    => (string) $p['sku'],
                 'marca'  => (string) $p['marca'],
                 'nombre' => (string) $p['nombre'],
-                'categoria' => (string) ($p['categoria'] ?? ''),
+                'categoria'   => (string) ($p['categoria'] ?? ''),
+                'descripcion' => (string) ($p['descripcion'] ?? ''),
                 'precio' => (int) $p['precio'],
                 'costo'  => (int) $p['costo'],
                 'stock'  => (int) $p['stock'],
@@ -70,6 +94,7 @@ function &catalogo_cache(): array
             foreach ($semilla as &$p) {
                 $p['stock'] = $p['stock'] ?? 0;
                 $p['categoria'] = $p['categoria'] ?? categoria_deducida((string) $p['nombre']);
+                $p['descripcion'] = $p['descripcion'] ?? '';
             }
             unset($p);
             $cat = $semilla;
@@ -93,14 +118,19 @@ function guardar_catalogo(array $productos): void
 
     $pdo->beginTransaction();
     try {
-        $conCategoria = productos_tiene_categoria();
+        $conCategoria   = productos_tiene_categoria();
+        $conDescripcion = productos_tiene_descripcion();
 
         $pdo->exec('DELETE FROM productos');
-        $st = $pdo->prepare($conCategoria
-            ? 'INSERT INTO productos (sku, marca, nombre, categoria, precio, costo, stock)
-               VALUES (:sku, :marca, :nombre, :categoria, :precio, :costo, :stock)'
-            : 'INSERT INTO productos (sku, marca, nombre, precio, costo, stock)
-               VALUES (:sku, :marca, :nombre, :precio, :costo, :stock)'
+
+        $columnas = ['sku', 'marca', 'nombre'];
+        if ($conCategoria)   $columnas[] = 'categoria';
+        if ($conDescripcion) $columnas[] = 'descripcion';
+        array_push($columnas, 'precio', 'costo', 'stock');
+
+        $st = $pdo->prepare(
+            'INSERT INTO productos (' . implode(', ', $columnas) . ')
+             VALUES (' . implode(', ', array_map(fn($c) => ':' . $c, $columnas)) . ')'
         );
         foreach ($productos as $p) {
             $fila = [
@@ -113,6 +143,9 @@ function guardar_catalogo(array $productos): void
             ];
             if ($conCategoria) {
                 $fila[':categoria'] = (string) ($p['categoria'] ?? '');
+            }
+            if ($conDescripcion) {
+                $fila[':descripcion'] = (string) ($p['descripcion'] ?? '');
             }
             $st->execute($fila);
         }
@@ -204,6 +237,27 @@ function actualizar_precio_costo(string $sku, int $precio, int $costo): bool
             $p['precio'] = max(0, $precio);
             $p['costo']  = max(0, $costo);
             $hallado     = true;
+            break;
+        }
+    }
+    unset($p);
+    if ($hallado) {
+        guardar_catalogo($productos);
+    }
+    return $hallado;
+}
+
+/** Fija la descripción de un SKU existente. Devuelve true si lo encontró. */
+function actualizar_descripcion(string $sku, string $descripcion): bool
+{
+    $descripcion = trim($descripcion);
+
+    $productos = catalogo();
+    $hallado   = false;
+    foreach ($productos as &$p) {
+        if ($p['sku'] === $sku) {
+            $p['descripcion'] = $descripcion;
+            $hallado          = true;
             break;
         }
     }
