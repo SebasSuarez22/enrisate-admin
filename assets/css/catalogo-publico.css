@@ -272,6 +272,7 @@ body {
   border: 1px solid var(--arena);
   border-radius: var(--radio-g);
   overflow: hidden;
+  cursor: pointer;
   transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease;
 }
 .cp-tarjeta[hidden] { display: none; }
@@ -567,6 +568,23 @@ body.cp-con-carrito .cp-pie {
   font-variant-numeric: tabular-nums;
 }
 .cp-hoja-subtitulo { margin: var(--sp-5) 0 var(--sp-4); }
+
+/* --- Ficha de producto: foto + descripción al tocar una tarjeta --- */
+.cp-hoja-producto { max-height: 92vh; }
+.cp-producto-cuerpo { display: flex; flex-direction: column; gap: var(--sp-4); }
+.cp-producto-foto {
+  border-radius: var(--radio);
+  overflow: hidden;
+}
+.cp-producto-foto .cp-img-wrap { aspect-ratio: 4 / 3; border-bottom: 0; }
+.cp-producto-descripcion {
+  margin: 0;
+  font-size: var(--t-base);
+  line-height: 1.55;
+  color: var(--tinta);
+  white-space: pre-line;
+}
+.cp-producto-descripcion.cp-sin-descripcion { color: var(--gris); font-style: italic; }
 
 .cp-hoja-pie {
   flex: none;

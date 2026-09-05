@@ -179,6 +179,7 @@ $logosPorMarca = [
                    data-sku="<?= e($p['sku']) ?>"
                    data-nombre="<?= e($p['nombre']) ?>"
                    data-precio="<?= (int) $p['precio'] ?>"
+                   data-descripcion="<?= e($p['descripcion'] ?? '') ?>"
                    data-busca="<?= e($busca) ?>">
             <div class="cp-img-wrap <?= $tieneFoto ? 'cp-img-foto' : '' ?>" style="--tipo-fondo: <?= $tipoFondo ?>; --tipo-tinta: <?= $tipoTinta ?>">
               <?php if ($tieneFoto): ?>
@@ -334,6 +335,29 @@ $logosPorMarca = [
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm5.8 14.06c-.25.69-1.44 1.32-1.99 1.37-.53.05-1.02.24-3.45-.72-2.9-1.14-4.75-4.1-4.9-4.29-.14-.19-1.17-1.55-1.17-2.96s.74-2.1 1-2.39c.26-.29.57-.36.76-.36l.54.01c.17.01.41-.07.64.49.25.6.84 2.07.91 2.22.07.15.12.32.02.51-.1.19-.15.31-.29.48l-.44.51c-.14.14-.29.3-.13.59.17.29.74 1.22 1.59 1.98 1.09.97 2.01 1.27 2.3 1.42.29.14.46.12.63-.07.17-.19.73-.85.92-1.14.19-.29.39-.24.65-.14.26.09 1.66.78 1.95.93.29.14.48.22.55.34.07.12.07.7-.18 1.39Z"/></svg>
       <span id="cpEnviarTexto">Confirmar y enviar por WhatsApp</span>
     </button>
+  </div>
+</div>
+
+<!-- Fondo oscurecido detrás de la ficha de producto -->
+<div class="cp-carrito-fondo" id="productoFondo" hidden></div>
+
+<!-- Ficha de producto: foto, nombre y descripción al tocar una tarjeta
+     (la descripción es la misma que se edita en Productos). -->
+<div class="cp-hoja-carrito cp-hoja-producto" id="hojaProducto" role="dialog" aria-modal="true" aria-labelledby="hojaProductoTitulo" hidden>
+  <div class="cp-hoja-agarradera" aria-hidden="true"></div>
+
+  <div class="cp-hoja-cabecera">
+    <h2 class="cp-hoja-titulo" id="hojaProductoTitulo">&nbsp;</h2>
+    <div class="cp-hoja-acciones">
+      <button type="button" class="cp-hoja-cerrar" id="cerrarProducto" aria-label="Cerrar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="cp-hoja-cuerpo cp-producto-cuerpo">
+    <div class="cp-producto-foto" id="productoFoto"></div>
+    <p class="cp-producto-descripcion" id="productoDescripcion"></p>
   </div>
 </div>
 
@@ -514,7 +538,7 @@ function cerrarCarrito() {
   if (hoja.hidden) return;
   fondo.classList.remove('visible');
   hoja.classList.remove('abierta');
-  document.body.classList.remove('cp-bloqueo-scroll');
+  if (hojaProducto.hidden) document.body.classList.remove('cp-bloqueo-scroll');
   fab.setAttribute('aria-expanded', 'false');
 
   let hecho = false;
@@ -645,6 +669,74 @@ document.querySelectorAll('.cp-tarjeta').forEach(tarjeta => {
     }
     sincronizarTarjeta(sku);
     actualizarCarrito();
+  });
+});
+
+/* --- Ficha de producto: foto + descripción al tocar la tarjeta (en
+       cualquier parte que no sea el botón "Agregar"). La descripción es
+       la misma que se edita en Productos; si todavía no tiene, se avisa
+       en vez de dejar la ficha vacía. --- */
+const productoFondo       = document.getElementById('productoFondo');
+const hojaProducto        = document.getElementById('hojaProducto');
+const cerrarProductoBtn   = document.getElementById('cerrarProducto');
+const hojaProductoTitulo  = document.getElementById('hojaProductoTitulo');
+const productoFoto        = document.getElementById('productoFoto');
+const productoDescripcion = document.getElementById('productoDescripcion');
+
+let ultimoFocoProducto = null;
+
+function abrirProducto(tarjeta) {
+  const imgWrap = tarjeta.querySelector('.cp-img-wrap');
+  const descripcion = (tarjeta.dataset.descripcion || '').trim();
+
+  hojaProductoTitulo.textContent = tarjeta.dataset.nombre;
+  productoFoto.innerHTML = '';
+  if (imgWrap) productoFoto.appendChild(imgWrap.cloneNode(true));
+
+  productoDescripcion.textContent = descripcion || 'Todavía no tiene descripción.';
+  productoDescripcion.classList.toggle('cp-sin-descripcion', !descripcion);
+
+  ultimoFocoProducto = document.activeElement;
+  productoFondo.hidden = false;
+  hojaProducto.hidden = false;
+  document.body.classList.add('cp-bloqueo-scroll');
+  requestAnimationFrame(() => {
+    productoFondo.classList.add('visible');
+    hojaProducto.classList.add('abierta');
+  });
+  cerrarProductoBtn.focus();
+}
+
+function cerrarProducto() {
+  if (hojaProducto.hidden) return;
+  productoFondo.classList.remove('visible');
+  hojaProducto.classList.remove('abierta');
+  if (hoja.hidden) document.body.classList.remove('cp-bloqueo-scroll');
+
+  let hecho = false;
+  const finalizar = () => {
+    if (hecho) return;
+    hecho = true;
+    productoFondo.hidden = true;
+    hojaProducto.hidden = true;
+    hojaProducto.removeEventListener('transitionend', finalizar);
+  };
+  hojaProducto.addEventListener('transitionend', finalizar);
+  setTimeout(finalizar, 350);
+
+  if (ultimoFocoProducto && document.contains(ultimoFocoProducto)) ultimoFocoProducto.focus();
+}
+
+cerrarProductoBtn.addEventListener('click', cerrarProducto);
+productoFondo.addEventListener('click', cerrarProducto);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !hojaProducto.hidden) cerrarProducto();
+});
+
+document.querySelectorAll('.cp-tarjeta').forEach(tarjeta => {
+  tarjeta.addEventListener('click', e => {
+    if (e.target.closest('.cp-fila-agregar')) return;
+    abrirProducto(tarjeta);
   });
 });
 
