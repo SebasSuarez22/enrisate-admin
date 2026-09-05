@@ -67,6 +67,8 @@ if (($_GET['ok'] ?? '') === '1') {
 $clientes = leer_clientes();
 usort($clientes, fn($a, $b) => $a['nombre'] <=> $b['nombre']);
 
+$facturas = leer_facturas();
+
 $token = csrf_token();
 
 $tituloPagina = 'Clientes';
@@ -137,13 +139,27 @@ require __DIR__ . '/includes/cabecera.php';
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($clientes as $c): $saldo = (int) ($c['saldo_favor'] ?? 0); ?>
+          <?php foreach ($clientes as $c): $saldo = (int) ($c['saldo_favor'] ?? 0); $stats = estadisticas_compra_cliente($c, $facturas); ?>
             <tr id="vista-<?= e($c['id']) ?>">
               <td><input type="checkbox" class="chk-cliente" id="chk-<?= e($c['id']) ?>" value="<?= e($c['id']) ?>" aria-label="Seleccionar a <?= e($c['nombre']) ?>"></td>
               <td><?= e($c['nombre']) ?></td>
               <td><?= e($c['telefono']) ?></td>
               <td class="num"><?= $saldo > 0 ? '<strong class="saldo-favor">' . pesos($saldo) . '</strong>' : '—' ?></td>
-              <td><?= e($c['notas']) ?></td>
+              <td>
+                <?= e($c['notas']) ?>
+                <?php if ($stats): ?>
+                  <div class="cliente-insights">
+                    <?php if ($stats['frecuencia_dias'] !== null): ?>
+                      <span class="cliente-insight">Compra cada <strong><?= $stats['frecuencia_dias'] < 1 ? 'muy seguido' : '~' . $stats['frecuencia_dias'] . ' días' ?></strong></span>
+                    <?php elseif ($stats['compras'] === 1): ?>
+                      <span class="cliente-insight">1 compra hasta ahora</span>
+                    <?php endif; ?>
+                    <?php if ($stats['favorito']): ?>
+                      <span class="cliente-insight">Favorito: <strong><?= e($stats['favorito']) ?></strong></span>
+                    <?php endif; ?>
+                  </div>
+                <?php endif; ?>
+              </td>
             </tr>
             <tr id="edicion-<?= e($c['id']) ?>" hidden>
               <td colspan="5">

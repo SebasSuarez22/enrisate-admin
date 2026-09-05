@@ -218,6 +218,63 @@ function agregar_cliente_desde_factura(string $nombre, string $telefono): void
     }
 }
 
+/**
+ * Cruza una clienta con su historial de facturación (mismo criterio de
+ * coincidencia que cliente_ya_existe(): por teléfono, o por nombre exacto
+ * si no hay teléfono) y devuelve, si tiene alguna factura sin anular:
+ *   - compras:          cuántas facturas tiene
+ *   - frecuencia_dias:  cada cuántos días compra en promedio (null con
+ *                        una sola factura, no hay con qué promediar)
+ *   - favorito:         el nombre del producto que más unidades suma
+ *                        entre todas sus facturas
+ * Devuelve null si la clienta no tiene ninguna factura (todavía no ha
+ * comprado, o las que tiene están todas anuladas).
+ */
+function estadisticas_compra_cliente(array $cliente, array $facturas): ?array
+{
+    $telefono = (string) ($cliente['telefono'] ?? '');
+    $nombre   = trim((string) ($cliente['nombre'] ?? ''));
+
+    $propias = array_values(array_filter($facturas, function (array $f) use ($telefono, $nombre): bool {
+        if (!empty($f['anulada'])) {
+            return false;
+        }
+        if ($telefono !== '' && normalizar_telefono((string) ($f['telefono'] ?? '')) === $telefono) {
+            return true;
+        }
+        return $telefono === '' && strcasecmp(trim((string) ($f['cliente'] ?? '')), $nombre) === 0;
+    }));
+
+    if (!$propias) {
+        return null;
+    }
+
+    $fechas = array_map(fn(array $f) => strtotime((string) $f['creada']), $propias);
+    sort($fechas);
+    $n = count($fechas);
+
+    $frecuenciaDias = null;
+    if ($n > 1) {
+        $rangoDias = ($fechas[$n - 1] - $fechas[0]) / 86400;
+        $frecuenciaDias = $rangoDias > 0 ? (int) round($rangoDias / ($n - 1)) : 0;
+    }
+
+    $unidadesPorProducto = [];
+    foreach ($propias as $f) {
+        foreach ($f['lineas'] as $l) {
+            $unidadesPorProducto[$l['nombre']] = ($unidadesPorProducto[$l['nombre']] ?? 0) + (int) $l['cant'];
+        }
+    }
+    arsort($unidadesPorProducto);
+    $favorito = $unidadesPorProducto ? array_key_first($unidadesPorProducto) : null;
+
+    return [
+        'compras'         => $n,
+        'frecuencia_dias' => $frecuenciaDias,
+        'favorito'        => $favorito,
+    ];
+}
+
 /** Mete a Clientes las clientas de facturas viejas que todavía no estén ahí. Devuelve cuántas agregó. */
 function sincronizar_clientes_desde_facturas(array $facturas): int
 {

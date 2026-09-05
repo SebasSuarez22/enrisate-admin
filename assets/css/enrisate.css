@@ -716,6 +716,26 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   letter-spacing: 0.06em;
   color: var(--marfil-40);
 }
+/* Debajo de las notas: cada cuánto compra la clienta y su producto
+   favorito, cruzando su nombre/teléfono con el historial de facturas
+   (ver estadisticas_compra_cliente() en includes/clientes.php). Solo
+   aparece cuando la clienta ya tiene facturas. */
+.cliente-insights {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+.cliente-insight {
+  font-family: var(--dato);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--marfil-40);
+}
+.cliente-insight strong {
+  color: var(--marfil-70, var(--marfil-40));
+  font-weight: 600;
+}
 .quitar {
   width: 26px;
   height: 26px;
