@@ -401,7 +401,16 @@ body {
 body.cp-con-carrito .cp-pie {
   padding-bottom: calc(var(--sp-10) + 56px + env(safe-area-inset-bottom, 0px));
 }
-.cp-pie-logo { display: block; width: 34px; height: 34px; margin: 0 auto var(--sp-4); }
+/* El archivo es café sobre transparente (el mismo del encabezado); en
+   vez de duplicar el logo en otro color, este filtro lo deja en blanco
+   puro para que se lea sobre el fondo oscuro del pie. */
+.cp-pie-logo {
+  display: block;
+  width: 140px;
+  height: auto;
+  margin: 0 auto var(--sp-4);
+  filter: brightness(0) invert(1);
+}
 .cp-pie-titulo {
   margin: 0 0 var(--sp-5);
   font-family: "Fraunces", Georgia, serif;
