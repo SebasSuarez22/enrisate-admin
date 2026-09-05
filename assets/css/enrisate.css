@@ -896,8 +896,6 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   box-sizing: border-box;
 }
 
-.saldo-favor { color: #8FCB9B; font-weight: 600; }
-
 /* Acciones en una celda de "Pedidos por revisar" (Confirmar y facturar +
    Descartar): usan .boton.compacto, el tamaño chico del sistema, en vez
    de redefinir "mini" por su cuenta como hacían antes. */

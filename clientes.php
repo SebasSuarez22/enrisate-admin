@@ -134,7 +134,6 @@ require __DIR__ . '/includes/cabecera.php';
             <th><input type="checkbox" id="chkTodosClientes" aria-label="Seleccionar todas"></th>
             <th>Nombre</th>
             <th>Teléfono</th>
-            <th class="num">Saldo a favor</th>
             <th>Notas</th>
           </tr>
         </thead>
@@ -144,7 +143,6 @@ require __DIR__ . '/includes/cabecera.php';
               <td><input type="checkbox" class="chk-cliente" id="chk-<?= e($c['id']) ?>" value="<?= e($c['id']) ?>" aria-label="Seleccionar a <?= e($c['nombre']) ?>"></td>
               <td><?= e($c['nombre']) ?></td>
               <td><?= e($c['telefono']) ?></td>
-              <td class="num"><?= $saldo > 0 ? '<strong class="saldo-favor">' . pesos($saldo) . '</strong>' : '—' ?></td>
               <td>
                 <?= e($c['notas']) ?>
                 <?php if ($stats): ?>
@@ -162,7 +160,7 @@ require __DIR__ . '/includes/cabecera.php';
               </td>
             </tr>
             <tr id="edicion-<?= e($c['id']) ?>" hidden>
-              <td colspan="5">
+              <td colspan="4">
                 <form method="post" action="clientes.php" class="form-editar-cliente">
                   <input type="hidden" name="csrf" value="<?= e($token) ?>">
                   <input type="hidden" name="accion" value="editar">
