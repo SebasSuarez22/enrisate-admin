@@ -14,7 +14,13 @@ declare(strict_types=1);
 
 define('PRODUCTOS_IMG_DIR', BASE_DIR . '/assets/img/productos');
 define('PRODUCTOS_IMG_WEB', 'assets/img/productos');
-define('PRODUCTOS_IMG_MAX', 1200); // lado más largo que se guarda, en px
+// Lado más largo que se guarda, en px. La tarjeta del catálogo público
+// nunca la muestra a más de ~210px de ancho (7 columnas en el punto más
+// ancho), así que 1200px era puro peso sin ganancia de nitidez ni
+// siquiera en pantallas de 3x: una foto de celular normal salía en
+// ~400-500 KB. 640px es lo que ya usan las fotos reales que había antes
+// de esta función (20-30 KB cada una) y se ve igual de nítida.
+define('PRODUCTOS_IMG_MAX', 640);
 define('PRODUCTOS_IMG_EXTS', ['webp', 'jpg', 'jpeg', 'png']);
 
 /** Ruta relativa (para <img src>) de la foto de un SKU, o null si no tiene. */
