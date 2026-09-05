@@ -230,7 +230,7 @@ $logosPorMarca = [
     $waVisible = '+' . substr($waCrudo, 0, 2) . ' ' . substr($waCrudo, 2, 3)
                . ' ' . substr($waCrudo, 5, 3) . ' ' . substr($waCrudo, 8);
   ?>
-  <img class="cp-pie-logo" src="<?= e(cp_img_v('assets/img/logo.svg')) ?>" alt="" width="34" height="34">
+  <img class="cp-pie-logo" src="<?= e(cp_img_v('assets/img/logo-blanco.svg')) ?>" alt="" width="34" height="34">
   <p class="cp-pie-titulo">¿Dudas o pedidos? Escríbenos</p>
 
   <nav class="cp-pie-redes" aria-label="Contacto y redes">
