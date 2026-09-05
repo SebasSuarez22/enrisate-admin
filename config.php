@@ -6,6 +6,12 @@ declare(strict_types=1);
    Configuración central
    ========================================================= */
 
+/* Sin esto, PHP usa la zona horaria del servidor (a veces UTC), y el
+   saludo de "Buenos días/tardes/noches" del panel quedaba con la hora
+   de otro país en vez de la de Colombia. Colombia no cambia de hora
+   en el año, así que un solo valor fijo sirve siempre. */
+date_default_timezone_set('America/Bogota');
+
 /* --- Identidad --- */
 const APP_NOMBRE  = 'Enrísate';
 const APP_TAGLINE = 'Cuidado del cabello';
