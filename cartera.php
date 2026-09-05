@@ -64,9 +64,13 @@ if (($_GET['ok'] ?? '') === 'abono') {
         $msg .= "Recibimos tu abono de " . pesos($monto) . " (" . fecha_larga(date('Y-m-d')) . ").\n";
         $msg .= "Corresponde a la cuota de " . pesos((int) $cuotaAbono['monto'])
               . " con vencimiento " . fecha_larga($cuotaAbono['vence']) . ".\n";
-        $msg .= $pendiente > 0
-            ? "Saldo pendiente de esa cuota: " . pesos($pendiente) . "\n"
-            : "Con esto, esa cuota queda completa. ¡Gracias!\n";
+        if ($pendiente > 0) {
+            $msg .= "Saldo pendiente de esa cuota: " . pesos($pendiente) . "\n";
+        } elseif (factura_totalmente_pagada($fAbono)) {
+            $msg .= "¡Con esto completaste tu compra! Muchas gracias, eres un cliente muy valioso para nosotros. 💛\n";
+        } else {
+            $msg .= "Con esto, esa cuota queda completa. ¡Gracias!\n";
+        }
 
         $waAbono = enlace_whatsapp($fAbono['telefono'], $msg);
     }

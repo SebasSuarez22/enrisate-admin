@@ -561,6 +561,28 @@ function cuota_esta_pagada(array $cuota): bool
 }
 
 /**
+ * true si la factura ya quedó completamente pagada: de contado (lo
+ * pagado cubre el total) o a cuotas con todas las cuotas al día. Se usa
+ * para saber cuándo el mensaje de WhatsApp debe agradecer la compra
+ * completa en vez de solo confirmar un abono o un pedido pendiente.
+ */
+function factura_totalmente_pagada(array $f): bool
+{
+    if (($f['plan'] ?? 'contado') === 'cuotas') {
+        if (!$f['cuotas']) {
+            return false;
+        }
+        foreach ($f['cuotas'] as $c) {
+            if (!cuota_esta_pagada($c)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return (int) ($f['pagado'] ?? 0) >= (int) ($f['total'] ?? 0);
+}
+
+/**
  * Garantiza que una factura a cuotas tenga el array `cuotas` (formato
  * nuevo). Si viene en el formato viejo (cuota1/cuota2 sueltos), lo
  * traduce en memoria; no reescribe el archivo. Facturas de contado, o que

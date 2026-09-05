@@ -39,7 +39,9 @@ if ($f['plan'] === 'cuotas') {
 if (!empty($f['nota'])) {
     $msg .= "\n" . $f['nota'];
 }
-$msg .= "\n¡Gracias por confiar en nosotros!";
+$msg .= "\n" . (factura_totalmente_pagada($f)
+    ? "¡Gracias por tu compra! Eres un cliente muy valioso para nosotros. 💛"
+    : "¡Gracias por confiar en nosotros!");
 
 $wa = enlace_whatsapp($f['telefono'], $msg);
 ?>
