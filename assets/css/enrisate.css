@@ -952,7 +952,10 @@ a.boton-icono { text-decoration: none; }
 .panel-descuento input[name="motivo"] { flex: 1 1 220px; }
 .panel-descuento input[type="number"] { width: 110px; flex: none; }
 
-.form-editar-cliente { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 0; }
+/* align-items: end, no center: los campos tienen etiqueta arriba y los
+   botones no, así que centrar contra todo el bloque (etiqueta + campo)
+   dejaba los botones más arriba que las cajas de los campos. */
+.form-editar-cliente { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; padding: 6px 0; }
 .form-editar-cliente .campo { flex: 1 1 150px; margin-bottom: 0; }
 
 /* Botón "Traer clientas de facturación", suelto arriba de la tabla en
