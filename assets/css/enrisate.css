@@ -985,7 +985,7 @@ a.boton-icono { text-decoration: none; }
 /* Botón "Traer clientas de facturación", suelto arriba de la tabla en
    Clientes — mismo espaciado de bloque que usa el resto de la página
    (antes tenía un margen suelto de 18px por estilo en línea). */
-.form-sincronizar { margin-bottom: var(--sp-bloque); }
+.form-sincronizar { margin-top: 12px; margin-bottom: var(--sp-bloque); }
 
 /* =========================================================
    Eliminar en lote (Clientes, Productos)
