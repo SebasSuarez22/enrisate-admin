@@ -121,7 +121,7 @@ $logosPorMarca = [
     // Logo chico en WebP (2026-08-29) solo para este <img>: es lo primero que
     // pinta la página en cada visita. El .png grande original se queda intacto
     // como og:image, porque WhatsApp arma la vista previa del enlace con él.
-    $logoHeader = 'assets/img/logo-enrisate-header.webp';
+    $logoHeader = 'assets/img/logo-enrisate-header.png';
   ?>
   <p class="cp-marca"><img src="<?= e(cp_img_v($logoHeader)) ?>" alt="<?= e(APP_NOMBRE) ?>" class="cp-logo" <?= cp_img_attrs($logoHeader) ?> fetchpriority="high"></p>
   <h1 class="cp-tagline"><?= e(APP_TAGLINE) ?></h1>
@@ -230,7 +230,7 @@ $logosPorMarca = [
     $waVisible = '+' . substr($waCrudo, 0, 2) . ' ' . substr($waCrudo, 2, 3)
                . ' ' . substr($waCrudo, 5, 3) . ' ' . substr($waCrudo, 8);
   ?>
-  <img class="cp-pie-logo" src="<?= e(cp_img_v('assets/img/logo-enrisate-header.webp')) ?>" alt="" <?= cp_img_attrs('assets/img/logo-enrisate-header.webp') ?>>
+  <img class="cp-pie-logo" src="<?= e(cp_img_v('assets/img/logo-enrisate-pie.png')) ?>" alt="" <?= cp_img_attrs('assets/img/logo-enrisate-pie.png') ?>>
   <p class="cp-pie-titulo">¿Dudas o pedidos? Escríbenos</p>
 
   <nav class="cp-pie-redes" aria-label="Contacto y redes">
