@@ -675,7 +675,7 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
 .tabla-scroll { overflow-x: auto; }
 .lineas { width: 100%; border-collapse: collapse; }
 .lineas th {
-  padding: 0 14px 10px 0;
+  padding: 5px 14px 5px 0;
   font-family: var(--dato);
   font-size: 9.5px;
   font-weight: 500;
@@ -726,6 +726,12 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   gap: 2px;
   margin-top: 4px;
 }
+/* Si la clienta no tiene notas escritas, este bloque es lo primero que
+   hay en la celda: sin el margen no queda más abajo que el resto de
+   la fila (Nombre, Teléfono, Saldo a favor). */
+.cliente-insights:first-child {
+  margin-top: 0;
+}
 .cliente-insight {
   font-family: var(--dato);
   font-size: 10px;
@@ -733,7 +739,7 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   color: var(--marfil-40);
 }
 .cliente-insight strong {
-  color: var(--champana);
+  color: #8FCB9B;
   font-weight: 600;
 }
 .quitar {
