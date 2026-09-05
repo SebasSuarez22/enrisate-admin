@@ -588,7 +588,8 @@ body.cp-con-carrito .cp-pie {
 }
 .cp-producto-descripcion {
   margin: 0;
-  text-align: left;
+  text-align: justify;
+  text-justify: inter-word;
   font-family: Fraunces, Georgia, serif;
   font-size: var(--t-md);
   font-weight: 400;
