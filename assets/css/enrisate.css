@@ -739,7 +739,7 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   color: var(--marfil-40);
 }
 .cliente-insight strong {
-  color: #8FCB9B;
+  color: var(--rosa);
   font-weight: 600;
 }
 .quitar {
