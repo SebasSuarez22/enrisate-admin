@@ -577,14 +577,31 @@ body.cp-con-carrito .cp-pie {
   overflow: hidden;
 }
 .cp-producto-foto .cp-img-wrap { aspect-ratio: 4 / 3; border-bottom: 0; }
+.cp-producto-texto { display: flex; flex-direction: column; gap: var(--sp-2); }
+.cp-producto-etiqueta {
+  margin: 0;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--cacao);
+}
 .cp-producto-descripcion {
   margin: 0;
-  font-size: var(--t-base);
-  line-height: 1.55;
+  text-align: left;
+  font-family: Fraunces, Georgia, serif;
+  font-size: var(--t-md);
+  font-weight: 400;
+  line-height: 1.65;
   color: var(--tinta);
   white-space: pre-line;
 }
-.cp-producto-descripcion.cp-sin-descripcion { color: var(--gris); font-style: italic; }
+.cp-producto-descripcion.cp-sin-descripcion {
+  font-family: Manrope, sans-serif;
+  font-size: var(--t-base);
+  color: var(--gris);
+  font-style: italic;
+}
 
 .cp-hoja-pie {
   flex: none;

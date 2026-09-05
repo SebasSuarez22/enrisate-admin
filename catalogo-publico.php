@@ -357,7 +357,10 @@ $logosPorMarca = [
 
   <div class="cp-hoja-cuerpo cp-producto-cuerpo">
     <div class="cp-producto-foto" id="productoFoto"></div>
-    <p class="cp-producto-descripcion" id="productoDescripcion"></p>
+    <div class="cp-producto-texto">
+      <p class="cp-producto-etiqueta">Descripción</p>
+      <p class="cp-producto-descripcion" id="productoDescripcion"></p>
+    </div>
   </div>
 </div>
 
