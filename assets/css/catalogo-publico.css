@@ -370,15 +370,19 @@ body {
 /* --- Pie --- */
 .cp-pie {
   padding: var(--sp-8) var(--sp-4);
-  /* El carrito flotante se queda encima del pie en móvil: sin este
-     respiro, tapa los botones de contacto justo cuando la clienta los
-     busca. */
-  padding-bottom: calc(var(--sp-10) + 56px + env(safe-area-inset-bottom, 0px));
   text-align: center;
   font-size: var(--t-sm);
   color: var(--gris);
   background: var(--crema);
   border-top: 1px solid var(--arena);
+}
+/* El carrito flotante tapa el pie en móvil cuando está a la vista —
+   pero solo hay carrito flotante con el pedido ya empezado (body.cp-con-
+   carrito, activado por actualizarCarrito()), no con la página recién
+   abierta. Reservarle este respiro siempre, aunque no hubiera botón que
+   tapar nada, era el aire de sobra al final de la página. */
+body.cp-con-carrito .cp-pie {
+  padding-bottom: calc(var(--sp-10) + 56px + env(safe-area-inset-bottom, 0px));
 }
 .cp-pie-titulo {
   margin: 0 0 var(--sp-5);

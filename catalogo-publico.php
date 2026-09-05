@@ -473,6 +473,10 @@ function actualizarInsignia() {
 function actualizarCarrito() {
   const hayPedido = pedido.length > 0;
   fab.hidden = !hayPedido;
+  // El pie reserva espacio de más solo mientras el botón flotante está
+  // realmente ahí (con carrito vacío, que es la mayoría de las visitas,
+  // no hace falta ese aire de sobra al final de la página).
+  document.body.classList.toggle('cp-con-carrito', hayPedido);
 
   if (!hayPedido) {
     cerrarCarrito();
