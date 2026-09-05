@@ -368,13 +368,16 @@ body {
 }
 
 /* --- Pie --- */
+/* Mismo tono oscuro que la franja de arriba (.cp-franja): la página
+   queda enmarcada entre las dos, en vez de que el pie se sienta como un
+   simple corte del crema de fondo. El degradado radial repite el truco
+   del encabezado (luz que cae desde arriba), pero invertido en tono. */
 .cp-pie {
-  padding: var(--sp-8) var(--sp-4);
+  padding: var(--sp-10) var(--sp-4) var(--sp-8);
   text-align: center;
   font-size: var(--t-sm);
-  color: var(--gris);
-  background: var(--crema);
-  border-top: 1px solid var(--arena);
+  color: #C9AF95;
+  background: radial-gradient(120% 140% at 50% 0%, #4A2C15 0%, var(--tinta) 65%);
 }
 /* El carrito flotante tapa el pie en móvil cuando está a la vista —
    pero solo hay carrito flotante con el pedido ya empezado (body.cp-con-
@@ -384,11 +387,12 @@ body {
 body.cp-con-carrito .cp-pie {
   padding-bottom: calc(var(--sp-10) + 56px + env(safe-area-inset-bottom, 0px));
 }
+.cp-pie-logo { display: block; width: 34px; height: 34px; margin: 0 auto var(--sp-4); }
 .cp-pie-titulo {
   margin: 0 0 var(--sp-5);
   font-family: "Fraunces", Georgia, serif;
   font-size: var(--t-lg);
-  color: var(--tinta);
+  color: var(--papel);
 }
 
 /* WhatsApp e Instagram: mismo alto de toque (44 px) y misma forma que el
