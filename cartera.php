@@ -282,7 +282,7 @@ require __DIR__ . '/includes/cabecera.php';
       <table class="lineas">
         <thead>
           <tr>
-            <th>Clienta</th>
+            <th>Cliente</th>
             <th>No. factura</th>
             <th>Cuota</th>
             <th>Vence</th>
@@ -364,7 +364,7 @@ require __DIR__ . '/includes/cabecera.php';
 
     <form method="get" action="cartera.php#historial" class="form-busqueda">
       <div class="campo apretado">
-        <input type="search" name="q" value="<?= e($q) ?>" id="buscar-historial" placeholder="Buscar por clienta o número de factura…">
+        <input type="search" name="q" value="<?= e($q) ?>" id="buscar-historial" placeholder="Buscar por cliente o número de factura…">
       </div>
       <button type="submit" class="boton mini">Buscar</button>
       <?php if ($q !== ''): ?><a class="salir" href="cartera.php#historial">Limpiar</a><?php endif; ?>
@@ -379,7 +379,7 @@ require __DIR__ . '/includes/cabecera.php';
           <tr>
             <th>No.</th>
             <th>Fecha</th>
-            <th>Clienta</th>
+            <th>Cliente</th>
             <th class="num">Total</th>
             <th class="num">Ganancia</th>
             <th>Estado</th>

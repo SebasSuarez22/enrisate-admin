@@ -119,7 +119,7 @@ echo "<?mso-application progid=\"Excel.Sheet\"?>\n";
    <Column ss:Width="100"/>
    <Column ss:Width="110"/>
    <Row>
-    <?= xls_celda_texto('Clienta', 'encabezado') ?>
+    <?= xls_celda_texto('Cliente', 'encabezado') ?>
     <?= xls_celda_texto('Teléfono', 'encabezado') ?>
     <?= xls_celda_texto('No. factura', 'encabezado') ?>
     <?= xls_celda_texto('Cuota', 'encabezado') ?>

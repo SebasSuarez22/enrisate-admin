@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $items    = json_decode((string) ($_POST['items'] ?? '[]'), true);
 
         if ($cliente === '') {
-            $error = 'Escribe el nombre de la clienta.';
+            $error = 'Escribe el nombre del cliente.';
         } elseif (!is_array($items) || count($items) === 0) {
             $error = 'Agrega al menos un producto a la cuenta.';
         } else {
@@ -192,7 +192,7 @@ require __DIR__ . '/includes/cabecera.php';
 
 <main class="lienzo ancho">
   <h1 class="saludo">Nueva cuenta de cobro</h1>
-  <p class="subsaludo">Escoge los productos, define cómo paga la clienta y se genera el PDF.</p>
+  <p class="subsaludo">Escoge los productos, define cómo paga el cliente y se genera el PDF.</p>
 
   <?php if ($error !== ''): ?>
     <p class="aviso" role="alert"><?= e($error) ?></p>
@@ -247,23 +247,23 @@ require __DIR__ . '/includes/cabecera.php';
 
       <!-- ------------- Clienta y pago ------------- -->
       <section class="panel">
-        <h2 class="titulo-panel">Clienta</h2>
+        <h2 class="titulo-panel">Cliente</h2>
 
         <div class="opciones">
           <label class="opcion">
             <input type="radio" name="modoCliente" value="existente" <?= $clientesExistentes ? 'checked' : '' ?>>
-            <span>Clienta existente</span>
+            <span>Cliente existente</span>
           </label>
           <label class="opcion">
             <input type="radio" name="modoCliente" value="nueva" <?= !$clientesExistentes ? 'checked' : '' ?>>
-            <span>Nueva clienta</span>
+            <span>Nuevo cliente</span>
           </label>
         </div>
 
         <div class="campo" id="campoClienteSel">
           <label for="clienteSel">Elige de la lista</label>
           <select id="clienteSel" <?= !$clientesExistentes ? 'disabled' : '' ?>>
-            <option value="">Selecciona una clienta…</option>
+            <option value="">Selecciona un cliente…</option>
             <?php foreach ($clientesExistentes as $c): ?>
               <option value="<?= e($c['nombre']) ?>"
                       data-id="<?= e($c['id']) ?>"
@@ -274,7 +274,7 @@ require __DIR__ . '/includes/cabecera.php';
             <?php endforeach; ?>
           </select>
           <?php if (!$clientesExistentes): ?>
-            <p class="pista">Todavía no hay clientas guardadas — usa "Nueva clienta".</p>
+            <p class="pista">Todavía no hay clientes guardados — usa "Nuevo cliente".</p>
           <?php endif; ?>
         </div>
 
@@ -320,7 +320,7 @@ require __DIR__ . '/includes/cabecera.php';
           <div class="campo">
             <label for="abono">Abono recibido</label>
             <input type="number" id="abono" name="abono" min="0" step="500" value="0">
-            <p class="pista">Lo que la clienta ya te pagó. No es descuento: no baja la ganancia.</p>
+            <p class="pista">Lo que el cliente ya te pagó. No es descuento: no baja la ganancia.</p>
           </div>
           <div class="campo">
             <label for="numCuotas">Número de cuotas</label>
@@ -330,13 +330,13 @@ require __DIR__ . '/includes/cabecera.php';
               <option value="3">3 cuotas</option>
               <option value="4">4 cuotas</option>
             </select>
-            <p class="pista">"1 cuota" es para una clienta que paga todo junto pero en una fecha futura (su día de pago): queda pendiente hasta que marques el pago, y se ve como vencida si no paga a tiempo — a diferencia de "De contado", que se da por pagado el mismo día.</p>
+            <p class="pista">"1 cuota" es para un cliente que paga todo junto pero en una fecha futura (su día de pago): queda pendiente hasta que marques el pago, y se ve como vencida si no paga a tiempo — a diferencia de "De contado", que se da por pagado el mismo día.</p>
           </div>
           <div id="filasCuotas"></div>
         </div>
 
         <div class="campo">
-          <label for="nota">Nota para la clienta</label>
+          <label for="nota">Nota para el cliente</label>
           <input type="text" id="nota" name="nota" placeholder="Opcional">
         </div>
 
@@ -678,7 +678,7 @@ document.getElementById('cuenta').addEventListener('submit', e => {
   if (modo === 'existente' && !clienteInput.value) {
     e.preventDefault();
     clienteSel.focus();
-    alert('Elige una clienta de la lista, o cambia a "Nueva clienta".');
+    alert('Elige un cliente de la lista, o cambia a "Nuevo cliente".');
   }
 });
 

@@ -41,7 +41,7 @@ require __DIR__ . '/includes/cabecera.php';
 
 <main class="lienzo ancho">
   <h1 class="saludo">Pedidos</h1>
-  <p class="subsaludo">Lo que llega del catálogo público. Revisa cada uno y confirma la factura, o descarta si la clienta no siguió.</p>
+  <p class="subsaludo">Lo que llega del catálogo público. Revisa cada uno y confirma la factura, o descarta si el cliente no siguió.</p>
 
   <?php if ($error !== ''): ?>
     <p class="aviso" role="alert"><?= e($error) ?></p>
@@ -60,7 +60,7 @@ require __DIR__ . '/includes/cabecera.php';
       <table class="lineas">
         <thead>
           <tr>
-            <th>Clienta</th>
+            <th>Cliente</th>
             <th>Productos</th>
             <th>Plan propuesto</th>
             <th class="num">Total</th>
@@ -118,7 +118,7 @@ require __DIR__ . '/includes/cabecera.php';
         <thead>
           <tr>
             <th>No.</th>
-            <th>Clienta</th>
+            <th>Cliente</th>
             <th class="num">Total</th>
             <th>Estado</th>
             <th></th>

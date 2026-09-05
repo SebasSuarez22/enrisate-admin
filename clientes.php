@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: clientes.php?ok=eliminadas&n=' . $borradas);
             exit;
         }
-        $error = 'Selecciona al menos una clienta para eliminar.';
+        $error = 'Selecciona al menos un cliente para eliminar.';
     } else {
         $mensaje = agregar_cliente(
             (string) ($_POST['nombre'] ?? ''),
@@ -51,17 +51,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (($_GET['ok'] ?? '') === '1') {
-    $ok = 'Clienta agregada a la lista.';
+    $ok = 'Cliente agregado a la lista.';
 } elseif (($_GET['ok'] ?? '') === 'editada') {
-    $ok = 'Datos de la clienta actualizados.';
+    $ok = 'Datos del cliente actualizados.';
 } elseif (($_GET['ok'] ?? '') === 'eliminadas') {
     $n  = (int) ($_GET['n'] ?? 0);
-    $ok = 'Se eliminó ' . $n . ' clienta' . ($n === 1 ? '' : 's') . ' de la lista.';
+    $ok = 'Se eliminó ' . $n . ' cliente' . ($n === 1 ? '' : 's') . ' de la lista.';
 } elseif (($_GET['ok'] ?? '') === 'sync') {
     $n  = (int) ($_GET['n'] ?? 0);
     $ok = $n > 0
-        ? 'Se agregaron ' . $n . ' clienta' . ($n === 1 ? '' : 's') . ' que ya estaban en facturación.'
-        : 'Ya estaban todas: no había clientas nuevas por agregar desde facturación.';
+        ? 'Se agregaron ' . $n . ' cliente' . ($n === 1 ? '' : 's') . ' que ya estaban en facturación.'
+        : 'Ya estaban todos: no había clientes nuevos por agregar desde facturación.';
 }
 
 $clientes = leer_clientes();
@@ -78,7 +78,7 @@ require __DIR__ . '/includes/cabecera.php';
 
 <main class="lienzo ancho">
   <h1 class="saludo">Clientes</h1>
-  <p class="subsaludo">La lista de clientas: nombre, teléfono y notas. Ve agregándolas aquí a medida que las tengas.</p>
+  <p class="subsaludo">La lista de clientes: nombre, teléfono y notas. Ve agregándolos aquí a medida que los tengas.</p>
 
   <?php if ($error !== ''): ?>
     <p class="aviso" role="alert"><?= e($error) ?></p>
@@ -88,7 +88,7 @@ require __DIR__ . '/includes/cabecera.php';
   <?php endif; ?>
 
   <section class="panel">
-    <h2 class="titulo-panel">Agregar clienta</h2>
+    <h2 class="titulo-panel">Agregar cliente</h2>
     <form method="post" action="clientes.php" class="rejilla-campos">
       <input type="hidden" name="csrf" value="<?= e($token) ?>">
 
@@ -105,27 +105,27 @@ require __DIR__ . '/includes/cabecera.php';
         <input type="text" id="cNotas" name="notas" placeholder="Opcional">
       </div>
 
-      <button type="submit" class="boton mini">Agregar clienta</button>
+      <button type="submit" class="boton mini">Agregar cliente</button>
     </form>
   </section>
 
   <section class="panel">
-    <h2 class="titulo-panel">Todas las clientas</h2>
-    <p class="subsaludo">Cada factura nueva agrega a la clienta aquí solita. Si tienes facturas viejas de antes de este cambio, usa este botón una vez para traerlas.</p>
+    <h2 class="titulo-panel">Todos los clientes</h2>
+    <p class="subsaludo">Cada factura nueva agrega al cliente aquí solito. Si tienes facturas viejas de antes de este cambio, usa este botón una vez para traerlas.</p>
     <form method="post" action="clientes.php" class="form-sincronizar">
       <input type="hidden" name="csrf" value="<?= e($token) ?>">
       <input type="hidden" name="accion" value="sincronizar">
-      <button type="submit" class="boton mini">Traer clientas de facturación</button>
+      <button type="submit" class="boton mini">Traer clientes de facturación</button>
     </form>
     <?php if (!$clientes): ?>
-      <p class="subsaludo">Todavía no hay clientas en la lista.</p>
+      <p class="subsaludo">Todavía no hay clientes en la lista.</p>
     <?php else: ?>
       <form method="post" action="clientes.php" id="form-eliminar-clientes" class="barra-eliminar">
         <input type="hidden" name="csrf" value="<?= e($token) ?>">
         <input type="hidden" name="accion" value="eliminar">
         <input type="hidden" name="ids" id="idsEliminarClientes" value="">
-        <button type="button" id="btnEditarSeleccionada" class="boton mini" disabled>Editar seleccionada</button>
-        <button type="submit" class="boton mini peligro">Eliminar seleccionadas</button>
+        <button type="button" id="btnEditarSeleccionada" class="boton mini" disabled>Editar seleccionado</button>
+        <button type="submit" class="boton mini peligro">Eliminar seleccionados</button>
       </form>
       <div class="tabla-scroll">
       <table class="lineas">
@@ -212,10 +212,10 @@ const loteClientes = seleccionEnLote({
     document.getElementById('edicion-' + id).scrollIntoView({ behavior: 'smooth', block: 'center' });
   },
   textos: {
-    ninguno: 'Selecciona al menos una clienta para eliminar.',
+    ninguno: 'Selecciona al menos un cliente para eliminar.',
     confirmar: n => n === 1
-      ? '¿Eliminar la clienta seleccionada? Esta acción no se puede deshacer.'
-      : '¿Eliminar las ' + n + ' clientas seleccionadas? Esta acción no se puede deshacer.',
+      ? '¿Eliminar el cliente seleccionado? Esta acción no se puede deshacer.'
+      : '¿Eliminar los ' + n + ' clientes seleccionados? Esta acción no se puede deshacer.',
   },
 });
 

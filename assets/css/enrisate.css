@@ -428,7 +428,6 @@ a.boton { display: inline-block; text-decoration: none; }
 }
 .subsaludo {
   margin: 0;
-  max-width: 62ch;
   color: var(--marfil-40);
   font-size: 14.5px;
   line-height: 1.5;

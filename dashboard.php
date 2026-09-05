@@ -18,9 +18,9 @@ $modulos = [
     ['Facturación',      'Armar la cuenta de cobro, imprimir el PDF y enviarla por WhatsApp.', 'Listo', 'facturar.php'],
     ['Pedidos',          $textoPedidos, 'Listo', 'pedidos.php'],
     ['Productos',        'Agrega productos nuevos al catálogo: SKU, marca, nombre y precio.', 'Listo', 'inventario.php'],
-    ['Catálogo público', 'La vista sin login que ven las clientas. Arman su pedido y te llega por WhatsApp.', 'Listo', 'catalogo-publico.php', true],
+    ['Catálogo público', 'La vista sin login que ven los clientes. Arman su pedido y te llega por WhatsApp.', 'Listo', 'catalogo-publico.php', true],
     ['Cartera y reportes', 'Cuotas pendientes, historial de facturas y cómo va la ganancia y las ventas.', 'Listo', 'cartera.php'],
-    ['Clientes',         'Nombre, teléfono y notas de cada clienta.',                          'Listo', 'clientes.php'],
+    ['Clientes',         'Nombre, teléfono y notas de cada cliente.',                          'Listo', 'clientes.php'],
 ];
 
 $tituloPagina = 'Panel';
