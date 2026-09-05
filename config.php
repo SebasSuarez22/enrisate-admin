@@ -27,6 +27,10 @@ const ADMIN_HASH    = '$2y$12$050ePq4.ZgMGoIKURU/VouuVfJv1jdPlNgmkIsMmY8FozBvqJM
 // Hoy es un número personal; cuando pasen a WhatsApp Business, cambia solo este valor.
 const APP_WHATSAPP = '573163770326';
 
+// Usuario de Instagram, sin la @ y sin la URL: el catálogo público arma el
+// enlace con esto en el pie de página.
+const APP_INSTAGRAM = 'enrisate';
+
 /* --- Pedidos desde el catálogo público --- */
 // Total mínimo del carrito para que el catálogo público le ofrezca a la
 // clienta pagar a cuotas (por debajo de esto, solo ve "de contado").

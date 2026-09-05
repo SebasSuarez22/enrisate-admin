@@ -370,11 +370,67 @@ body {
 /* --- Pie --- */
 .cp-pie {
   padding: var(--sp-8) var(--sp-4);
+  /* El carrito flotante se queda encima del pie en móvil: sin este
+     respiro, tapa los botones de contacto justo cuando la clienta los
+     busca. */
+  padding-bottom: calc(var(--sp-10) + 56px + env(safe-area-inset-bottom, 0px));
   text-align: center;
   font-size: var(--t-sm);
   color: var(--gris);
+  background: var(--crema);
   border-top: 1px solid var(--arena);
 }
+.cp-pie-titulo {
+  margin: 0 0 var(--sp-5);
+  font-family: "Fraunces", Georgia, serif;
+  font-size: var(--t-lg);
+  color: var(--tinta);
+}
+
+/* WhatsApp e Instagram: mismo alto de toque (44 px) y misma forma que el
+   resto de acciones del catálogo. Cada uno usa el color que ya tiene
+   asignado la paleta — verde para WhatsApp, rosa para la acción — en vez
+   de meter dos marcas de color ajenas al logo. */
+.cp-pie-redes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-6);
+}
+.cp-red {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 56px;
+  padding: var(--sp-3) var(--sp-5);
+  text-decoration: none;
+  background: var(--papel);
+  border: 1px solid var(--arena);
+  border-radius: var(--radio-g);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.cp-red svg { width: 26px; height: 26px; flex: none; }
+.cp-red-texto { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; }
+.cp-red-nombre {
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--gris);
+}
+.cp-red-dato { font-size: var(--t-base); font-weight: 700; color: var(--tinta); }
+
+.cp-red-whatsapp  { color: var(--verde); }
+.cp-red-instagram { color: var(--rosa); }
+
+@media (hover: hover) {
+  .cp-red:hover { transform: translateY(-2px); box-shadow: var(--sombra-alta); }
+  .cp-red-whatsapp:hover  { border-color: var(--verde); }
+  .cp-red-instagram:hover { border-color: var(--rosa); }
+}
+
+.cp-pie-nota { margin: 0; }
 
 /* --- Botón flotante del carrito --- */
 .cp-fab-carrito {
