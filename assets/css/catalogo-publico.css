@@ -111,7 +111,7 @@ body {
   border-bottom: 1px solid var(--arena);
 }
 .cp-marca { margin: 0; }
-.cp-logo { display: block; height: 108px; width: auto; margin: 0 auto; }
+.cp-logo { display: block; height: 130px; width: auto; margin: 0 auto; }
 .cp-tagline {
   margin: var(--sp-3) 0 0;
   font-family: Fraunces, Georgia, serif;
@@ -716,7 +716,7 @@ body.cp-con-carrito .cp-pie {
    más la barra pegajosa se comen media pantalla antes del primer producto. */
 @media (max-height: 500px) and (orientation: landscape) {
   .cp-encabezado { padding: var(--sp-3) var(--sp-4); }
-  .cp-logo { height: 56px; }
+  .cp-logo { height: 60px; }
   .cp-tagline { font-size: var(--t-base); margin-top: var(--sp-2); }
   .cp-instrucciones { display: none; }
   .cp-hoja-carrito { max-height: 96vh; }
@@ -745,7 +745,7 @@ body.cp-con-carrito .cp-pie {
 }
 
 @media (max-width: 480px) {
-  .cp-logo { height: 90px; }
+  .cp-logo { height: 104px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
