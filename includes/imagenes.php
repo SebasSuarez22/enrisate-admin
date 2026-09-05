@@ -39,6 +39,11 @@ function guardar_imagen_producto(string $sku, array $archivo): string
     if (!preg_match('/^[A-Z0-9\-_]+$/', $sku)) {
         return 'SKU inválido.';
     }
+    // Sin esto, un XAMPP con la extensión GD apagada en php.ini tumbaba la
+    // página con un error fatal en pantalla en vez de un aviso normal.
+    if (!extension_loaded('gd')) {
+        return 'El servidor no tiene activada la extensión GD de PHP (necesaria para procesar imágenes). Actívala en php.ini y reinicia Apache.';
+    }
     if (($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
         return 'Elige una imagen para subir.';
     }
