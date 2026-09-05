@@ -370,8 +370,12 @@ require __DIR__ . '/includes/cabecera.php';
         <input type="hidden" name="sku" id="modalImagenSku">
 
         <div class="campo">
-          <label for="modalImagenArchivo">Elegir foto (JPG, PNG o WebP, máx. 8 MB)</label>
-          <input type="file" id="modalImagenArchivo" name="imagen" accept="image/jpeg,image/png,image/webp" required>
+          <label id="modalImagenLabel" for="modalImagenArchivo">Elegir foto (JPG, PNG o WebP, máx. 8 MB)</label>
+          <div class="campo-archivo">
+            <input class="campo-archivo-input" type="file" id="modalImagenArchivo" name="imagen" accept="image/jpeg,image/png,image/webp" aria-labelledby="modalImagenLabel" required>
+            <label for="modalImagenArchivo" class="boton mini fantasma">Elegir archivo</label>
+            <span class="campo-archivo-nombre" id="modalImagenNombreArchivo">Ningún archivo seleccionado</span>
+          </div>
         </div>
 
         <div class="modal-acciones">
@@ -509,6 +513,7 @@ function abrirModalImagen(sku) {
   document.getElementById('modalImagenSku').value = sku;
   document.getElementById('modalQuitarImagenSku').value = sku;
   document.getElementById('modalImagenArchivo').value = '';
+  document.getElementById('modalImagenNombreArchivo').textContent = 'Ningún archivo seleccionado';
 
   const foto = FOTOS_POR_SKU[sku];
   mostrarVistaImagen(foto ? (foto + '?v=' + Date.now()) : null);
@@ -540,9 +545,13 @@ document.querySelectorAll('.btn-imagen-fila').forEach(btn => {
   btn.addEventListener('click', () => abrirModalImagen(btn.dataset.sku));
 });
 
-// Vista previa del archivo elegido, antes de subirlo.
+// Vista previa del archivo elegido, antes de subirlo, y su nombre junto
+// al botón (el input real queda oculto; el botón visible es un <label>
+// que apunta a él).
 document.getElementById('modalImagenArchivo')?.addEventListener('change', function () {
   const archivo = this.files[0];
+  document.getElementById('modalImagenNombreArchivo').textContent =
+    archivo ? archivo.name : 'Ningún archivo seleccionado';
   if (!archivo) return;
   const lector = new FileReader();
   lector.onload = e => mostrarVistaImagen(e.target.result);

@@ -1035,6 +1035,36 @@ a.boton-icono { text-decoration: none; }
 .modal-quitar-foto { margin-top: var(--sp-2); }
 .modal-quitar-foto .boton { width: 100%; margin-top: 0; }
 
+/* Selector de archivo con el mismo aspecto que el resto de botones, en
+   vez del control gris de fábrica del navegador: el <input type="file">
+   real queda oculto pero accesible (foco, teclado, lector de pantalla);
+   lo que se ve es el <label for="..."> que lo activa, más el nombre del
+   archivo elegido al lado. */
+.campo-archivo { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.campo-archivo label.boton { flex: none; width: auto; margin-top: 0; cursor: pointer; }
+.campo-archivo-nombre {
+  font-size: 13px;
+  color: var(--marfil-40);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.campo-archivo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.campo-archivo-input:focus-visible ~ label.boton {
+  outline: 2px solid var(--champana);
+  outline-offset: 2px;
+}
+
 /* Buscar y navegar por sección: input + botón de búsqueda (reutiliza
    .form-busqueda) y, debajo, un carrusel horizontal de chips —uno por
    marca— para saltar a una sola sección en vez de desplazarse por todo
