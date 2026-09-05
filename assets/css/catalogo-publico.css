@@ -591,7 +591,7 @@ body.cp-con-carrito .cp-pie {
   text-align: justify;
   text-justify: inter-word;
   font-family: Fraunces, Georgia, serif;
-  font-size: var(--t-md);
+  font-size: var(--t-sm);
   font-weight: 400;
   line-height: 1.65;
   color: var(--tinta);
