@@ -2,6 +2,18 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 5 de septiembre, 2026
+
+**Resuelto de la entrada del 4 de septiembre:** el problema del paso de 1000 en Márgenes ya no aplica — Márgenes se eliminó por completo (Productos ya cubre precio y costo).
+
+**Resuelto de la entrada del 2 de septiembre:** el segundo grupo de fotos de referencia (DES01, LP-02, LP-05 a LP-09, POC-01 a POC-10) se archivó en `assets/img/productos/_referencia_no_usar/`, para que no reaparecieran solas al conectar la foto de cada producto directamente por SKU.
+
+**Pendiente para la próxima sesión:**
+- Si Sebastián ya subió alguna foto de producto antes del ajuste de tamaño, correr una vez `php tools/reoptimizar_fotos_productos.php` para que esas fotos se recompriman al tamaño correcto.
+- Decidir qué uso se le va a dar a la herramienta Pepita (conectada hoy, sin definir para qué se va a usar todavía).
+- Sigue pendiente desde antes: revisar la configuración de seguridad de la base de datos antes de publicar el sitio en internet (usuario root sin contraseña, clave inicial del panel visible en un comentario del código).
+- Sigue pendiente desde antes: 3 de las 4 pruebas automáticas del proyecto están rotas desde la migración a MySQL de hace unas semanas (llaman a una función que ya no existe).
+
 ## 4 de septiembre, 2026
 
 Pendiente para la próxima sesión (nota técnica interna):
