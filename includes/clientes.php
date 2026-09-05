@@ -220,8 +220,9 @@ function agregar_cliente_desde_factura(string $nombre, string $telefono): void
 
 /**
  * Cruza una clienta con su historial de facturación (mismo criterio de
- * coincidencia que cliente_ya_existe(): por teléfono, o por nombre exacto
- * si no hay teléfono) y devuelve, si tiene alguna factura sin anular:
+ * coincidencia que cliente_ya_existe()/buscar_cliente_coincidente(): por
+ * teléfono, o por nombre exacto, lo que primero coincida) y devuelve, si
+ * tiene alguna factura sin anular:
  *   - compras:          cuántas facturas tiene
  *   - frecuencia_dias:  cada cuántos días compra en promedio (null con
  *                        una sola factura, no hay con qué promediar)
@@ -242,7 +243,7 @@ function estadisticas_compra_cliente(array $cliente, array $facturas): ?array
         if ($telefono !== '' && normalizar_telefono((string) ($f['telefono'] ?? '')) === $telefono) {
             return true;
         }
-        return $telefono === '' && strcasecmp(trim((string) ($f['cliente'] ?? '')), $nombre) === 0;
+        return strcasecmp(trim((string) ($f['cliente'] ?? '')), $nombre) === 0;
     }));
 
     if (!$propias) {
