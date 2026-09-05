@@ -347,6 +347,9 @@ $logosPorMarca = [
   <div class="cp-hoja-agarradera" aria-hidden="true"></div>
 
   <div class="cp-hoja-cabecera">
+    <div class="cp-hoja-logo">
+      <img src="<?= e(cp_img_v('assets/img/logo-enrisate-marca.png')) ?>" alt="" <?= cp_img_attrs('assets/img/logo-enrisate-marca.png') ?>>
+    </div>
     <h2 class="cp-hoja-titulo" id="hojaProductoTitulo">&nbsp;</h2>
     <div class="cp-hoja-acciones">
       <button type="button" class="cp-hoja-cerrar" id="cerrarProducto" aria-label="Cerrar">
