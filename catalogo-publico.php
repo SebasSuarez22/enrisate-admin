@@ -81,86 +81,14 @@ $logosPorMarca = [
    includes/categorias.php.
 --------------------------------------------------------------------- */
 
-// Fotos reales por SKU: DESACTIVADAS por ahora (2026-08-20). Las fotos que había eran
-// de referencia, no fotografía propia del producto — hasta que esté la sesión de fotos
-// real, el catálogo muestra el marcador por tipo de producto.
-// Para reactivarlas cuando ya estén listas: cambia $tieneFoto más abajo por
-//     $tieneFoto = isset($fotosPorSku[$p['sku']]);
-$fotosPorSku = [
-    'ACC-04' => 'ACC-04.webp', // Carotone 135 mL
-    'ACC-03' => 'ACC-03.webp', // Carotone 300 mL
-    'ACC-05' => 'ACC-05.webp', // Jabón carotone
-    'ACC-01' => 'ACC-01.webp', // Cepillo definidor
-    'ACC-02' => 'ACC-02.webp', // Cepillo aguacate (secador-cepillo Avocado 3D)
-    'ACC-06' => 'ACC-06.webp', // Rapunzel tónico capilar (Lola Cosmetics)
-    'ACC-07' => 'ACC-07.webp', // Karsell
-    'ACC-08' => 'ACC-08.webp', // Sobres de Karsell
-    'DES01'  => 'DES01.jpg', // Desodorante piedra de alumbre
-    'ET-01'  => 'ET-01.webp', // Shampoo Etniker
-    'ET-02'  => 'ET-02.webp', // Espuma intensificadora de rizos
-    'ET-03'  => 'ET-03.webp', // Crema de peinar
-    'ET-04'  => 'ET-04.webp', // Gel definidor de rizos
-    'ET-05'  => 'ET-05.webp', // Aceite
-    'FEM-01' => 'FEM-01.webp', // Crema de Peinar 500 ml
-    'FEM-05' => 'FEM-05.webp', // Gel Fluido 300 ml
-    'FEM-06' => 'FEM-06.webp', // Gel Fluido 500 ml
-    'FEM-07' => 'FEM-07.webp', // Gel duro
-    'FEM-03' => 'FEM-03.webp', // Shampoo Femme
-    'FEM-04' => 'FEM-04.webp', // Óleo Dorado
-    'FEM-02' => 'FEM-02.webp', // Tratamiento Femme (Soy Rizos 2en1)
-    'POC-01' => 'POC-01.png', // Shampoo
-    'POC-02' => 'POC-02.png', // Acondicionador
-    'POC-03' => 'POC-03.png', // Crema de peinar
-    'POC-04' => 'POC-04.png', // Shampoo Anticaspa
-    'POC-05' => 'POC-05.webp', // Ancestral
-    'POC-06' => 'POC-06.png', // Tonico (control caspa)
-    'POC-07' => 'POC-07.png', // Shampoo Graso
-    'POC-08' => 'POC-08.png', // Shampoo kids
-    'POC-09' => 'POC-09.png', // Acondicionador kids
-    'POC-10' => 'POC-10.png', // Spray desenredante
-    'LP-01'  => 'LP-01.webp', // Shampoo Lisos
-    'LP-02'  => 'LP-02.webp', // Acondicionador Lisos
-    'LP-04'  => 'LP-04.webp', // Shampoo Rizos
-    'LP-05'  => 'LP-05.png', // Acondicionador Rizos (Mascarilla Nutritiva)
-    'LP-06'  => 'LP-06.png', // Crema de Peinar Rizos (Definidor de Rizos)
-    'LP-07'  => 'LP-07.png', // Gelatina Rizos (línea kids)
-    'LP-08'  => 'LP-08.png', // Shampoo 2 en 1 Niños
-    'CA-01'  => 'CA-01.webp', // Masaje Candela
-    'ACC-09' => 'ACC-09.webp', // Anti-Friction (Megababe Thigh Rescue)
-    'FEM-08' => 'FEM-08.webp', // Crema de Peinar 1000 g (Femme / Soy Rizos)
-];
-
-// De la lista de arriba, cuáles YA se muestran en el catálogo. Las demás
-// siguen desactivadas (ver nota arriba) hasta que haya sesión de fotos real;
-// esta lista deja prender una por una a medida que estén listas, sin
-// reactivar de golpe las 32 fotos de referencia viejas.
-$fotosActivas = [
-    'LP-01', // Shampoo Lisos — foto real puesta el 2026-08-23
-    'LP-04', // Shampoo Rizos — foto real puesta el 2026-08-23
-    'ACC-04', // Carotone 135 mL — foto real puesta el 2026-08-23
-    'ACC-03', // Carotone 300 mL — foto real puesta el 2026-08-23
-    'ACC-02', // Cepillo aguacate — foto real puesta el 2026-08-23
-    'ACC-01', // Cepillo definidor — foto real puesta el 2026-08-23
-    'ACC-05', // Jabón carotone — foto real puesta el 2026-08-23
-    'ACC-06', // Rapunzel — foto real puesta el 2026-08-23
-    'ACC-08', // Sobres de Karsell — foto real puesta el 2026-08-23
-    'ACC-07', // Karsell — foto real puesta el 2026-08-23
-    'CA-01', // Masaje Candela — foto real puesta el 2026-08-23
-    'ET-05', // Aceite (Etniker) — foto real puesta el 2026-08-23
-    'ET-03', // Crema de peinar (Etniker) — foto real puesta el 2026-08-23
-    'ET-02', // Espuma (Etniker) — foto real puesta el 2026-08-24
-    'ET-04', // Gel duro (Etniker) — foto real puesta el 2026-08-24
-    'ET-01', // Shampoo (Etniker) — foto real puesta el 2026-08-25
-    'ACC-09', // Anti-Friction (Megababe Thigh Rescue) — foto real puesta el 2026-08-25
-    'FEM-08', // Crema de Peinar 1000 g (Femme) — foto real puesta el 2026-08-28
-    'FEM-01', // Crema de Peinar 500 ml (Femme) — foto real puesta el 2026-08-28
-    'FEM-06', // Gel Fluido 500 ml (Femme) — foto real puesta el 2026-08-28
-    'FEM-05', // Gel Fluido 300 ml (Femme) — foto real puesta el 2026-08-28
-    'FEM-07', // Gel duro (Femme) — foto real puesta el 2026-08-28
-    'FEM-03', // Shampoo Femme — foto real puesta el 2026-08-28
-    'FEM-02', // Tratamiento Femme (Soy Rizos 2en1) — foto real puesta el 2026-08-29
-    'FEM-04', // Óleo Dorado — foto real puesta el 2026-08-29
-];
+// La foto de cada producto vive en assets/img/productos/<SKU>.webp (o
+// .jpg/.png si no se subió por acá): producto_ruta_foto(), en
+// includes/imagenes.php, la resuelve por SKU. Se sube desde Productos
+// y aparece aquí de inmediato, sin tocar código.
+//
+// Las ~16 fotos de referencia que hubo antes (no eran fotografía propia
+// del producto) se archivaron en assets/img/productos/_referencia_no_usar/
+// el 2026-09-05, para que no reaparecieran solas al activar esto.
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -237,7 +165,8 @@ $fotosActivas = [
       <div class="cp-rejilla">
         <?php foreach ($ps as $p): ?>
           <?php
-            $tieneFoto = isset($fotosPorSku[$p['sku']]) && in_array($p['sku'], $fotosActivas, true);
+            $rutaFoto  = producto_ruta_foto($p['sku']);
+            $tieneFoto = $rutaFoto !== null;
             $tieneLogo = isset($logosPorMarca[$marca]);
             [$tipoEtq, $tipoFondo, $tipoTinta, $tipoIcono] = categoria_estilo($p, $marcaVisible);
             $busca = mb_strtolower($p['nombre'] . ' ' . $marcaVisible . ' ' . $tipoEtq, 'UTF-8');
@@ -253,8 +182,7 @@ $fotosActivas = [
                    data-busca="<?= e($busca) ?>">
             <div class="cp-img-wrap <?= $tieneFoto ? 'cp-img-foto' : '' ?>" style="--tipo-fondo: <?= $tipoFondo ?>; --tipo-tinta: <?= $tipoTinta ?>">
               <?php if ($tieneFoto): ?>
-                <?php $cpRutaFoto = 'assets/img/productos/' . $fotosPorSku[$p['sku']]; ?>
-                <img class="cp-foto" src="<?= e(cp_img_v($cpRutaFoto)) ?>" alt="<?= e($p['nombre']) ?> · <?= e($marcaVisible) ?>" <?= cp_img_attrs($cpRutaFoto) ?> loading="<?= $cpCarga ?>" <?= $cpPrioridadAttr ?> decoding="async">
+                <img class="cp-foto" src="<?= e(cp_img_v($rutaFoto)) ?>" alt="<?= e($p['nombre']) ?> · <?= e($marcaVisible) ?>" <?= cp_img_attrs($rutaFoto) ?> loading="<?= $cpCarga ?>" <?= $cpPrioridadAttr ?> decoding="async">
                 <?php if ($tieneLogo): ?>
                   <?php $cpRutaLogo = 'assets/img/marcas/' . $logosPorMarca[$marca]; ?>
                   <span class="cp-marca-logo"><img src="<?= e(cp_img_v($cpRutaLogo)) ?>" alt="<?= e($marcaVisible) ?>" <?= cp_img_attrs($cpRutaLogo) ?> loading="lazy"></span>

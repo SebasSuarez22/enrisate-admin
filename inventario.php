@@ -48,6 +48,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         $error = 'No encontré ese producto en el catálogo.';
+    } elseif (($_POST['accion'] ?? '') === 'imagen') {
+        $sku = (string) ($_POST['sku'] ?? '');
+        if (!producto_por_sku($sku)) {
+            $error = 'No encontré ese producto en el catálogo.';
+        } else {
+            $mensaje = guardar_imagen_producto($sku, $_FILES['imagen'] ?? []);
+            if ($mensaje === '') {
+                header('Location: inventario.php?ok=imagen');
+                exit;
+            }
+            $error = $mensaje;
+        }
+    } elseif (($_POST['accion'] ?? '') === 'quitar_imagen') {
+        $sku = (string) ($_POST['sku'] ?? '');
+        quitar_imagen_producto($sku);
+        header('Location: inventario.php?ok=imagen_quitada');
+        exit;
     } else {
         $mensaje = agregar_producto(
             (string) ($_POST['sku'] ?? ''),
@@ -74,6 +91,10 @@ if (($_GET['ok'] ?? '') === 'agregado') {
     $ok = 'Se eliminó ' . $n . ' producto' . ($n === 1 ? '' : 's') . ' del catálogo.';
 } elseif (($_GET['ok'] ?? '') === 'descripcion') {
     $ok = 'Descripción actualizada.';
+} elseif (($_GET['ok'] ?? '') === 'imagen') {
+    $ok = 'Foto actualizada. Ya se ve en el catálogo público.';
+} elseif (($_GET['ok'] ?? '') === 'imagen_quitada') {
+    $ok = 'Foto eliminada.';
 }
 
 $porMarca = [];
@@ -232,6 +253,7 @@ require __DIR__ . '/includes/cabecera.php';
             <th class="num">Margen</th>
             <th></th>
             <th></th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -260,6 +282,13 @@ require __DIR__ . '/includes/cabecera.php';
                         data-sku="<?= e($p['sku']) ?>"
                         title="Descripción de <?= e($p['nombre']) ?>" aria-label="Descripción de <?= e($p['nombre']) ?>">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5V8h4"/><path d="M8.5 12.5h6M8.5 16h4"/></svg>
+                </button>
+              </td>
+              <td class="num">
+                <button type="button" class="boton-icono fantasma btn-imagen-fila"
+                        data-sku="<?= e($p['sku']) ?>"
+                        title="Foto de <?= e($p['nombre']) ?>" aria-label="Foto de <?= e($p['nombre']) ?>">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6.5" width="18" height="13.5" rx="2"/><path d="M8 6.5l1.3-2.1a1 1 0 0 1 .85-.4h3.7a1 1 0 0 1 .85.4L16 6.5"/><circle cx="12" cy="13.2" r="3.4"/></svg>
                 </button>
               </td>
             </tr>
@@ -325,10 +354,56 @@ require __DIR__ . '/includes/cabecera.php';
     </div>
   </div>
 
+  <div class="modal-fondo" id="modalImagenFondo" hidden>
+    <div class="modal-caja panel" role="dialog" aria-modal="true" aria-labelledby="modalImagenTitulo">
+      <h2 class="titulo-panel" id="modalImagenTitulo">Foto del producto</h2>
+      <p class="modal-sku" id="modalImagenSkuTexto"></p>
+
+      <div class="modal-imagen-vista">
+        <img id="modalImagenVista" alt="" hidden>
+        <span id="modalImagenSinFoto">Sin foto todavía</span>
+      </div>
+
+      <form method="post" action="inventario.php" enctype="multipart/form-data">
+        <input type="hidden" name="csrf" value="<?= e($token) ?>">
+        <input type="hidden" name="accion" value="imagen">
+        <input type="hidden" name="sku" id="modalImagenSku">
+
+        <div class="campo">
+          <label for="modalImagenArchivo">Elegir foto (JPG, PNG o WebP, máx. 8 MB)</label>
+          <input type="file" id="modalImagenArchivo" name="imagen" accept="image/jpeg,image/png,image/webp" required>
+        </div>
+
+        <div class="modal-acciones">
+          <button type="button" class="boton mini fantasma" id="btnCancelarImagen">Cancelar</button>
+          <button type="submit" class="boton mini">Subir foto</button>
+        </div>
+      </form>
+
+      <form method="post" action="inventario.php" id="formQuitarImagen" class="modal-quitar-foto" hidden>
+        <input type="hidden" name="csrf" value="<?= e($token) ?>">
+        <input type="hidden" name="accion" value="quitar_imagen">
+        <input type="hidden" name="sku" id="modalQuitarImagenSku">
+        <button type="submit" class="boton mini fantasma">Quitar foto actual</button>
+      </form>
+    </div>
+  </div>
+
 </main>
 
 <script>
 const PRODUCTOS_POR_SKU = <?= json_encode(array_column(catalogo(), null, 'sku'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+
+<?php
+  // La foto no vive en catalogo() (es un archivo, no una columna de la
+  // base de datos), así que va en su propio objeto: SKU -> ruta, o null
+  // si el producto no tiene foto todavía.
+  $fotosPorSkuJs = [];
+  foreach (catalogo() as $p) {
+      $fotosPorSkuJs[$p['sku']] = producto_ruta_foto($p['sku']);
+  }
+?>
+const FOTOS_POR_SKU = <?= json_encode($fotosPorSkuJs, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 </script>
 
 <script>
@@ -405,6 +480,73 @@ if (modalDescripcionFondo) {
 
 document.querySelectorAll('.btn-descripcion-fila').forEach(btn => {
   btn.addEventListener('click', () => abrirModalDescripcion(btn.dataset.sku));
+});
+
+/* Foto del producto: mismo patrón de un modal + botón por fila, más la
+   vista previa (la foto actual si ya tiene, o la que se acaba de elegir
+   antes de subirla) y un botón aparte para quitarla. */
+const modalImagenFondo = document.getElementById('modalImagenFondo');
+
+function mostrarVistaImagen(src) {
+  const vista   = document.getElementById('modalImagenVista');
+  const sinFoto = document.getElementById('modalImagenSinFoto');
+  if (src) {
+    vista.src = src;
+    vista.hidden = false;
+    sinFoto.hidden = true;
+  } else {
+    vista.removeAttribute('src');
+    vista.hidden = true;
+    sinFoto.hidden = false;
+  }
+}
+
+function abrirModalImagen(sku) {
+  const p = PRODUCTOS_POR_SKU[sku];
+  if (!p) return;
+
+  document.getElementById('modalImagenSkuTexto').textContent = p.marca + ' · ' + sku;
+  document.getElementById('modalImagenSku').value = sku;
+  document.getElementById('modalQuitarImagenSku').value = sku;
+  document.getElementById('modalImagenArchivo').value = '';
+
+  const foto = FOTOS_POR_SKU[sku];
+  mostrarVistaImagen(foto ? (foto + '?v=' + Date.now()) : null);
+  document.getElementById('formQuitarImagen').hidden = !foto;
+
+  modalImagenFondo.hidden = false;
+}
+
+function cerrarModalImagen() {
+  modalImagenFondo.hidden = true;
+}
+
+if (modalImagenFondo) {
+  document.getElementById('btnCancelarImagen').addEventListener('click', cerrarModalImagen);
+  modalImagenFondo.addEventListener('click', e => {
+    if (e.target === modalImagenFondo) cerrarModalImagen();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !modalImagenFondo.hidden) cerrarModalImagen();
+  });
+  document.getElementById('formQuitarImagen').addEventListener('submit', e => {
+    if (!confirm('¿Quitar la foto de este producto? Deja de verse en el catálogo público hasta que subas otra.')) {
+      e.preventDefault();
+    }
+  });
+}
+
+document.querySelectorAll('.btn-imagen-fila').forEach(btn => {
+  btn.addEventListener('click', () => abrirModalImagen(btn.dataset.sku));
+});
+
+// Vista previa del archivo elegido, antes de subirlo.
+document.getElementById('modalImagenArchivo')?.addEventListener('change', function () {
+  const archivo = this.files[0];
+  if (!archivo) return;
+  const lector = new FileReader();
+  lector.onload = e => mostrarVistaImagen(e.target.result);
+  lector.readAsDataURL(archivo);
 });
 
 /* La selección múltiple queda solo para eliminar. */

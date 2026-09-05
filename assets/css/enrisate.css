@@ -1015,6 +1015,26 @@ a.boton-icono { text-decoration: none; }
    más ancho que "Guardar". */
 .modal-acciones .boton { flex: 1; width: auto; margin-top: 0; }
 
+/* Vista previa de la foto en el modal de imagen: mismo alto siempre
+   (con o sin foto), para que el modal no salte de tamaño al elegir un
+   archivo. object-fit: contain porque acá interesa ver la foto entera
+   tal como va a quedar, no recortada. */
+.modal-imagen-vista {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 160px;
+  margin-bottom: var(--sp-4);
+  background: rgba(21, 12, 18, 0.62);
+  border: 1px solid rgba(243, 234, 226, 0.12);
+  border-radius: var(--r-campo);
+  overflow: hidden;
+}
+.modal-imagen-vista img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.modal-imagen-vista span { font-size: 13px; color: var(--marfil-40); }
+.modal-quitar-foto { margin-top: var(--sp-2); }
+.modal-quitar-foto .boton { width: 100%; margin-top: 0; }
+
 /* Buscar y navegar por sección: input + botón de búsqueda (reutiliza
    .form-busqueda) y, debajo, un carrusel horizontal de chips —uno por
    marca— para saltar a una sola sección en vez de desplazarse por todo

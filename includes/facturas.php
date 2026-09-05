@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/categorias.php';
+require_once __DIR__ . '/imagenes.php';
 
 /* =========================================================
    Facturas y catálogo · almacén en MySQL (capa 3)
