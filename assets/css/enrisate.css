@@ -594,6 +594,11 @@ a.boton { display: inline-block; text-decoration: none; }
   gap: var(--sp-bloque);
   align-items: start;
 }
+/* Por defecto una celda de grid no se encoge más allá del contenido que
+   tenga adentro (min-width: auto) — con las tablas sin salto de línea,
+   eso hacía que la columna completa (y la página) se saliera de la
+   pantalla en vez de dejar que solo la tabla se deslizara. */
+.dos-columnas > .panel { min-width: 0; }
 
 .panel {
   padding: var(--pad-card);
@@ -755,6 +760,15 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   border-bottom: 1px solid rgba(243, 234, 226, 0.06);
 }
 
+/* Sin esto, una pantalla angosta encogía cada columna hasta que el
+   texto se partía a la mitad ("Ana" / "Torres", "15 de agosto" / "de
+   2026") para que la tabla completa cupiera sin desbordarse. Se prefiere
+   que la tabla se desborde y se deslice (para eso está la sombra de
+   ".tabla-scroll") a que un dato corto quede partido en dos líneas.
+   Las excepciones (mensajes de "vacío" y notas libres) se restauran
+   abajo. */
+.lineas th, .lineas td { white-space: nowrap; }
+
 .lineas th:last-child, .lineas td:last-child { padding-right: 0; }
 .lineas .num { text-align: right; }
 .lineas .vacio td {
@@ -763,7 +777,9 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   color: var(--marfil-40);
   font-size: 13.5px;
   border: 0;
+  white-space: normal;
 }
+.lineas .col-notas { white-space: normal; }
 .lineas .sku {
   display: block;
   margin-top: 2px;

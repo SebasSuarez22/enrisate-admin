@@ -158,7 +158,7 @@ require __DIR__ . '/includes/cabecera.php';
               <td><input type="checkbox" class="chk-cliente" id="chk-<?= e($c['id']) ?>" value="<?= e($c['id']) ?>" aria-label="Seleccionar a <?= e($c['nombre']) ?>"></td>
               <td><?= e($c['nombre']) ?></td>
               <td><?= e($c['telefono']) ?></td>
-              <td>
+              <td class="col-notas">
                 <?= e($c['notas']) ?>
                 <?php if ($stats): ?>
                   <div class="cliente-insights">
