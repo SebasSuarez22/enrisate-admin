@@ -29,4 +29,17 @@ until php tools/aplicar_esquema.php; do
   sleep 5
 done
 
+# El Dockerfile ya intenta dejar solo mpm_prefork activo (el único que
+# funciona con mod_php), pero eso pasa al construir la imagen — si por
+# la razón que sea el contenedor real arranca con más de uno habilitado
+# ("More than one MPM loaded"), se repite el mismo arreglo aquí, ya en
+# el contenedor que de verdad va a correr, para que quede garantizado.
+echo "Módulos MPM antes de arrancar Apache:"
+ls /etc/apache2/mods-enabled/ 2>/dev/null | grep mpm || echo "(ninguno)"
+rm -f /etc/apache2/mods-enabled/mpm_event.load /etc/apache2/mods-enabled/mpm_event.conf \
+      /etc/apache2/mods-enabled/mpm_worker.load /etc/apache2/mods-enabled/mpm_worker.conf
+a2enmod mpm_prefork >/dev/null 2>&1 || true
+echo "Módulos MPM justo antes de arrancar Apache:"
+ls /etc/apache2/mods-enabled/ 2>/dev/null | grep mpm || echo "(ninguno)"
+
 exec apache2-foreground
