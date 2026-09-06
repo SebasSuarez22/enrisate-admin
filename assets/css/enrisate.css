@@ -814,6 +814,81 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   color: var(--rosa);
   font-weight: 600;
 }
+
+/* =========================================================
+   Clientes en celular: tarjetas desplegables en vez de tabla
+   =========================================================
+   Debajo de 640px la tabla (.oculta-en-movil) se esconde y aparecen
+   estas tarjetas: solo el nombre y el dato más útil a la vista, el
+   resto se despliega al tocar. Arriba de 640px es al revés. Cada
+   clienta existe en las dos formas a la vez en el HTML —clientes.php
+   arma ambas una sola vez—, así que "Editar"/"Eliminar" en lote
+   (seleccion-lote.js ya solo cuenta lo que está visible) funcionan
+   igual sin importar cuál de las dos se esté mostrando. */
+.filas-esencial { display: none; }
+@media (max-width: 640px) {
+  .oculta-en-movil { display: none; }
+  .filas-esencial { display: grid; gap: 10px; }
+}
+
+.fila-cliente {
+  border: 1px solid rgba(243, 234, 226, 0.09);
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(51, 32, 44, 0.55), rgba(29, 18, 26, 0.55));
+  overflow: hidden;
+}
+.fila-cliente > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px;
+  cursor: pointer;
+}
+.fila-cliente > summary::-webkit-details-marker { display: none; }
+.fila-cliente-resumen { flex: 1; min-width: 0; }
+.fila-cliente-nombre { font-family: var(--texto); font-size: 14px; font-weight: 600; color: var(--marfil); }
+.fila-cliente-pista {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--dato);
+  font-size: 11px;
+  color: var(--marfil-40);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fila-cliente-flecha { flex: none; color: var(--marfil-40); transition: transform 0.16s ease; }
+.fila-cliente[open] .fila-cliente-flecha { transform: rotate(180deg); }
+.fila-cliente-detalle {
+  padding: 0 14px 14px 40px;
+  font-size: 12.5px;
+  color: var(--marfil-70);
+  line-height: 1.5;
+}
+.fila-cliente-detalle .campo-detalle { margin-bottom: 6px; }
+.fila-cliente-detalle .campo-detalle strong {
+  display: block;
+  margin-bottom: 1px;
+  font-family: var(--dato);
+  font-size: 9.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--marfil-40);
+}
+.fila-cliente-detalle .cliente-insights { margin-top: 8px; }
+
+/* La tarjeta de edición (misma forma que en la tabla) al desplegarse
+   entre una tarjeta y la siguiente. */
+.fila-cliente-editar {
+  padding: 14px;
+  border: 1px solid var(--linea);
+  border-radius: 14px;
+  background: rgba(224, 184, 126, 0.05);
+}
+.fila-cliente-editar + .fila-cliente { margin-top: 10px; }
+
 .quitar {
   width: 26px;
   height: 26px;
