@@ -277,7 +277,12 @@ require __DIR__ . '/includes/cabecera.php';
   <section class="panel">
     <div class="panel-header">
       <h2 class="titulo-panel">Cartera pendiente</h2>
-      <a class="boton mini" href="cartera-excel.php" title="Vencidas y pendientes">Descargar Excel</a>
+      <a class="accion-icono" href="cartera-excel.php" title="Descargar Excel: vencidas y pendientes">
+        <span class="accion-icono-circulo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+        </span>
+        <span class="accion-icono-nombre">Excel</span>
+      </a>
     </div>
     <?php if (!$pendientes): ?>
       <p class="subsaludo">No hay cuotas pendientes por cobrar.</p>

@@ -112,20 +112,35 @@ require __DIR__ . '/includes/cabecera.php';
   <section class="panel">
     <h2 class="titulo-panel">Todos los clientes</h2>
     <p class="subsaludo">Cada factura nueva agrega al cliente aquí solito. Si tienes facturas viejas de antes de este cambio, usa este botón una vez para traerlas.</p>
-    <form method="post" action="clientes.php" class="form-sincronizar">
+    <form method="post" action="clientes.php" class="form-sincronizar grupo-acciones">
       <input type="hidden" name="csrf" value="<?= e($token) ?>">
       <input type="hidden" name="accion" value="sincronizar">
-      <button type="submit" class="boton mini">Traer clientes de facturación</button>
+      <button type="submit" class="accion-icono" title="Traer clientes de facturación">
+        <span class="accion-icono-circulo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+        </span>
+        <span class="accion-icono-nombre">Traer de facturación</span>
+      </button>
     </form>
     <?php if (!$clientes): ?>
       <p class="subsaludo">Todavía no hay clientes en la lista.</p>
     <?php else: ?>
-      <form method="post" action="clientes.php" id="form-eliminar-clientes" class="barra-eliminar">
+      <form method="post" action="clientes.php" id="form-eliminar-clientes" class="barra-eliminar grupo-acciones">
         <input type="hidden" name="csrf" value="<?= e($token) ?>">
         <input type="hidden" name="accion" value="eliminar">
         <input type="hidden" name="ids" id="idsEliminarClientes" value="">
-        <button type="button" id="btnEditarSeleccionada" class="boton mini" disabled>Editar seleccionado</button>
-        <button type="submit" class="boton mini peligro">Eliminar seleccionados</button>
+        <button type="button" id="btnEditarSeleccionada" class="accion-icono" disabled title="Editar el cliente marcado">
+          <span class="accion-icono-circulo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497Z"/><path d="m15 5 4 4"/></svg>
+          </span>
+          <span class="accion-icono-nombre">Editar</span>
+        </button>
+        <button type="submit" class="accion-icono peligro" title="Eliminar los clientes marcados">
+          <span class="accion-icono-circulo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+          </span>
+          <span class="accion-icono-nombre">Eliminar</span>
+        </button>
       </form>
       <div class="tabla-scroll">
       <table class="lineas">
