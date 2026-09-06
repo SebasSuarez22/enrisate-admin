@@ -38,6 +38,13 @@ RUN a2enmod rewrite \
 WORKDIR /var/www/html
 COPY . .
 
+# "COPY" deja todo dueño de root, pero Apache atiende las visitas como
+# el usuario www-data — sin esto, cosas como guardar el conteo de
+# intentos de login o una foto de producto nueva fallan con "Permission
+# denied" aunque la carpeta exista.
+RUN mkdir -p storage assets/img/productos \
+    && chown -R www-data:www-data storage assets/img/productos
+
 # Railway asigna el puerto real en la variable $PORT; Apache por
 # defecto solo escucha el 80, así que el arranque lo reconfigura antes
 # de encender el servidor (ver docker/entrypoint.sh).
