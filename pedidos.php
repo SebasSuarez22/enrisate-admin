@@ -56,25 +56,7 @@ require __DIR__ . '/includes/cabecera.php';
     <?php if (!$pendientes): ?>
       <p class="subsaludo">No hay pedidos nuevos por ahora.</p>
     <?php else: ?>
-      <?php
-      // "Confirmar y facturar" / "Descartar" son iguales en la tabla y en
-      // la tarjeta de celular; se arman una sola vez por pedido.
-      $accionesPedido = function (array $p) use ($token): string {
-          ob_start();
-          ?>
-          <a class="boton compacto" href="facturar.php?desde_pedido=<?= e($p['numero']) ?>">Confirmar y facturar</a>
-          <form method="post" action="pedidos.php" class="en-linea"
-                onsubmit="return confirm('¿Descartar el pedido de <?= e($p['cliente']) ?>? No se puede deshacer.');">
-            <input type="hidden" name="csrf" value="<?= e($token) ?>">
-            <input type="hidden" name="accion" value="descartar">
-            <input type="hidden" name="numero" value="<?= e($p['numero']) ?>">
-            <button type="submit" class="salir como-boton peligro">Descartar</button>
-          </form>
-          <?php
-          return ob_get_clean();
-      };
-      ?>
-      <div class="tabla-scroll oculta-en-movil">
+      <div class="tabla-scroll">
       <table class="lineas">
         <thead>
           <tr>
@@ -108,49 +90,20 @@ require __DIR__ . '/includes/cabecera.php';
               </td>
               <td class="num"><?= pesos((int) ($p['total'] ?? 0)) ?></td>
               <td><?= e(fecha_larga(substr((string) ($p['creado'] ?? ''), 0, 10))) ?></td>
-              <td class="num acciones-pedido"><?= $accionesPedido($p) ?></td>
+              <td class="num acciones-pedido">
+                <a class="boton compacto" href="facturar.php?desde_pedido=<?= e($p['numero']) ?>">Confirmar y facturar</a>
+                <form method="post" action="pedidos.php" class="en-linea"
+                      onsubmit="return confirm('¿Descartar el pedido de <?= e($p['cliente']) ?>? No se puede deshacer.');">
+                  <input type="hidden" name="csrf" value="<?= e($token) ?>">
+                  <input type="hidden" name="accion" value="descartar">
+                  <input type="hidden" name="numero" value="<?= e($p['numero']) ?>">
+                  <button type="submit" class="salir como-boton peligro">Descartar</button>
+                </form>
+              </td>
             </tr>
           <?php endforeach; ?>
         </tbody>
       </table>
-      </div>
-
-      <!-- Solo en celular: cada pedido es una tarjeta que se despliega al
-           tocarla, en vez de una fila de tabla angosta. -->
-      <div class="filas-esencial">
-        <?php foreach ($pendientes as $p): ?>
-          <details class="fila-lista">
-            <summary>
-              <span class="fila-lista-resumen">
-                <span class="fila-lista-titulo"><?= e($p['cliente']) ?></span>
-                <span class="fila-lista-pista"><?= pesos((int) ($p['total'] ?? 0)) ?></span>
-              </span>
-              <svg class="fila-lista-flecha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-            </summary>
-            <div class="fila-lista-detalle">
-              <?php if (!empty($p['telefono'])): ?>
-                <div class="campo-detalle"><strong>Teléfono</strong><?= e($p['telefono']) ?></div>
-              <?php endif; ?>
-              <div class="campo-detalle">
-                <strong>Productos</strong>
-                <?php foreach ($p['lineas'] ?? [] as $l): ?>
-                  <?= (int) $l['cant'] ?> × <?= e($l['nombre']) ?><br>
-                <?php endforeach; ?>
-              </div>
-              <div class="campo-detalle">
-                <strong>Plan propuesto</strong>
-                <?php if (($p['plan'] ?? 'contado') === 'cuotas'): ?>
-                  Prefiere <?= numero((int) ($p['num_cuotas_preferido'] ?? 2)) ?> cuotas
-                  <br>Montos y fechas: por definir con ella
-                <?php else: ?>
-                  De contado
-                <?php endif; ?>
-              </div>
-              <div class="campo-detalle"><strong>Llegó</strong><?= e(fecha_larga(substr((string) ($p['creado'] ?? ''), 0, 10))) ?></div>
-              <div class="acciones-fila"><?= $accionesPedido($p) ?></div>
-            </div>
-          </details>
-        <?php endforeach; ?>
       </div>
     <?php endif; ?>
   </section>
@@ -160,7 +113,7 @@ require __DIR__ . '/includes/cabecera.php';
     <?php if (!$historial): ?>
       <p class="subsaludo">Todavía no hay pedidos confirmados ni descartados.</p>
     <?php else: ?>
-      <div class="tabla-scroll oculta-en-movil">
+      <div class="tabla-scroll">
       <table class="lineas">
         <thead>
           <tr>
@@ -191,32 +144,6 @@ require __DIR__ . '/includes/cabecera.php';
           <?php endforeach; ?>
         </tbody>
       </table>
-      </div>
-
-      <!-- Solo en celular: cada pedido del historial es una tarjeta que se
-           despliega al tocarla, en vez de una fila de tabla angosta. -->
-      <div class="filas-esencial">
-        <?php foreach ($historial as $p): $confirmado = ($p['estado'] ?? '') === 'confirmado'; $verFactura = $confirmado && !empty($p['factura_numero']); ?>
-          <<?= $verFactura ? 'details' : 'div' ?> class="fila-lista">
-            <summary>
-              <span class="fila-lista-resumen">
-                <span class="fila-lista-titulo"><?= e($p['cliente']) ?></span>
-                <span class="fila-lista-pista">No. <?= e($p['numero']) ?> · <?= pesos((int) ($p['total'] ?? 0)) ?></span>
-              </span>
-              <span class="etiqueta <?= $confirmado ? 'pagada' : 'anulada' ?>">
-                <?= $confirmado ? 'Confirmado' : 'Descartado' ?>
-              </span>
-              <?php if ($verFactura): ?>
-                <svg class="fila-lista-flecha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-              <?php endif; ?>
-            </summary>
-            <?php if ($verFactura): ?>
-              <div class="fila-lista-detalle">
-                <div class="acciones-fila"><a class="salir" href="factura.php?n=<?= e($p['factura_numero']) ?>">Ver factura</a></div>
-              </div>
-            <?php endif; ?>
-          </<?= $verFactura ? 'details' : 'div' ?>>
-        <?php endforeach; ?>
       </div>
     <?php endif; ?>
   </section>
