@@ -6,26 +6,33 @@
 #   - gd: para procesar las fotos de producto (recorte, compresión).
 FROM php:8.4-apache
 
+#
+# Las librerías -dev (libpng-dev, etc.) NO se desinstalan después de
+# compilar gd: "apt-get purge --auto-remove" se lleva de paso las
+# librerías de verdad (libpng16, libjpeg, libwebp) porque quedaron
+# marcadas como "instaladas solo por dependencia", y sin ellas gd no
+# carga en tiempo de ejecución ("cannot open shared object file"). Pesa
+# unos MB más la imagen, pero así no se rompe.
 RUN docker-php-ext-install pdo_mysql mysqli \
     && apt-get update \
     && apt-get install -y --no-install-recommends libpng-dev libjpeg62-turbo-dev libwebp-dev \
     && docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install gd \
-    && apt-get purge -y --auto-remove libpng-dev libjpeg62-turbo-dev libwebp-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # El proyecto ya trae su propio .htaccess (bloquea /includes, /storage,
 # /tools, y activa compresión y caché) — solo hace falta permitirle a
 # Apache leerlo.
 #
-# mpm_prefork es el único módulo de procesos compatible con mod_php;
-# instalar las librerías de arriba deja además mpm_event habilitado, y
-# Apache se niega a arrancar con dos módulos de procesos a la vez
-# ("More than one MPM loaded"). Se apaga event/worker y se deja solo
-# prefork, sin importar cuál haya quedado prendido.
+# mpm_prefork es el único módulo de procesos compatible con mod_php.
+# Se borran a mano los enlaces de mpm_event/mpm_worker (en vez de
+# confiar en que "a2dismod" los detecte y los quite) para que quede
+# garantizado sin importar cuál haya quedado activo de fábrica, y
+# después se prende prefork.
 RUN a2enmod rewrite \
-    && a2dismod mpm_event mpm_worker 2>/dev/null; \
-    a2enmod mpm_prefork \
+    && rm -f /etc/apache2/mods-enabled/mpm_event.load /etc/apache2/mods-enabled/mpm_event.conf \
+             /etc/apache2/mods-enabled/mpm_worker.load /etc/apache2/mods-enabled/mpm_worker.conf \
+    && a2enmod mpm_prefork \
     && sed -ri 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 
 WORKDIR /var/www/html
