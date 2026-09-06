@@ -1301,6 +1301,23 @@ a.boton-icono { text-decoration: none; }
 .kpi-sub { margin: 6px 0 0; font-size: 12px; color: var(--marfil-40); }
 .kpi.acento .kpi-valor { color: var(--champana); }
 
+/* De celular a tablet (mismo corte que el menú de módulos) los números
+   del panel quedaban en una sola columna angosta, con el valor grande
+   flotando en un espacio vacío. Se fuerzan 2 columnas y se achica todo
+   un poco para que cada tarjeta quede proporcionada. */
+@media (max-width: 820px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .kpi { padding: 16px; }
+  .kpi-etiqueta { font-size: 9px; margin-bottom: 6px; }
+  .kpi-valor { font-size: 20px; }
+  .kpi-valor.kpi-texto { font-size: 14px; }
+  .kpi-sub { font-size: 11px; margin-top: 4px; }
+}
+@media (max-width: 480px) {
+  .kpi { padding: 14px 12px; }
+  .kpi-valor { font-size: 18px; }
+}
+
 .titulo-nota {
   margin-left: 8px;
   font-family: var(--texto);
