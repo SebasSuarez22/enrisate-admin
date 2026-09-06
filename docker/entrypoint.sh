@@ -4,7 +4,9 @@ set -e
 
 # Railway le asigna a cada servicio un puerto distinto en $PORT; Apache
 # viene configurado de fábrica para escuchar solo el 80.
+echo "Variable de entorno PORT tal como la puso Railway: '${PORT}'"
 PORT="${PORT:-80}"
+echo "Puerto que va a usar Apache: ${PORT}"
 sed -ri "s/Listen 80/Listen ${PORT}/" /etc/apache2/ports.conf
 sed -ri "s/:80/:${PORT}/" /etc/apache2/sites-enabled/000-default.conf
 
@@ -41,5 +43,8 @@ rm -f /etc/apache2/mods-enabled/mpm_event.load /etc/apache2/mods-enabled/mpm_eve
 a2enmod mpm_prefork >/dev/null 2>&1 || true
 echo "Módulos MPM justo antes de arrancar Apache:"
 ls /etc/apache2/mods-enabled/ 2>/dev/null | grep mpm || echo "(ninguno)"
+
+echo "Apache va a escuchar en:"
+grep -i listen /etc/apache2/ports.conf
 
 exec apache2-foreground
