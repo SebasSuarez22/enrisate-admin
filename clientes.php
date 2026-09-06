@@ -244,25 +244,25 @@ require __DIR__ . '/includes/cabecera.php';
            tocarla, en vez de una fila de tabla angosta. -->
       <div class="filas-esencial">
         <?php foreach ($filas as $fila): $c = $fila['c']; $stats = $fila['stats']; ?>
-          <details class="fila-cliente" id="vista-movil-<?= e($c['id']) ?>">
+          <details class="fila-lista" id="vista-movil-<?= e($c['id']) ?>">
             <summary>
               <input type="checkbox" class="chk-cliente" value="<?= e($c['id']) ?>" aria-label="Seleccionar a <?= e($c['nombre']) ?>" onclick="event.stopPropagation()">
-              <span class="fila-cliente-resumen">
-                <span class="fila-cliente-nombre"><?= e($c['nombre']) ?></span>
+              <span class="fila-lista-resumen">
+                <span class="fila-lista-titulo"><?= e($c['nombre']) ?></span>
                 <?php if ($stats && $stats['favorito']): ?>
-                  <span class="fila-cliente-pista">Favorito: <?= e($stats['favorito']) ?></span>
+                  <span class="fila-lista-pista">Favorito: <?= e($stats['favorito']) ?></span>
                 <?php elseif ($c['telefono'] !== ''): ?>
-                  <span class="fila-cliente-pista"><?= e($c['telefono']) ?></span>
+                  <span class="fila-lista-pista"><?= e($c['telefono']) ?></span>
                 <?php endif; ?>
               </span>
-              <svg class="fila-cliente-flecha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+              <svg class="fila-lista-flecha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
             </summary>
-            <div class="fila-cliente-detalle">
+            <div class="fila-lista-detalle">
               <div class="campo-detalle"><strong>Teléfono</strong><?= $c['telefono'] !== '' ? e($c['telefono']) : 'Sin teléfono' ?></div>
               <?= $notasCliente($fila) ?>
             </div>
           </details>
-          <div id="edicion-movil-<?= e($c['id']) ?>" class="fila-cliente-editar" hidden><?= $formEditarCliente($fila) ?></div>
+          <div id="edicion-movil-<?= e($c['id']) ?>" class="fila-lista-editar" hidden><?= $formEditarCliente($fila) ?></div>
         <?php endforeach; ?>
       </div>
     <?php endif; ?>

@@ -816,28 +816,30 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
 }
 
 /* =========================================================
-   Clientes en celular: tarjetas desplegables en vez de tabla
+   Tablas en celular: tarjetas desplegables en vez de tabla
    =========================================================
    Debajo de 640px la tabla (.oculta-en-movil) se esconde y aparecen
-   estas tarjetas: solo el nombre y el dato más útil a la vista, el
-   resto se despliega al tocar. Arriba de 640px es al revés. Cada
-   clienta existe en las dos formas a la vez en el HTML —clientes.php
-   arma ambas una sola vez—, así que "Editar"/"Eliminar" en lote
+   estas tarjetas (.filas-esencial): solo lo más útil a la vista, el
+   resto se despliega al tocar. Arriba de 640px es al revés. Cada fila
+   existe en las dos formas a la vez en el HTML —cada página arma ambas
+   una sola vez—, así que seleccionar/editar/eliminar en lote
    (seleccion-lote.js ya solo cuenta lo que está visible) funcionan
-   igual sin importar cuál de las dos se esté mostrando. */
+   igual sin importar cuál de las dos se esté mostrando. Un solo
+   componente (.fila-lista) para Clientes, Productos, Cartera y
+   Pedidos. */
 .filas-esencial { display: none; }
 @media (max-width: 640px) {
   .oculta-en-movil { display: none; }
   .filas-esencial { display: grid; gap: 10px; }
 }
 
-.fila-cliente {
+.fila-lista {
   border: 1px solid rgba(243, 234, 226, 0.09);
   border-radius: 14px;
   background: linear-gradient(160deg, rgba(51, 32, 44, 0.55), rgba(29, 18, 26, 0.55));
   overflow: hidden;
 }
-.fila-cliente > summary {
+.fila-lista > summary {
   list-style: none;
   display: flex;
   align-items: center;
@@ -845,10 +847,10 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   padding: 13px 14px;
   cursor: pointer;
 }
-.fila-cliente > summary::-webkit-details-marker { display: none; }
-.fila-cliente-resumen { flex: 1; min-width: 0; }
-.fila-cliente-nombre { font-family: var(--texto); font-size: 14px; font-weight: 600; color: var(--marfil); }
-.fila-cliente-pista {
+.fila-lista > summary::-webkit-details-marker { display: none; }
+.fila-lista-resumen { flex: 1; min-width: 0; }
+.fila-lista-titulo { font-family: var(--texto); font-size: 14px; font-weight: 600; color: var(--marfil); }
+.fila-lista-pista {
   display: block;
   margin-top: 2px;
   font-family: var(--dato);
@@ -858,16 +860,16 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.fila-cliente-flecha { flex: none; color: var(--marfil-40); transition: transform 0.16s ease; }
-.fila-cliente[open] .fila-cliente-flecha { transform: rotate(180deg); }
-.fila-cliente-detalle {
+.fila-lista-flecha { flex: none; color: var(--marfil-40); transition: transform 0.16s ease; }
+.fila-lista[open] .fila-lista-flecha { transform: rotate(180deg); }
+.fila-lista-detalle {
   padding: 0 14px 14px 40px;
   font-size: 12.5px;
   color: var(--marfil-70);
   line-height: 1.5;
 }
-.fila-cliente-detalle .campo-detalle { margin-bottom: 6px; }
-.fila-cliente-detalle .campo-detalle strong {
+.fila-lista-detalle .campo-detalle { margin-bottom: 6px; }
+.fila-lista-detalle .campo-detalle strong {
   display: block;
   margin-bottom: 1px;
   font-family: var(--dato);
@@ -877,17 +879,25 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   letter-spacing: 0.1em;
   color: var(--marfil-40);
 }
-.fila-cliente-detalle .cliente-insights { margin-top: 8px; }
+.fila-lista-detalle .cliente-insights { margin-top: 8px; }
+/* Botones o formularios cortos de acción, dentro del detalle desplegado. */
+.fila-lista-detalle .acciones-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
 
-/* La tarjeta de edición (misma forma que en la tabla) al desplegarse
-   entre una tarjeta y la siguiente. */
-.fila-cliente-editar {
+/* La tarjeta de edición (misma forma que una fila) al desplegarse entre
+   una tarjeta y la siguiente. */
+.fila-lista-editar {
   padding: 14px;
   border: 1px solid var(--linea);
   border-radius: 14px;
   background: rgba(224, 184, 126, 0.05);
 }
-.fila-cliente-editar + .fila-cliente { margin-top: 10px; }
+.fila-lista-editar + .fila-lista { margin-top: 10px; }
 
 .quitar {
   width: 26px;

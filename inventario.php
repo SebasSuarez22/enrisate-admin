@@ -232,10 +232,38 @@ require __DIR__ . '/includes/cabecera.php';
     </form>
   <?php endif; ?>
 
+  <?php
+  // El botón de editar/descripción/foto de cada producto (tabla o
+  // tarjeta) abre siempre el mismo modal compartido de más abajo — así
+  // que la tarjeta de celular solo necesita los mismos botones con el
+  // mismo data-sku, nada de JS nuevo.
+  $accionesProducto = function (array $p): string {
+      ob_start();
+      ?>
+      <button type="button" class="boton-icono fantasma btn-editar-fila"
+              data-sku="<?= e($p['sku']) ?>"
+              title="Editar <?= e($p['nombre']) ?>" aria-label="Editar <?= e($p['nombre']) ?>">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l4 4"/></svg>
+      </button>
+      <button type="button" class="boton-icono fantasma btn-descripcion-fila"
+              data-sku="<?= e($p['sku']) ?>"
+              title="Descripción de <?= e($p['nombre']) ?>" aria-label="Descripción de <?= e($p['nombre']) ?>">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5V8h4"/><path d="M8.5 12.5h6M8.5 16h4"/></svg>
+      </button>
+      <button type="button" class="boton-icono fantasma btn-imagen-fila"
+              data-sku="<?= e($p['sku']) ?>"
+              title="Foto de <?= e($p['nombre']) ?>" aria-label="Foto de <?= e($p['nombre']) ?>">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6.5" width="18" height="13.5" rx="2"/><path d="M8 6.5l1.3-2.1a1 1 0 0 1 .85-.4h3.7a1 1 0 0 1 .85.4L16 6.5"/><circle cx="12" cy="13.2" r="3.4"/></svg>
+      </button>
+      <?php
+      return ob_get_clean();
+  };
+  ?>
+
   <?php foreach ($porMarca as $marca => $ps): ?>
     <section class="panel panel-inventario" data-marca="<?= e($marca) ?>">
       <h2 class="titulo-panel"><?= e($marca) ?></h2>
-      <div class="tabla-scroll">
+      <div class="tabla-scroll oculta-en-movil">
       <table class="lineas">
         <thead>
           <tr>
@@ -254,7 +282,7 @@ require __DIR__ . '/includes/cabecera.php';
             $margen = $p['precio'] - $p['costo'];
             $pct    = $p['precio'] > 0 ? round($margen / $p['precio'] * 100) : 0;
           ?>
-            <tr>
+            <tr data-sku="<?= e($p['sku']) ?>">
               <td><input type="checkbox" class="chk-producto" value="<?= e($p['sku']) ?>" aria-label="Seleccionar <?= e($p['nombre']) ?>"></td>
               <td>
                 <?= e($p['nombre']) ?>
@@ -263,31 +291,37 @@ require __DIR__ . '/includes/cabecera.php';
               <td class="num"><?= pesos($p['precio']) ?></td>
               <td class="num"><?= pesos($p['costo']) ?></td>
               <td class="num"><?= pesos($margen) ?> <span class="sku"><?= $pct ?>%</span></td>
-              <td class="num">
-                <button type="button" class="boton-icono fantasma btn-editar-fila"
-                        data-sku="<?= e($p['sku']) ?>"
-                        title="Editar <?= e($p['nombre']) ?>" aria-label="Editar <?= e($p['nombre']) ?>">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l4 4"/></svg>
-                </button>
-              </td>
-              <td class="num">
-                <button type="button" class="boton-icono fantasma btn-descripcion-fila"
-                        data-sku="<?= e($p['sku']) ?>"
-                        title="Descripción de <?= e($p['nombre']) ?>" aria-label="Descripción de <?= e($p['nombre']) ?>">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5V8h4"/><path d="M8.5 12.5h6M8.5 16h4"/></svg>
-                </button>
-              </td>
-              <td class="num">
-                <button type="button" class="boton-icono fantasma btn-imagen-fila"
-                        data-sku="<?= e($p['sku']) ?>"
-                        title="Foto de <?= e($p['nombre']) ?>" aria-label="Foto de <?= e($p['nombre']) ?>">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6.5" width="18" height="13.5" rx="2"/><path d="M8 6.5l1.3-2.1a1 1 0 0 1 .85-.4h3.7a1 1 0 0 1 .85.4L16 6.5"/><circle cx="12" cy="13.2" r="3.4"/></svg>
-                </button>
-              </td>
+              <td class="num"><?= $accionesProducto($p) ?></td>
             </tr>
           <?php endforeach; ?>
         </tbody>
       </table>
+      </div>
+
+      <!-- Solo en celular: cada producto es una tarjeta que se despliega
+           al tocarla, en vez de una fila de tabla angosta. -->
+      <div class="filas-esencial">
+        <?php foreach ($ps as $p):
+          $margen = $p['precio'] - $p['costo'];
+          $pct    = $p['precio'] > 0 ? round($margen / $p['precio'] * 100) : 0;
+        ?>
+          <details class="fila-lista" data-sku="<?= e($p['sku']) ?>">
+            <summary>
+              <input type="checkbox" class="chk-producto" value="<?= e($p['sku']) ?>" aria-label="Seleccionar <?= e($p['nombre']) ?>" onclick="event.stopPropagation()">
+              <span class="fila-lista-resumen">
+                <span class="fila-lista-titulo"><?= e($p['nombre']) ?></span>
+                <span class="fila-lista-pista"><?= pesos($p['precio']) ?></span>
+              </span>
+              <svg class="fila-lista-flecha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <div class="fila-lista-detalle">
+              <div class="campo-detalle"><strong>SKU</strong><?= e($p['sku']) ?></div>
+              <div class="campo-detalle"><strong>Costo</strong><?= pesos($p['costo']) ?></div>
+              <div class="campo-detalle"><strong>Margen</strong><?= pesos($margen) ?> · <?= $pct ?>%</div>
+              <div class="acciones-fila"><?= $accionesProducto($p) ?></div>
+            </div>
+          </details>
+        <?php endforeach; ?>
       </div>
     </section>
   <?php endforeach; ?>
@@ -594,6 +628,11 @@ const loteProductos = seleccionEnLote({
       sec.querySelectorAll('tbody tr').forEach(fila => {
         const coincide = !buscando || fila.textContent.toLowerCase().includes(q);
         fila.style.display = coincide ? '' : 'none';
+        // La tarjeta de celular es la misma fila en otra forma (mismo
+        // data-sku): sigue la misma decisión, para que buscar filtre
+        // igual sin importar si se está viendo la tabla o las tarjetas.
+        const tarjeta = sec.querySelector('.fila-lista[data-sku="' + CSS.escape(fila.dataset.sku) + '"]');
+        if (tarjeta) tarjeta.hidden = !coincide;
         if (coincide) filasVisibles++;
       });
 
