@@ -686,6 +686,24 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
    se pueda desplazar horizontalmente en vez de romper el ancho de la
    página (las tablas de cartera/historial tienen hasta 7 columnas). */
 .tabla-scroll { overflow-x: auto; }
+/* Pista de "desliza para ver más": difumina el borde donde hay columnas
+   ocultas por el scroll horizontal (mismo recurso que el carrusel de
+   marcas del catálogo público). Las clases las pone
+   assets/js/tabla-deslizable.js según cuánto se haya desplazado. */
+.tabla-scroll.desborda-ambos,
+.tabla-scroll.desborda-derecha {
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - var(--sp-6)), transparent 100%);
+          mask-image: linear-gradient(to right, #000 0, #000 calc(100% - var(--sp-6)), transparent 100%);
+}
+.tabla-scroll.desborda-ambos,
+.tabla-scroll.desborda-izquierda {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--sp-6), #000 100%);
+          mask-image: linear-gradient(to right, transparent 0, #000 var(--sp-6), #000 100%);
+}
+.tabla-scroll.desborda-ambos {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--sp-6), #000 calc(100% - var(--sp-6)), transparent 100%);
+          mask-image: linear-gradient(to right, transparent 0, #000 var(--sp-6), #000 calc(100% - var(--sp-6)), transparent 100%);
+}
 .lineas { width: 100%; border-collapse: collapse; }
 .lineas th {
   padding: 5px 14px 5px 0;

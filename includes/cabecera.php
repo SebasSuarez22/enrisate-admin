@@ -24,6 +24,9 @@ $barraVolver  = $barraVolver ?? false;
 <!-- Solo define seleccionEnLote(); no toca el DOM al cargar, así que va
      sin defer y queda lista para el <script> del final de cada página. -->
 <script src="assets/js/seleccion-lote.js?v=<?= filemtime(__DIR__ . '/../assets/js/seleccion-lote.js') ?>"></script>
+<!-- Este sí con defer: se activa solo en cualquier página que tenga una
+     tabla con scroll horizontal, sin que la página tenga que llamarlo. -->
+<script defer src="assets/js/tabla-deslizable.js?v=<?= filemtime(__DIR__ . '/../assets/js/tabla-deslizable.js') ?>"></script>
 </head>
 <body>
 
