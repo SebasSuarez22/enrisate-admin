@@ -17,7 +17,15 @@ RUN docker-php-ext-install pdo_mysql mysqli \
 # El proyecto ya trae su propio .htaccess (bloquea /includes, /storage,
 # /tools, y activa compresión y caché) — solo hace falta permitirle a
 # Apache leerlo.
+#
+# mpm_prefork es el único módulo de procesos compatible con mod_php;
+# instalar las librerías de arriba deja además mpm_event habilitado, y
+# Apache se niega a arrancar con dos módulos de procesos a la vez
+# ("More than one MPM loaded"). Se apaga event/worker y se deja solo
+# prefork, sin importar cuál haya quedado prendido.
 RUN a2enmod rewrite \
+    && a2dismod mpm_event mpm_worker 2>/dev/null; \
+    a2enmod mpm_prefork \
     && sed -ri 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 
 WORKDIR /var/www/html
