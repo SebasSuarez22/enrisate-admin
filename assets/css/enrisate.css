@@ -380,11 +380,25 @@ a.boton { display: inline-block; text-decoration: none; }
 .barra img { width: 26px; height: 26px; }
 .barra .wordmark { font-size: 19px; animation: none; background-position: -60% 0; }
 .barra .quien {
-  margin-left: auto;
   font-family: var(--dato);
   font-size: 11px;
   letter-spacing: 0.08em;
   color: var(--marfil-40);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* El margin-left:auto vive en .salir (no en .quien) para que, en pantallas
+   angostas donde .quien se oculta, el botón de la derecha se quede pegado
+   al borde en vez de irse a la izquierda pegado al wordmark. */
+.barra .salir { margin-left: auto; flex: none; }
+
+/* Celulares angostos (320-360px): con logo + nombre del negocio + "Administradora"
+   + el botón de salir, no cabía todo en una fila y el botón quedaba cortado
+   fuera de la pantalla. Se oculta el nombre de quien inició sesión (no es
+   información que se necesite ver siempre) para que el botón quepa entero. */
+@media (max-width: 480px) {
+  .barra .quien { display: none; }
 }
 /* Acción secundaria chica (Salir, Volver, Ver, Anular, Descartar…).
    Mide exactamente lo mismo que .boton.compacto para que, cuando caen
