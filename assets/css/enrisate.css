@@ -848,6 +848,10 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   cursor: pointer;
 }
 .fila-lista > summary::-webkit-details-marker { display: none; }
+/* Cuando no hay nada que desplegar (ej. un pedido descartado, sin
+   factura que ver) la fila se arma como <div>, no <details> — el
+   resumen se ve igual pero sin cursor de "toca aquí". */
+.fila-lista:not(details) > summary { cursor: default; }
 .fila-lista-resumen { flex: 1; min-width: 0; }
 .fila-lista-titulo { font-family: var(--texto); font-size: 14px; font-weight: 600; color: var(--marfil); }
 .fila-lista-pista {
