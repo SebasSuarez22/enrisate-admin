@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS `clientes` (
   `id` varchar(64) NOT NULL,
   `nombre` varchar(150) NOT NULL,
   `telefono` varchar(30) NOT NULL DEFAULT '',
-  `notas` text NOT NULL DEFAULT '',
+  `notas` text NOT NULL,
   `saldo_favor` int(11) NOT NULL DEFAULT 0,
   `creado` varchar(40) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS `productos` (
   `precio` int(11) NOT NULL DEFAULT 0,
   `costo` int(11) NOT NULL DEFAULT 0,
   `stock` int(11) NOT NULL DEFAULT 0,
-  `descripcion` text NOT NULL DEFAULT '',
+  `descripcion` text NOT NULL,
   PRIMARY KEY (`sku`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS `facturas` (
   `numero` varchar(40) NOT NULL,
   `cliente` varchar(150) NOT NULL DEFAULT '',
   `telefono` varchar(30) NOT NULL DEFAULT '',
-  `nota` text NOT NULL DEFAULT '',
+  `nota` text NOT NULL,
   `subtotal` int(11) NOT NULL DEFAULT 0,
   `descuento` int(11) NOT NULL DEFAULT 0,
   `total` int(11) NOT NULL DEFAULT 0,
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS `facturas` (
   `creada` varchar(40) NOT NULL DEFAULT '',
   `anulada` tinyint(1) NOT NULL DEFAULT 0,
   `anulada_el` varchar(40) DEFAULT NULL,
-  `motivo_anulacion` text NOT NULL DEFAULT '',
+  `motivo_anulacion` text NOT NULL,
   PRIMARY KEY (`numero`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS `factura_abonos` (
   `monto` int(11) NOT NULL DEFAULT 0,
   `fecha` varchar(40) NOT NULL DEFAULT '',
   `tipo` varchar(20) NOT NULL DEFAULT 'abono',
-  `motivo` text NOT NULL DEFAULT '',
+  `motivo` text NOT NULL,
   PRIMARY KEY (`id`),
   KEY `cuota_id` (`cuota_id`),
   CONSTRAINT `factura_abonos_ibfk_1` FOREIGN KEY (`cuota_id`) REFERENCES `factura_cuotas` (`id`) ON DELETE CASCADE
