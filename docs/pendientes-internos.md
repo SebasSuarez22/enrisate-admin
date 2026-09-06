@@ -2,6 +2,10 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 6 de septiembre, 2026
+
+**Pendiente nuevo — acceso/seguridad del login:** se conversó con Sebastián sobre 3 opciones para mejorar el acceso al panel (de más a menos segura): 1) iniciar sesión con la cuenta de Google del correo oficial de Enrísate (gratis, pero mejor esperar a tener el dominio real para configurarlo bien), 2) código de verificación por correo además de la contraseña actual, 3) recuperar la contraseña por correo si se olvida (la más simple, la que menos aporta a seguridad real). Sebastián quiere la opción 1 como meta cuando haya dominio, pero de una vez quiere probar algo real ahora: implementar y probar de verdad el envío de recuperación de contraseña por correo (opción 3), enviando un correo real de prueba. Para eso hacen falta de él: el correo oficial de Enrísate, y una forma de enviar correos desde ese correo (por ejemplo una "contraseña de aplicación" de Gmail/Google Workspace). Sigue pendiente que él la dé.
+
 ## 5 de septiembre, 2026
 
 **Pendiente nuevo:** antes de comprar un dominio y publicar el sitio en internet, cerrar los huecos de seguridad ya identificados: base de datos sin contraseña (usuario root), y la clave inicial del panel ("Enrisate2026*") visible en un comentario del código (`config.php`). Sebastián lo dejó para después porque ahora quiere mejorar unos mensajes automáticos de WhatsApp.
