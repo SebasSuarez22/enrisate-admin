@@ -3,6 +3,39 @@
 Pantalla de ingreso, facturación, clientas, pedidos, inventario y cartera —
 ahora con MySQL (XAMPP) como almacenamiento en vez de los JSON de `storage/`.
 
+## Subirlo a Railway
+
+El proyecto trae un `Dockerfile`: en Railway basta con crear un servicio
+"Deploy from GitHub repo" apuntando a este repositorio — Railway detecta el
+Dockerfile solo y construye la imagen (PHP 8.4 + Apache + las extensiones
+que la app necesita).
+
+Además del servicio de la app, hace falta:
+
+1. **Agregar un servicio de MySQL** al mismo proyecto de Railway ("New" →
+   "Database" → "MySQL"). Railway ya deja listas las variables
+   `MYSQLHOST`, `MYSQLPORT`, `MYSQLUSER`, `MYSQLPASSWORD`, `MYSQLDATABASE`
+   — el servicio de la app las lee solo (ver `config.php`), no hay que
+   escribir nada a mano. Solo falta enlazarlas: en el servicio de la app,
+   pestaña "Variables", agrégalas como referencia al servicio de MySQL
+   (Railway ofrece esto con un clic, "Add variable reference").
+2. **Las tablas se crean solas** la primera vez que arranca el contenedor
+   (`docker/entrypoint.sh` corre `tools/aplicar_esquema.php`, que aplica
+   `storage/esquema.sql`) — no hay que entrar a phpMyAdmin ni importar nada
+   a mano.
+3. **Cambiar la clave del panel**: por defecto viene la clave de pruebas
+   (`Enrisate2026*`, la misma de XAMPP). Antes de compartir el link real,
+   corre `php tools/generar_hash.php "TuNuevaClave"` y pega el resultado
+   como variable de entorno `ADMIN_HASH` en Railway (no hace falta tocar
+   el código ni volver a subir nada).
+4. **Fotos de producto**: se guardan como archivos en
+   `assets/img/productos/`. Sin nada más, cualquier foto que se suba desde
+   el panel *en Railway* se perdería en el próximo despliegue (el
+   contenedor se reconstruye desde cero cada vez). Para que las fotos
+   queden guardadas de verdad, hay que agregarle al servicio un
+   **Volume** de Railway montado en esa misma carpeta
+   (`/var/www/html/assets/img/productos`).
+
 ## Base de datos (MySQL / XAMPP)
 
 Este proyecto ya no guarda los datos en `storage/*.json` — los guarda en
@@ -150,6 +183,8 @@ includes/pedidos.php  pedidos del catálogo público (ahora en MySQL)
 datos/catalogo.php    catálogo maestro original (solo semilla de arranque)
 includes/categorias.php  lista de categorías, sus colores y sus íconos
 storage/esquema.sql                            esquema de la base de datos
+tools/aplicar_esquema.php      aplica storage/esquema.sql (a mano, o solo al arrancar en Railway)
+Dockerfile, docker/entrypoint.sh   imagen y arranque del contenedor en Railway
 storage/actualizar-2026-08-22-descuentos.sql   agrega tipo/motivo a factura_abonos (proyectos ya existentes)
 storage/actualizar-2026-08-23-categorias.sql   agrega la columna categoria a productos
 cartera-excel.php                              descarga en Excel de la cartera vencida/pendiente

@@ -12,7 +12,13 @@ function iniciar_sesion(): void
         return;
     }
 
-    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    // En Railway (y casi cualquier servidor detrás de un proxy) la
+    // conexión real del navegador sí es HTTPS, pero el proxy le habla a
+    // esta aplicación por dentro en HTTP normal — $_SERVER['HTTPS'] no
+    // se entera. El proxy sí manda X-Forwarded-Proto: https, avisando
+    // cuál fue la conexión original.
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
 
     session_set_cookie_params([
         'lifetime' => 0,
