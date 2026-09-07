@@ -31,6 +31,13 @@ if ($sql === false) {
     exit(1);
 }
 
+// Si el archivo trae "CREATE DATABASE" / "USE nombre_viejo;" (típico
+// de una exportación completa de phpMyAdmin), esas líneas cambiarían
+// la base de datos a mitad de la importación y los datos terminarían
+// en una base distinta a la que de verdad usa la app. Se quitan para
+// que todo quede siempre en la base indicada por línea de comandos.
+$sql = preg_replace('/^\s*(CREATE DATABASE|USE)\b.*?;\s*$/mi', '', $sql);
+
 // Se apagan las excepciones de mysqli: si el archivo trae de más (por
 // ejemplo "CREATE TABLE" de tablas que ya existen, porque el usuario
 // exportó también la estructura), eso no debe detener el resto de la
