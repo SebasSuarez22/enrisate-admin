@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS `productos` (
   `costo` int(11) NOT NULL DEFAULT 0,
   `stock` int(11) NOT NULL DEFAULT 0,
   `descripcion` text NOT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `actualizado_en` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`sku`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -117,6 +119,7 @@ CREATE TABLE IF NOT EXISTS `pedidos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `pedido_lineas` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `pedido_numero` varchar(40) NOT NULL,
   `orden` int(11) NOT NULL,
   `sku` varchar(40) NOT NULL,
@@ -124,5 +127,6 @@ CREATE TABLE IF NOT EXISTS `pedido_lineas` (
   `marca` varchar(80) NOT NULL,
   `precio` int(11) NOT NULL DEFAULT 0,
   `cant` int(11) NOT NULL DEFAULT 1,
-  PRIMARY KEY (`pedido_numero`,`orden`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `pedido_numero` (`pedido_numero`,`orden`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
