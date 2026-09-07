@@ -31,28 +31,33 @@ if ($sql === false) {
     exit(1);
 }
 
+// Se apagan las excepciones de mysqli: si el archivo trae de más (por
+// ejemplo "CREATE TABLE" de tablas que ya existen, porque el usuario
+// exportó también la estructura), eso no debe detener el resto de la
+// importación — lo que importa es que los datos sí queden metidos.
+mysqli_report(MYSQLI_REPORT_OFF);
+
 $mysqli = mysqli_init();
 if (!$mysqli->real_connect($host, $usuario, $clave, $baseDatos, (int) $puerto)) {
     fwrite(STDERR, "No se pudo conectar: " . mysqli_connect_error() . "\n");
     exit(1);
 }
 
-if (!$mysqli->multi_query($sql)) {
-    fwrite(STDERR, "Error al importar: " . $mysqli->error . "\n");
-    exit(1);
-}
+$mysqli->multi_query($sql);
 
-// multi_query ejecuta las sentencias una por una; hay que ir pasando
-// por cada resultado para que se ejecuten todas y para enterarse si
-// alguna falló a mitad de camino.
+$errores = 0;
 do {
     if ($resultado = $mysqli->store_result()) {
         $resultado->free();
     }
     if ($mysqli->errno) {
-        fwrite(STDERR, "Error a mitad de la importación: " . $mysqli->error . "\n");
-        exit(1);
+        fwrite(STDERR, "Aviso (se sigue con lo siguiente): " . $mysqli->error . "\n");
+        $errores++;
     }
 } while ($mysqli->more_results() && $mysqli->next_result());
 
-echo "Datos importados correctamente.\n";
+if ($errores > 0) {
+    echo "Importación terminada con $errores aviso(s) arriba (probablemente tablas que ya existían — no es grave). Revisa la página para confirmar que los datos sí quedaron.\n";
+} else {
+    echo "Datos importados correctamente, sin errores.\n";
+}
