@@ -787,6 +787,13 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   white-space: normal;
 }
 .lineas .col-notas { white-space: normal; }
+/* Pedidos por revisar: "Productos" (varias líneas de "1 × algo") y
+   "Plan propuesto" son párrafos, no datos cortos — a diferencia del
+   resto de columnas de esta tabla, quebrar línea es justo lo que se
+   quiere en vez de forzar el ancho. min-width evita que, ya sin
+   nowrap, terminen angostísimas junto a columnas más livianas. */
+.lineas .col-productos,
+.lineas .col-plan { white-space: normal; min-width: 200px; }
 .lineas .sku {
   display: block;
   margin-top: 2px;
@@ -821,6 +828,83 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   color: var(--rosa);
   font-weight: 600;
 }
+
+/* =========================================================
+   Pedidos por revisar en celular: tarjeta desplegable en vez de fila
+   =========================================================
+   Debajo de 640px la tabla (.oculta-en-movil) se esconde y aparecen
+   estas tarjetas (.filas-esencial): solo cliente y total a la vista,
+   el resto se despliega al tocar. Arriba de 640px es al revés — cada
+   pedido existe en las dos formas a la vez en el HTML (pedidos.php
+   arma ambas una sola vez a partir del mismo array).
+   Fue un componente genérico (Clientes/Productos/Cartera/Pedidos) que
+   se probó y se revirtió para los otros tres; acá queda acotado solo
+   a "Por revisar", donde el problema real vive: la columna Productos
+   puede traer varias líneas y el bloque de acciones (Confirmar y
+   facturar / Descartar) no cabía en una fila angosta. */
+.filas-esencial { display: none; }
+@media (max-width: 640px) {
+  .oculta-en-movil { display: none; }
+  .filas-esencial { display: grid; gap: 10px; }
+}
+
+.fila-lista {
+  border: 1px solid rgba(243, 234, 226, 0.09);
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(51, 32, 44, 0.55), rgba(29, 18, 26, 0.55));
+  overflow: hidden;
+}
+.fila-lista > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px;
+  cursor: pointer;
+}
+.fila-lista > summary::-webkit-details-marker { display: none; }
+.fila-lista-resumen { flex: 1; min-width: 0; }
+.fila-lista-titulo { font-family: var(--texto); font-size: 14px; font-weight: 600; color: var(--marfil); }
+.fila-lista-pista {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--dato);
+  font-size: 12px;
+  color: var(--marfil-40);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fila-lista-flecha { flex: none; color: var(--marfil-40); transition: transform 0.16s ease; }
+.fila-lista[open] .fila-lista-flecha { transform: rotate(180deg); }
+.fila-lista-detalle {
+  padding: 0 14px 14px 40px;
+  font-size: 12.5px;
+  color: var(--marfil-70);
+  line-height: 1.5;
+}
+.fila-lista-detalle .campo-detalle { margin-bottom: 6px; }
+.fila-lista-detalle .campo-detalle strong {
+  display: block;
+  margin-bottom: 1px;
+  font-family: var(--dato);
+  font-size: 9.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--marfil-40);
+}
+/* Botones o formularios cortos de acción, dentro del detalle desplegado
+   — acá "Confirmar y facturar" y "Descartar", uno debajo del otro en
+   vez de cortarse por el lado derecho de una fila angosta. */
+.fila-lista-detalle .acciones-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .quitar {
   width: 26px;
   height: 26px;
@@ -978,6 +1062,36 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
 .acciones-pedido { display: flex; flex-wrap: nowrap; gap: var(--sp-2); justify-content: flex-end; align-items: center; }
 .acciones-pedido .en-linea { display: inline; margin: 0; flex-shrink: 0; }
 .acciones-pedido .boton { white-space: nowrap; flex-shrink: 0; }
+
+/* Tabla "Por revisar", arriba de 640px (abajo se esconde y aparece
+   .filas-esencial): columnas en proporciones fijas en vez de dejar que
+   cada una pida el ancho de su contenido más largo — así Productos y
+   Plan propuesto quiebran línea dentro de su carril en lugar de
+   empujar el resto de la fila hacia la derecha, y la tabla no necesita
+   .tabla-scroll salvo con datos verdaderamente extremos. Los dos
+   botones de Acciones se apilan (en vez de ir lado a lado) para caber
+   en una columna angosta sin que "Descartar" quede corto de espacio. */
+.tabla-pedidos-revisar { table-layout: fixed; }
+/* Con ancho fijo por columna, un dato que no quiebra (nombre largo,
+   fecha) se saldría de su celda hacia la de al lado en vez de
+   desbordar la tabla entera — acá sí conviene que todo pueda quebrar,
+   Total incluido (el signo $ nunca es la palabra más larga). */
+.tabla-pedidos-revisar td { white-space: normal; }
+.tabla-pedidos-revisar th:nth-child(1), .tabla-pedidos-revisar td:nth-child(1) { width: 16%; }
+.tabla-pedidos-revisar th:nth-child(2), .tabla-pedidos-revisar td:nth-child(2) { width: 24%; }
+.tabla-pedidos-revisar th:nth-child(3), .tabla-pedidos-revisar td:nth-child(3) { width: 18%; }
+.tabla-pedidos-revisar th:nth-child(4), .tabla-pedidos-revisar td:nth-child(4) { width: 12%; }
+.tabla-pedidos-revisar th:nth-child(5), .tabla-pedidos-revisar td:nth-child(5) { width: 14%; }
+.tabla-pedidos-revisar th:nth-child(6), .tabla-pedidos-revisar td:nth-child(6) { width: 16%; }
+.tabla-pedidos-revisar .acciones-pedido { flex-direction: column; align-items: stretch; gap: 6px; }
+.tabla-pedidos-revisar .acciones-pedido .boton,
+.tabla-pedidos-revisar .acciones-pedido .en-linea,
+.tabla-pedidos-revisar .acciones-pedido .en-linea .salir { width: 100%; text-align: center; }
+/* .acciones-pedido .boton trae white-space:nowrap por defecto (útil
+   cuando los botones van lado a lado) — acá van apilados en una
+   columna angosta, así que "Confirmar y facturar" sí necesita poder
+   quebrar en dos líneas en vez de forzar la celda más ancha. */
+.tabla-pedidos-revisar .acciones-pedido .boton { white-space: normal; }
 
 .form-busqueda {
   display: flex;

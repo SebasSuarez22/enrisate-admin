@@ -56,8 +56,27 @@ require __DIR__ . '/includes/cabecera.php';
     <?php if (!$pendientes): ?>
       <p class="subsaludo">No hay pedidos nuevos por ahora.</p>
     <?php else: ?>
-      <div class="tabla-scroll">
-      <table class="lineas">
+      <?php
+      // "Confirmar y facturar" / "Descartar" se ven igual en la fila de
+      // tabla (escritorio) y en la tarjeta desplegable (celular); se arman
+      // una sola vez por pedido para no repetir el formulario dos veces.
+      $accionesPedido = function (array $p) use ($token): string {
+          ob_start();
+          ?>
+          <a class="boton compacto" href="facturar.php?desde_pedido=<?= e($p['numero']) ?>">Confirmar y facturar</a>
+          <form method="post" action="pedidos.php" class="en-linea"
+                onsubmit="return confirm('¿Descartar el pedido de <?= e($p['cliente']) ?>? No se puede deshacer.');">
+            <input type="hidden" name="csrf" value="<?= e($token) ?>">
+            <input type="hidden" name="accion" value="descartar">
+            <input type="hidden" name="numero" value="<?= e($p['numero']) ?>">
+            <button type="submit" class="salir como-boton peligro">Descartar</button>
+          </form>
+          <?php
+          return ob_get_clean();
+      };
+      ?>
+      <div class="tabla-scroll oculta-en-movil">
+      <table class="lineas tabla-pedidos-revisar">
         <thead>
           <tr>
             <th>Cliente</th>
@@ -75,12 +94,12 @@ require __DIR__ . '/includes/cabecera.php';
                 <?= e($p['cliente']) ?>
                 <?php if (!empty($p['telefono'])): ?><span class="sku"><?= e($p['telefono']) ?></span><?php endif; ?>
               </td>
-              <td>
+              <td class="col-productos">
                 <?php foreach ($p['lineas'] ?? [] as $l): ?>
                   <?= (int) $l['cant'] ?> × <?= e($l['nombre']) ?><br>
                 <?php endforeach; ?>
               </td>
-              <td>
+              <td class="col-plan">
                 <?php if (($p['plan'] ?? 'contado') === 'cuotas'): ?>
                   Prefiere <?= numero((int) ($p['num_cuotas_preferido'] ?? 2)) ?> cuotas
                   <br><span class="sku">Montos y fechas: por definir con ella</span>
@@ -90,20 +109,51 @@ require __DIR__ . '/includes/cabecera.php';
               </td>
               <td class="num"><?= pesos((int) ($p['total'] ?? 0)) ?></td>
               <td><?= e(fecha_larga(substr((string) ($p['creado'] ?? ''), 0, 10))) ?></td>
-              <td class="num acciones-pedido">
-                <a class="boton compacto" href="facturar.php?desde_pedido=<?= e($p['numero']) ?>">Confirmar y facturar</a>
-                <form method="post" action="pedidos.php" class="en-linea"
-                      onsubmit="return confirm('¿Descartar el pedido de <?= e($p['cliente']) ?>? No se puede deshacer.');">
-                  <input type="hidden" name="csrf" value="<?= e($token) ?>">
-                  <input type="hidden" name="accion" value="descartar">
-                  <input type="hidden" name="numero" value="<?= e($p['numero']) ?>">
-                  <button type="submit" class="salir como-boton peligro">Descartar</button>
-                </form>
-              </td>
+              <td class="num"><div class="acciones-pedido"><?= $accionesPedido($p) ?></div></td>
             </tr>
           <?php endforeach; ?>
         </tbody>
       </table>
+      </div>
+
+      <!-- Solo en celular (ver .filas-esencial / .oculta-en-movil en
+           enrisate.css): cada pedido es una tarjeta que se despliega al
+           tocarla, en vez de una fila de tabla angosta con el bloque de
+           acciones cortado por el lado derecho. -->
+      <div class="filas-esencial">
+        <?php foreach ($pendientes as $p): ?>
+          <details class="fila-lista">
+            <summary>
+              <span class="fila-lista-resumen">
+                <span class="fila-lista-titulo"><?= e($p['cliente']) ?></span>
+                <span class="fila-lista-pista"><?= pesos((int) ($p['total'] ?? 0)) ?></span>
+              </span>
+              <svg class="fila-lista-flecha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <div class="fila-lista-detalle">
+              <?php if (!empty($p['telefono'])): ?>
+                <div class="campo-detalle"><strong>Teléfono</strong><?= e($p['telefono']) ?></div>
+              <?php endif; ?>
+              <div class="campo-detalle">
+                <strong>Productos</strong>
+                <?php foreach ($p['lineas'] ?? [] as $l): ?>
+                  <?= (int) $l['cant'] ?> × <?= e($l['nombre']) ?><br>
+                <?php endforeach; ?>
+              </div>
+              <div class="campo-detalle">
+                <strong>Plan propuesto</strong>
+                <?php if (($p['plan'] ?? 'contado') === 'cuotas'): ?>
+                  Prefiere <?= numero((int) ($p['num_cuotas_preferido'] ?? 2)) ?> cuotas
+                  <br>Montos y fechas: por definir con ella
+                <?php else: ?>
+                  De contado
+                <?php endif; ?>
+              </div>
+              <div class="campo-detalle"><strong>Llegó</strong><?= e(fecha_larga(substr((string) ($p['creado'] ?? ''), 0, 10))) ?></div>
+              <div class="acciones-fila"><?= $accionesPedido($p) ?></div>
+            </div>
+          </details>
+        <?php endforeach; ?>
       </div>
     <?php endif; ?>
   </section>
