@@ -1093,6 +1093,102 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
    quebrar en dos líneas en vez de forzar la celda más ancha. */
 .tabla-pedidos-revisar .acciones-pedido .boton { white-space: normal; }
 
+/* =========================================================
+   Cartera y reportes: mismo criterio que "Pedidos por revisar" —
+   columnas en proporciones fijas en las 3 tablas del módulo, para que
+   nada empuje la fila hacia la derecha y .tabla-scroll deje de hacer
+   falta incluso en celular. A diferencia de Pedidos, acá NO se agrega
+   una tarjeta aparte para celular: las acciones son íconos compactos
+   (no botones de texto largo) y duplicar la fila crearía un segundo
+   elemento con el mismo id que el de "aplicar descuento" — rompería
+   btn-mostrar-descuento (ver el <script> al final de cartera.php,
+   que busca la fila por ese id). Una sola tabla que se adapta evita
+   el problema de raíz. */
+.tabla-cartera-pendiente,
+.tabla-historial-facturas,
+.tabla-detalle-sku { table-layout: fixed; }
+.tabla-cartera-pendiente td,
+.tabla-historial-facturas td,
+.tabla-detalle-sku td {
+  white-space: normal;
+  /* Garantía final contra el desborde: una marca larga sin espacios
+     ("Professionnel"), un monto grande o un código de factura son
+     "una sola palabra" que normal no puede partir. anywhere sí puede,
+     así ninguna columna se ve obligada a crecer más de lo que mide su
+     porcentaje — pasa poco (solo con datos realmente largos) y es
+     mejor que el texto se parta a que la fila entera se desborde. */
+  overflow-wrap: anywhere;
+}
+/* .salir es inline-flex de ancho "shrink-to-fit": sin un ancho propio,
+   mide lo que pida su contenido sin quebrar (el número de factura,
+   "P-2026-0030", se salía de su columna) — overflow-wrap no alcanza a
+   evitarlo porque nada lo obliga a encogerse primero. width:100% lo
+   estira al ancho real de la celda, y ahí sí overflow-wrap parte el
+   texto si hace falta. */
+.tabla-cartera-pendiente td > .salir,
+.tabla-historial-facturas td > .salir { width: 100%; box-sizing: border-box; }
+
+.tabla-cartera-pendiente th:nth-child(1), .tabla-cartera-pendiente td:nth-child(1) { width: 21%; }
+.tabla-cartera-pendiente th:nth-child(2), .tabla-cartera-pendiente td:nth-child(2) { width: 10%; }
+.tabla-cartera-pendiente th:nth-child(3), .tabla-cartera-pendiente td:nth-child(3) { width: 11%; }
+.tabla-cartera-pendiente th:nth-child(4), .tabla-cartera-pendiente td:nth-child(4) { width: 15%; }
+.tabla-cartera-pendiente th:nth-child(5), .tabla-cartera-pendiente td:nth-child(5) { width: 21%; }
+.tabla-cartera-pendiente th:nth-child(6), .tabla-cartera-pendiente td:nth-child(6) { width: 22%; }
+/* Los 3 controles (WhatsApp de mora, registrar abono, aplicar
+   descuento) se apilan en vez de ir en fila — son íconos de 44px, así
+   que caben perfecto uno debajo del otro en una columna angosta. El
+   campo del abono traía un ancho fijo (120px) pensado para ir al lado
+   del botón; apilado, mejor que ocupe todo el ancho disponible. */
+.tabla-cartera-pendiente .acciones-cartera {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 6px;
+}
+.tabla-cartera-pendiente .acciones-cartera .boton-icono,
+.tabla-cartera-pendiente .acciones-cartera .form-abono { width: 100%; }
+.tabla-cartera-pendiente .form-abono { flex-wrap: nowrap; }
+.tabla-cartera-pendiente .form-abono input[type="number"] { width: 100%; min-width: 0; }
+
+.tabla-historial-facturas th:nth-child(1), .tabla-historial-facturas td:nth-child(1) { width: 10%; }
+.tabla-historial-facturas th:nth-child(2), .tabla-historial-facturas td:nth-child(2) { width: 14%; }
+.tabla-historial-facturas th:nth-child(3), .tabla-historial-facturas td:nth-child(3) { width: 14%; }
+.tabla-historial-facturas th:nth-child(4), .tabla-historial-facturas td:nth-child(4) { width: 15%; }
+.tabla-historial-facturas th:nth-child(5), .tabla-historial-facturas td:nth-child(5) { width: 15%; }
+.tabla-historial-facturas th:nth-child(6), .tabla-historial-facturas td:nth-child(6) { width: 16%; }
+.tabla-historial-facturas th:nth-child(7), .tabla-historial-facturas td:nth-child(7) { width: 16%; }
+/* "Ver" + "Anular"/"Reactivar" apilados, mismo motivo que arriba. */
+.tabla-historial-facturas .acciones-factura {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.tabla-historial-facturas .acciones-factura .salir,
+.tabla-historial-facturas .acciones-factura .en-linea,
+.tabla-historial-facturas .acciones-factura .en-linea .salir { width: 100%; text-align: center; }
+
+.tabla-detalle-sku th:nth-child(1), .tabla-detalle-sku td:nth-child(1) { width: 26%; }
+.tabla-detalle-sku th:nth-child(2), .tabla-detalle-sku td:nth-child(2) { width: 16%; }
+.tabla-detalle-sku th:nth-child(3), .tabla-detalle-sku td:nth-child(3) { width: 12%; }
+.tabla-detalle-sku th:nth-child(4), .tabla-detalle-sku td:nth-child(4) { width: 23%; }
+.tabla-detalle-sku th:nth-child(5), .tabla-detalle-sku td:nth-child(5) { width: 23%; }
+
+/* Debajo de 640px estas 3 tablas se esconden del todo (.oculta-en-movil)
+   y aparece en su lugar .filas-esencial: 6-7 columnas de datos no caben
+   legibles en un teléfono aunque se repartan proporciones — la primera
+   versión de este fix las mantenía como tabla y achicaba letra/relleno
+   para que no desbordaran, pero el resultado real (números partidos
+   letra por letra, "Anular" en dos líneas) era peor que el problema
+   original. Mismo componente .fila-lista que ya usa "Pedidos por
+   revisar" — ver ese bloque de CSS más arriba para su definición.
+   Dentro de la tarjeta, el formulario de abono va en su propia fila
+   ancha (no lado a lado con el botón de ícono, como en la tabla). */
+.fila-lista-detalle .form-abono {
+  width: 100%;
+  justify-content: flex-start;
+}
+.fila-lista-detalle .form-abono input[type="number"] { flex: 1 1 auto; width: auto; }
+
 .form-busqueda {
   display: flex;
   align-items: center;

@@ -287,8 +287,67 @@ require __DIR__ . '/includes/cabecera.php';
     <?php if (!$pendientes): ?>
       <p class="subsaludo">No hay cuotas pendientes por cobrar.</p>
     <?php else: ?>
-      <div class="tabla-scroll">
-      <table class="lineas">
+      <?php
+      // WhatsApp de mora + registrar abono + aplicar descuento se ven
+      // igual en la fila de tabla (escritorio) y en la tarjeta de
+      // celular. $sufijo evita que el id de la fila oculta del
+      // descuento se repita entre las dos versiones — btn-mostrar-
+      // descuento la busca por id (ver el <script> al final de este
+      // archivo), y dos elementos con el mismo id rompería el toggle.
+      $accionesCartera = function (array $p, string $sufijo) use ($token): array {
+          $f = $p['factura'];
+          $vencida = esta_vencida($p['vence']);
+          $idDescuento = 'desc-' . $f['numero'] . '-' . $p['idx'] . $sufijo;
+          ob_start();
+          ?>
+          <?php if ($vencida && $f['telefono'] !== ''):
+            $msgMora = "Hola " . $f['cliente'] . " 💛\n"
+                . "Notamos que tu " . lcfirst($p['rotulo']) . " de " . pesos($p['pendiente'])
+                . " venció el " . fecha_larga($p['vence']) . " y sigue pendiente.\n"
+                . "¿Nos ayudas poniéndote al día?";
+            $waMora = enlace_whatsapp($f['telefono'], $msgMora);
+          ?>
+            <a class="boton-icono fantasma peligro" href="<?= e($waMora) ?>" target="_blank" rel="noopener"
+               title="Escribir por WhatsApp" aria-label="Escribir por WhatsApp a <?= e($f['cliente']) ?> por la mora">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.49 2 2 6.49 2 12c0 1.87.5 3.62 1.38 5.13L2 22l4.99-1.31A9.94 9.94 0 0 0 12 22c5.51 0 10-4.49 10-10S17.51 2 12 2Zm5.2 14.2c-.22.62-1.28 1.2-1.77 1.24-.45.05-.98.24-3.29-.7-2.77-1.13-4.53-3.92-4.66-4.1-.14-.18-1.1-1.47-1.1-2.8 0-1.34.7-1.99.95-2.26.24-.27.53-.34.7-.34h.5c.16 0 .38-.03.58.44.22.51.75 1.77.82 1.9.06.13.1.28.02.46-.08.18-.13.29-.25.44-.13.16-.27.35-.38.47-.13.13-.27.28-.11.55.16.27.7 1.16 1.51 1.87 1.04.93 1.92 1.22 2.19 1.36.27.14.43.12.6-.07.16-.19.68-.79.86-1.06.18-.27.36-.22.6-.13.24.09 1.55.73 1.82.86.27.13.45.2.51.31.07.12.07.68-.15 1.36Z"/></svg>
+            </a>
+          <?php endif; ?>
+          <form method="post" action="cartera.php" class="en-linea form-abono">
+            <input type="hidden" name="csrf" value="<?= e($token) ?>">
+            <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
+            <input type="hidden" name="cuota_idx" value="<?= (int) $p['idx'] ?>">
+            <input type="number" name="monto" min="1" max="<?= (int) $p['pendiente'] ?>" step="1"
+                   value="<?= (int) $p['pendiente'] ?>" aria-label="Monto del abono">
+            <button type="submit" class="boton-icono" title="Registrar abono" aria-label="Registrar abono">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l4.5 4.5L20 6"/></svg>
+            </button>
+          </form>
+          <button type="button" class="boton-icono fantasma btn-mostrar-descuento" data-id="<?= e($idDescuento) ?>"
+                  title="Aplicar descuento" aria-label="Aplicar descuento">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19 19 5M7.5 8.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm9 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>
+          </button>
+          <?php
+          $acciones = ob_get_clean();
+
+          ob_start();
+          ?>
+          <form method="post" action="cartera.php" class="panel-descuento form-descuento" id="form-<?= e($idDescuento) ?>">
+            <input type="hidden" name="csrf" value="<?= e($token) ?>">
+            <input type="hidden" name="accion" value="descuento">
+            <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
+            <input type="hidden" name="cuota_idx" value="<?= (int) $p['idx'] ?>">
+            <input type="number" name="monto" min="1" max="<?= (int) $p['pendiente'] ?>" step="1"
+                   value="<?= (int) $p['pendiente'] ?>" aria-label="Monto del descuento">
+            <input type="text" name="motivo" placeholder="Motivo del descuento" maxlength="255" required aria-label="Motivo del descuento">
+            <button type="submit" class="boton mini">Confirmar descuento</button>
+            <button type="button" class="salir como-boton cerrar-descuento" data-id="<?= e($idDescuento) ?>">Cancelar</button>
+          </form>
+          <?php
+          return ['id' => $idDescuento, 'acciones' => $acciones, 'form_descuento' => ob_get_clean()];
+      };
+      ?>
+      <div class="tabla-scroll oculta-en-movil">
+      <table class="lineas tabla-cartera-pendiente">
         <thead>
           <tr>
             <th>Cliente</th>
@@ -300,7 +359,7 @@ require __DIR__ . '/includes/cabecera.php';
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($pendientes as $p): $f = $p['factura']; $vencida = esta_vencida($p['vence']); $abonado = $p['pactado'] - $p['pendiente']; ?>
+          <?php foreach ($pendientes as $p): $f = $p['factura']; $vencida = esta_vencida($p['vence']); $abonado = $p['pactado'] - $p['pendiente']; $ac = $accionesCartera($p, '-t'); ?>
             <tr>
               <td>
                 <?= e($f['cliente']) ?>
@@ -316,54 +375,44 @@ require __DIR__ . '/includes/cabecera.php';
                 <?= pesos($p['pendiente']) ?>
                 <?php if ($abonado > 0): ?><span class="sku">de <?= pesos($p['pactado']) ?></span><?php endif; ?>
               </td>
-              <td class="num acciones-cartera">
-                <?php if ($vencida && $f['telefono'] !== ''):
-                  $msgMora = "Hola " . $f['cliente'] . " 💛\n"
-                      . "Notamos que tu " . lcfirst($p['rotulo']) . " de " . pesos($p['pendiente'])
-                      . " venció el " . fecha_larga($p['vence']) . " y sigue pendiente.\n"
-                      . "¿Nos ayudas poniéndote al día?";
-                  $waMora = enlace_whatsapp($f['telefono'], $msgMora);
-                ?>
-                  <a class="boton-icono fantasma peligro" href="<?= e($waMora) ?>" target="_blank" rel="noopener"
-                     title="Escribir por WhatsApp" aria-label="Escribir por WhatsApp a <?= e($f['cliente']) ?> por la mora">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.49 2 2 6.49 2 12c0 1.87.5 3.62 1.38 5.13L2 22l4.99-1.31A9.94 9.94 0 0 0 12 22c5.51 0 10-4.49 10-10S17.51 2 12 2Zm5.2 14.2c-.22.62-1.28 1.2-1.77 1.24-.45.05-.98.24-3.29-.7-2.77-1.13-4.53-3.92-4.66-4.1-.14-.18-1.1-1.47-1.1-2.8 0-1.34.7-1.99.95-2.26.24-.27.53-.34.7-.34h.5c.16 0 .38-.03.58.44.22.51.75 1.77.82 1.9.06.13.1.28.02.46-.08.18-.13.29-.25.44-.13.16-.27.35-.38.47-.13.13-.27.28-.11.55.16.27.7 1.16 1.51 1.87 1.04.93 1.92 1.22 2.19 1.36.27.14.43.12.6-.07.16-.19.68-.79.86-1.06.18-.27.36-.22.6-.13.24.09 1.55.73 1.82.86.27.13.45.2.51.31.07.12.07.68-.15 1.36Z"/></svg>
-                  </a>
-                <?php endif; ?>
-                <form method="post" action="cartera.php" class="en-linea form-abono">
-                  <input type="hidden" name="csrf" value="<?= e($token) ?>">
-                  <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
-                  <input type="hidden" name="cuota_idx" value="<?= (int) $p['idx'] ?>">
-                  <input type="number" name="monto" min="1" max="<?= (int) $p['pendiente'] ?>" step="1"
-                         value="<?= (int) $p['pendiente'] ?>" aria-label="Monto del abono">
-                  <button type="submit" class="boton-icono" title="Registrar abono" aria-label="Registrar abono">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l4.5 4.5L20 6"/></svg>
-                  </button>
-                </form>
-                <?php $idDescuento = 'desc-' . $f['numero'] . '-' . $p['idx']; ?>
-                <button type="button" class="boton-icono fantasma btn-mostrar-descuento" data-id="<?= e($idDescuento) ?>"
-                        title="Aplicar descuento" aria-label="Aplicar descuento">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19 19 5M7.5 8.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm9 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>
-                </button>
-              </td>
+              <td class="num"><div class="acciones-cartera"><?= $ac['acciones'] ?></div></td>
             </tr>
-            <tr class="fila-descuento" id="fila-<?= e($idDescuento) ?>" hidden>
-              <td colspan="6">
-                <form method="post" action="cartera.php" class="panel-descuento form-descuento" id="form-<?= e($idDescuento) ?>">
-                  <input type="hidden" name="csrf" value="<?= e($token) ?>">
-                  <input type="hidden" name="accion" value="descuento">
-                  <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
-                  <input type="hidden" name="cuota_idx" value="<?= (int) $p['idx'] ?>">
-                  <input type="number" name="monto" min="1" max="<?= (int) $p['pendiente'] ?>" step="1"
-                         value="<?= (int) $p['pendiente'] ?>" aria-label="Monto del descuento">
-                  <input type="text" name="motivo" placeholder="Motivo del descuento" maxlength="255" required aria-label="Motivo del descuento">
-                  <button type="submit" class="boton mini">Confirmar descuento</button>
-                  <button type="button" class="salir como-boton cerrar-descuento" data-id="<?= e($idDescuento) ?>">Cancelar</button>
-                </form>
-              </td>
+            <tr class="fila-descuento" id="fila-<?= e($ac['id']) ?>" hidden>
+              <td colspan="6"><?= $ac['form_descuento'] ?></td>
             </tr>
           <?php endforeach; ?>
         </tbody>
       </table>
+      </div>
+
+      <!-- Solo en celular: cada cuota es una tarjeta que se despliega
+           al tocarla, en vez de una fila de tabla angosta con 6
+           columnas imposibles de leer. -->
+      <div class="filas-esencial">
+        <?php foreach ($pendientes as $p): $f = $p['factura']; $vencida = esta_vencida($p['vence']); $abonado = $p['pactado'] - $p['pendiente']; $ac = $accionesCartera($p, '-c'); ?>
+          <details class="fila-lista">
+            <summary>
+              <span class="fila-lista-resumen">
+                <span class="fila-lista-titulo"><?= e($f['cliente']) ?></span>
+                <span class="fila-lista-pista"><?= pesos($p['pendiente']) ?><?= $vencida ? ' · Vencida' : '' ?></span>
+              </span>
+              <svg class="fila-lista-flecha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <div class="fila-lista-detalle">
+              <?php if ($f['telefono'] !== ''): ?>
+                <div class="campo-detalle"><strong>Teléfono</strong><?= e($f['telefono']) ?></div>
+              <?php endif; ?>
+              <div class="campo-detalle"><strong>No. factura</strong><a class="salir" href="factura.php?n=<?= e($f['numero']) ?>"><?= e($f['numero']) ?></a></div>
+              <div class="campo-detalle"><strong>Cuota</strong><?= e($p['rotulo']) ?></div>
+              <div class="campo-detalle"><strong>Vence</strong><?= e(fecha_larga($p['vence'])) ?></div>
+              <?php if ($abonado > 0): ?>
+                <div class="campo-detalle"><strong>Ya abonado</strong><?= pesos($abonado) ?> de <?= pesos($p['pactado']) ?></div>
+              <?php endif; ?>
+              <div class="acciones-fila"><?= $ac['acciones'] ?></div>
+              <div class="fila-descuento" id="fila-<?= e($ac['id']) ?>" hidden><?= $ac['form_descuento'] ?></div>
+            </div>
+          </details>
+        <?php endforeach; ?>
       </div>
     <?php endif; ?>
   </section>
@@ -382,8 +431,59 @@ require __DIR__ . '/includes/cabecera.php';
     <?php if (!$historial): ?>
       <p class="subsaludo">No hay facturas que coincidan con la búsqueda.</p>
     <?php else: ?>
-      <div class="tabla-scroll">
-      <table class="lineas">
+      <?php
+      // Estado (Pagada/Vencida/Pendiente/Contado/Anulada) y las acciones
+      // (Ver + Anular/Reactivar) se ven igual en la fila de tabla y en
+      // la tarjeta de celular; se calculan una sola vez por factura.
+      $estadoFactura = function (array $f): array {
+          if (!empty($f['anulada'])) {
+              return ['anulada', 'Anulada'];
+          }
+          if ($f['plan'] !== 'cuotas') {
+              return ['', 'Contado'];
+          }
+          $todasPagadas  = true;
+          $algunaVencida = false;
+          foreach ($f['cuotas'] as $cuota) {
+              if (!cuota_esta_pagada($cuota)) {
+                  $todasPagadas = false;
+                  if (esta_vencida($cuota['vence'])) {
+                      $algunaVencida = true;
+                  }
+              }
+          }
+          if ($todasPagadas) {
+              return ['pagada', 'Pagada'];
+          }
+          return $algunaVencida ? ['vencida', 'Vencida'] : ['pendiente', 'Pendiente'];
+      };
+      $accionesFactura = function (array $f) use ($token): string {
+          $anulada = !empty($f['anulada']);
+          ob_start();
+          ?>
+          <a class="salir" href="factura.php?n=<?= e($f['numero']) ?>">Ver</a>
+          <?php if ($anulada): ?>
+            <form method="post" action="cartera.php" class="en-linea">
+              <input type="hidden" name="csrf" value="<?= e($token) ?>">
+              <input type="hidden" name="accion" value="reactivar">
+              <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
+              <button type="submit" class="salir como-boton">Reactivar</button>
+            </form>
+          <?php else: ?>
+            <form method="post" action="cartera.php" class="en-linea"
+                  onsubmit="return confirm('¿Anular la factura <?= e($f['numero']) ?> de <?= e($f['cliente']) ?>? Dejará de contar en los reportes y en la cartera, pero quedará registrada como anulada.');">
+              <input type="hidden" name="csrf" value="<?= e($token) ?>">
+              <input type="hidden" name="accion" value="anular">
+              <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
+              <button type="submit" class="salir como-boton peligro">Anular</button>
+            </form>
+          <?php endif; ?>
+          <?php
+          return ob_get_clean();
+      };
+      ?>
+      <div class="tabla-scroll oculta-en-movil">
+      <table class="lineas tabla-historial-facturas">
         <thead>
           <tr>
             <th>No.</th>
@@ -398,34 +498,7 @@ require __DIR__ . '/includes/cabecera.php';
         <tbody>
           <?php foreach ($historial as $f):
             $anulada = !empty($f['anulada']);
-            if ($anulada) {
-                $estadoClase = 'anulada';
-                $estadoTexto = 'Anulada';
-            } elseif ($f['plan'] !== 'cuotas') {
-                $estadoClase = '';
-                $estadoTexto = 'Contado';
-            } else {
-                $todasPagadas  = true;
-                $algunaVencida = false;
-                foreach ($f['cuotas'] as $cuota) {
-                    if (!cuota_esta_pagada($cuota)) {
-                        $todasPagadas = false;
-                        if (esta_vencida($cuota['vence'])) {
-                            $algunaVencida = true;
-                        }
-                    }
-                }
-                if ($todasPagadas) {
-                    $estadoClase = 'pagada';
-                    $estadoTexto = 'Pagada';
-                } elseif ($algunaVencida) {
-                    $estadoClase = 'vencida';
-                    $estadoTexto = 'Vencida';
-                } else {
-                    $estadoClase = 'pendiente';
-                    $estadoTexto = 'Pendiente';
-                }
-            }
+            [$estadoClase, $estadoTexto] = $estadoFactura($f);
           ?>
             <tr<?= $anulada ? ' class="fila-anulada"' : '' ?>>
               <td><?= e($f['numero']) ?></td>
@@ -440,29 +513,36 @@ require __DIR__ . '/includes/cabecera.php';
                   <?= e($estadoTexto) ?>
                 <?php endif; ?>
               </td>
-              <td class="num acciones-factura">
-                <a class="salir" href="factura.php?n=<?= e($f['numero']) ?>">Ver</a>
-                <?php if ($anulada): ?>
-                  <form method="post" action="cartera.php" class="en-linea">
-                    <input type="hidden" name="csrf" value="<?= e($token) ?>">
-                    <input type="hidden" name="accion" value="reactivar">
-                    <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
-                    <button type="submit" class="salir como-boton">Reactivar</button>
-                  </form>
-                <?php else: ?>
-                  <form method="post" action="cartera.php" class="en-linea"
-                        onsubmit="return confirm('¿Anular la factura <?= e($f['numero']) ?> de <?= e($f['cliente']) ?>? Dejará de contar en los reportes y en la cartera, pero quedará registrada como anulada.');">
-                    <input type="hidden" name="csrf" value="<?= e($token) ?>">
-                    <input type="hidden" name="accion" value="anular">
-                    <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
-                    <button type="submit" class="salir como-boton peligro">Anular</button>
-                  </form>
-                <?php endif; ?>
-              </td>
+              <td class="num"><div class="acciones-factura"><?= $accionesFactura($f) ?></div></td>
             </tr>
           <?php endforeach; ?>
         </tbody>
       </table>
+      </div>
+
+      <!-- Solo en celular: cada factura es una tarjeta que se despliega
+           al tocarla, en vez de una fila de tabla angosta con 7
+           columnas imposibles de leer. -->
+      <div class="filas-esencial">
+        <?php foreach ($historial as $f):
+          $anulada = !empty($f['anulada']);
+          [$estadoClase, $estadoTexto] = $estadoFactura($f);
+        ?>
+          <details class="fila-lista">
+            <summary>
+              <span class="fila-lista-resumen">
+                <span class="fila-lista-titulo">No. <?= e($f['numero']) ?> · <?= e($f['cliente']) ?></span>
+                <span class="fila-lista-pista"><?= pesos($f['total']) ?> · <?= e($estadoTexto) ?></span>
+              </span>
+              <svg class="fila-lista-flecha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <div class="fila-lista-detalle">
+              <div class="campo-detalle"><strong>Fecha</strong><?= e(fecha_larga(fecha_factura($f))) ?></div>
+              <div class="campo-detalle"><strong>Ganancia</strong><?= $anulada ? '—' : pesos($f['margen']) ?></div>
+              <div class="acciones-fila"><?= $accionesFactura($f) ?></div>
+            </div>
+          </details>
+        <?php endforeach; ?>
       </div>
     <?php endif; ?>
   </section>
@@ -543,8 +623,8 @@ require __DIR__ . '/includes/cabecera.php';
 
   <section class="panel panel-inventario">
     <h2 class="titulo-panel">Detalle por SKU</h2>
-    <div class="tabla-scroll">
-    <table class="lineas">
+    <div class="tabla-scroll oculta-en-movil">
+    <table class="lineas tabla-detalle-sku">
       <thead>
         <tr>
           <th>Producto</th>
@@ -569,6 +649,27 @@ require __DIR__ . '/includes/cabecera.php';
         <?php endforeach; ?>
       </tbody>
     </table>
+    </div>
+
+    <!-- Solo en celular: cada SKU es una tarjeta en vez de una fila de
+         tabla angosta con 5 columnas numéricas imposibles de leer. -->
+    <div class="filas-esencial">
+      <?php foreach ($lista as $p): ?>
+        <details class="fila-lista">
+          <summary>
+            <span class="fila-lista-resumen">
+              <span class="fila-lista-titulo"><?= e($p['nombre']) ?></span>
+              <span class="fila-lista-pista"><?= pesos($p['total']) ?> · <?= numero($p['cant']) ?> uds</span>
+            </span>
+            <svg class="fila-lista-flecha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </summary>
+          <div class="fila-lista-detalle">
+            <div class="campo-detalle"><strong>SKU</strong><?= e($p['sku']) ?></div>
+            <div class="campo-detalle"><strong>Marca</strong><?= e($p['marca']) ?></div>
+            <div class="campo-detalle"><strong>Margen</strong><?= pesos($p['margen']) ?></div>
+          </div>
+        </details>
+      <?php endforeach; ?>
     </div>
   </section>
 
