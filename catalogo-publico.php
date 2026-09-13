@@ -365,6 +365,14 @@ $logosPorMarca = [
       <p class="cp-producto-descripcion" id="productoDescripcion"></p>
     </div>
   </div>
+
+  <div class="cp-hoja-pie">
+    <button type="button" class="cp-boton-agregar" id="productoAgregarBtn" aria-label="Agregar al pedido">
+      <svg class="cp-icono-mas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <svg class="cp-icono-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l4.5 4.5L20 6"/></svg>
+      <span class="cp-agregar-texto">Agregar</span>
+    </button>
+  </div>
 </div>
 
 <script>
@@ -423,11 +431,36 @@ function sincronizarTarjeta(sku) {
   if (boton) sincronizarBotonAgregar(boton, enPedido);
 }
 
+/* El botón "Agregar" de la ficha de producto es el mismo componente que
+   el de la tarjeta, pero vive aparte (la ficha se rellena con datos de
+   la tarjeta que la abrió, no es la tarjeta misma) — se sincroniza solo
+   cuando la ficha está mostrando justo ese sku. */
+function sincronizarBotonProducto(sku) {
+  if (productoActualSku !== sku) return;
+  sincronizarBotonAgregar(productoAgregarBtn, pedido.some(i => i.sku === sku));
+}
+
+/* Agregar al pedido: una sola acción, sin selector de cantidad (la
+   cantidad se ajusta en el carrito). La usan tanto el botón de la
+   tarjeta como el de la ficha de producto. */
+function agregarAlPedido(sku, nombre, precio) {
+  const ya = pedido.find(i => i.sku === sku);
+  if (ya) {
+    ya.cant = Math.min(99, ya.cant + 1);
+  } else {
+    pedido.push({ sku, nombre, precio, cant: 1 });
+  }
+  sincronizarTarjeta(sku);
+  sincronizarBotonProducto(sku);
+  actualizarCarrito();
+}
+
 function quitarDelPedido(sku) {
   const idx = pedido.findIndex(i => i.sku === sku);
   if (idx === -1) return;
   pedido.splice(idx, 1);
   sincronizarTarjeta(sku);
+  sincronizarBotonProducto(sku);
   actualizarCarrito();
 }
 
@@ -647,6 +680,7 @@ cpConfirmar.addEventListener('click', async () => {
       const b = t.querySelector('.cp-boton-agregar');
       if (b) sincronizarBotonAgregar(b, false);
     });
+    if (productoActualSku) sincronizarBotonAgregar(productoAgregarBtn, false);
     cpNombre.value = '';
     cpTelefono.value = '';
     restaurarBotonEnviar();
@@ -666,16 +700,7 @@ document.querySelectorAll('.cp-tarjeta').forEach(tarjeta => {
   const boton  = tarjeta.querySelector('.cp-boton-agregar');
   if (!boton) return;
 
-  boton.addEventListener('click', () => {
-    const ya = pedido.find(i => i.sku === sku);
-    if (ya) {
-      ya.cant = Math.min(99, ya.cant + 1);
-    } else {
-      pedido.push({ sku, nombre, precio, cant: 1 });
-    }
-    sincronizarTarjeta(sku);
-    actualizarCarrito();
-  });
+  boton.addEventListener('click', () => agregarAlPedido(sku, nombre, precio));
 });
 
 /* --- Ficha de producto: foto + descripción al tocar la tarjeta (en
@@ -688,8 +713,14 @@ const cerrarProductoBtn   = document.getElementById('cerrarProducto');
 const hojaProductoTitulo  = document.getElementById('hojaProductoTitulo');
 const productoFoto        = document.getElementById('productoFoto');
 const productoDescripcion = document.getElementById('productoDescripcion');
+const productoAgregarBtn  = document.getElementById('productoAgregarBtn');
 
 let ultimoFocoProducto = null;
+// Qué producto muestra la ficha ahora mismo — el botón "Agregar" de acá
+// abajo lo necesita para saber a cuál sku/nombre/precio agregar.
+let productoActualSku    = null;
+let productoActualNombre = '';
+let productoActualPrecio = 0;
 
 function abrirProducto(tarjeta) {
   const imgWrap = tarjeta.querySelector('.cp-img-wrap');
@@ -701,6 +732,11 @@ function abrirProducto(tarjeta) {
 
   productoDescripcion.textContent = descripcion || 'Todavía no tiene descripción.';
   productoDescripcion.classList.toggle('cp-sin-descripcion', !descripcion);
+
+  productoActualSku    = tarjeta.dataset.sku;
+  productoActualNombre = tarjeta.dataset.nombre;
+  productoActualPrecio = +tarjeta.dataset.precio;
+  sincronizarBotonAgregar(productoAgregarBtn, pedido.some(i => i.sku === productoActualSku));
 
   ultimoFocoProducto = document.activeElement;
   productoFondo.hidden = false;
@@ -733,6 +769,11 @@ function cerrarProducto() {
   if (ultimoFocoProducto && document.contains(ultimoFocoProducto)) ultimoFocoProducto.focus();
 }
 
+productoAgregarBtn.addEventListener('click', () => {
+  if (!productoActualSku) return;
+  agregarAlPedido(productoActualSku, productoActualNombre, productoActualPrecio);
+});
+
 cerrarProductoBtn.addEventListener('click', cerrarProducto);
 productoFondo.addEventListener('click', cerrarProducto);
 document.addEventListener('keydown', e => {
@@ -753,6 +794,7 @@ document.getElementById('vaciarPedido').addEventListener('click', () => {
     const b = t.querySelector('.cp-boton-agregar');
     if (b) sincronizarBotonAgregar(b, false);
   });
+  if (productoActualSku) sincronizarBotonAgregar(productoAgregarBtn, false);
   actualizarCarrito();
 });
 
