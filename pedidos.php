@@ -25,13 +25,6 @@ if (($_GET['ok'] ?? '') === 'descartado') {
 
 $pendientes = pedidos_pendientes();
 
-$historial = array_values(array_filter(
-    leer_pedidos(),
-    fn($p) => ($p['estado'] ?? '') !== 'pendiente'
-));
-usort($historial, fn($a, $b) => ($b['creado'] ?? '') <=> ($a['creado'] ?? ''));
-$historial = array_slice($historial, 0, 30);
-
 $token = csrf_token();
 
 $tituloPagina = 'Pedidos';
@@ -154,46 +147,6 @@ require __DIR__ . '/includes/cabecera.php';
             </div>
           </details>
         <?php endforeach; ?>
-      </div>
-    <?php endif; ?>
-  </section>
-
-  <section class="panel">
-    <h2 class="titulo-panel">Historial reciente <span class="titulo-nota">últimos <?= numero(count($historial)) ?></span></h2>
-    <?php if (!$historial): ?>
-      <p class="subsaludo">Todavía no hay pedidos confirmados ni descartados.</p>
-    <?php else: ?>
-      <div class="tabla-scroll">
-      <table class="lineas">
-        <thead>
-          <tr>
-            <th>No.</th>
-            <th>Cliente</th>
-            <th class="num">Total</th>
-            <th>Estado</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($historial as $p): $confirmado = ($p['estado'] ?? '') === 'confirmado'; ?>
-            <tr>
-              <td><?= e($p['numero']) ?></td>
-              <td><?= e($p['cliente']) ?></td>
-              <td class="num"><?= pesos((int) ($p['total'] ?? 0)) ?></td>
-              <td>
-                <span class="etiqueta <?= $confirmado ? 'pagada' : 'anulada' ?>">
-                  <?= $confirmado ? 'Confirmado' : 'Descartado' ?>
-                </span>
-              </td>
-              <td class="num">
-                <?php if ($confirmado && !empty($p['factura_numero'])): ?>
-                  <a class="salir" href="factura.php?n=<?= e($p['factura_numero']) ?>">Ver factura</a>
-                <?php endif; ?>
-              </td>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
       </div>
     <?php endif; ?>
   </section>
