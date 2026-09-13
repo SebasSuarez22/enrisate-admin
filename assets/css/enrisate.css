@@ -1215,6 +1215,28 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
 }
 .fila-lista-editar + .fila-lista { margin-top: 10px; }
 
+/* =========================================================
+   Productos: mismo criterio que Pedidos/Cartera/Clientes. Acá no hace
+   falta sufijar ids: editar, descripción y foto abren un modal
+   COMPARTIDO por sku (abrirModalEditar(sku), etc. en el <script> de
+   inventario.php) en vez de una fila propia por producto — duplicar
+   el botón en la tabla y en la tarjeta no repite ningún id, los dos
+   disparan el mismo modal. */
+.tabla-productos { table-layout: fixed; }
+.tabla-productos td { white-space: normal; overflow-wrap: anywhere; }
+.tabla-productos th:nth-child(1), .tabla-productos td:nth-child(1) { width: 6%; }
+.tabla-productos th:nth-child(2), .tabla-productos td:nth-child(2) { width: 32%; }
+.tabla-productos th:nth-child(3), .tabla-productos td:nth-child(3) { width: 14%; }
+.tabla-productos th:nth-child(4), .tabla-productos td:nth-child(4) { width: 14%; }
+.tabla-productos th:nth-child(5), .tabla-productos td:nth-child(5) { width: 16%; }
+.tabla-productos th:nth-child(6), .tabla-productos td:nth-child(6) { width: 18%; }
+/* Editar + Descripción + Foto: antes 3 columnas de un ícono cada una
+   (8 columnas en total, imposibles de ver ordenadas); ahora una sola
+   columna de Acciones con los 3 íconos en fila. */
+.acciones-producto { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+
+.fila-lista-detalle .acciones-fila .boton-icono { flex: none; }
+
 .form-busqueda {
   display: flex;
   align-items: center;
