@@ -54,6 +54,13 @@ html, body {
   margin: 0;
   padding: 0;
   min-height: 100%;
+  /* Red de seguridad: si algún elemento puntual llega a desbordar (un
+     dato muy largo, un ajuste futuro que se cuele sin flex-wrap), esto
+     evita que arrastre scroll horizontal a toda la página en vez de
+     quedar contenido. Mismo criterio que ya usa el catálogo público
+     (assets/css/catalogo-publico.css). No reemplaza corregir la causa
+     puntual del desborde, solo evita que se note a nivel de página. */
+  overflow-x: hidden;
 }
 
 body {
