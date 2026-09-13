@@ -142,8 +142,62 @@ require __DIR__ . '/includes/cabecera.php';
           <span class="accion-icono-nombre">Eliminar</span>
         </button>
       </form>
-      <div class="tabla-scroll">
-      <table class="lineas">
+      <?php
+      // Notas + estadísticas de compra, y el formulario de editar, se ven
+      // igual en la fila de tabla (escritorio) y en la tarjeta de
+      // celular; se arman una sola vez por cliente para no repetir el
+      // cálculo ni el HTML a mano.
+      $notasCliente = function (array $c, ?array $stats): string {
+          ob_start();
+          ?>
+          <?= e($c['notas']) ?>
+          <?php if ($stats): ?>
+            <div class="cliente-insights">
+              <?php if ($stats['frecuencia_dias'] !== null): ?>
+                <span class="cliente-insight">Compra cada <strong><?= $stats['frecuencia_dias'] < 1 ? 'muy seguido' : '~' . $stats['frecuencia_dias'] . ' días' ?></strong></span>
+              <?php elseif ($stats['compras'] === 1): ?>
+                <span class="cliente-insight">1 compra hasta ahora</span>
+              <?php endif; ?>
+              <?php if ($stats['favorito']): ?>
+                <span class="cliente-insight">Favorito: <strong><?= e($stats['favorito']) ?></strong></span>
+              <?php endif; ?>
+            </div>
+          <?php endif; ?>
+          <?php
+          return ob_get_clean();
+      };
+      $formEditarCliente = function (array $c, int $saldo) use ($token): string {
+          ob_start();
+          ?>
+          <form method="post" action="clientes.php" class="form-editar-cliente">
+            <input type="hidden" name="csrf" value="<?= e($token) ?>">
+            <input type="hidden" name="accion" value="editar">
+            <input type="hidden" name="id" value="<?= e($c['id']) ?>">
+            <div class="campo">
+              <label>Nombre completo</label>
+              <input type="text" name="nombre" value="<?= e($c['nombre']) ?>" placeholder="Nombre completo" required>
+            </div>
+            <div class="campo">
+              <label>Teléfono</label>
+              <input type="tel" name="telefono" value="<?= e($c['telefono']) ?>" placeholder="Teléfono" inputmode="numeric">
+            </div>
+            <div class="campo">
+              <label>Saldo a favor</label>
+              <input type="number" name="saldo_favor" value="<?= $saldo ?>" min="0" step="500">
+            </div>
+            <div class="campo">
+              <label>Notas</label>
+              <input type="text" name="notas" value="<?= e($c['notas']) ?>" placeholder="Notas">
+            </div>
+            <button type="submit" class="boton mini">Guardar</button>
+            <button type="button" class="boton mini btn-cancelar-cliente" data-id="<?= e($c['id']) ?>">Cancelar</button>
+          </form>
+          <?php
+          return ob_get_clean();
+      };
+      ?>
+      <div class="tabla-scroll oculta-en-movil">
+      <table class="lineas tabla-clientes">
         <thead>
           <tr>
             <th><input type="checkbox" id="chkTodosClientes" aria-label="Seleccionar todas"></th>
@@ -155,55 +209,45 @@ require __DIR__ . '/includes/cabecera.php';
         <tbody>
           <?php foreach ($clientes as $c): $saldo = (int) ($c['saldo_favor'] ?? 0); $stats = estadisticas_compra_cliente($c, $facturas); ?>
             <tr id="vista-<?= e($c['id']) ?>">
-              <td><input type="checkbox" class="chk-cliente" id="chk-<?= e($c['id']) ?>" value="<?= e($c['id']) ?>" aria-label="Seleccionar a <?= e($c['nombre']) ?>"></td>
+              <td><input type="checkbox" class="chk-cliente" value="<?= e($c['id']) ?>" aria-label="Seleccionar a <?= e($c['nombre']) ?>"></td>
               <td><?= e($c['nombre']) ?></td>
               <td><?= e($c['telefono']) ?></td>
-              <td class="col-notas">
-                <?= e($c['notas']) ?>
-                <?php if ($stats): ?>
-                  <div class="cliente-insights">
-                    <?php if ($stats['frecuencia_dias'] !== null): ?>
-                      <span class="cliente-insight">Compra cada <strong><?= $stats['frecuencia_dias'] < 1 ? 'muy seguido' : '~' . $stats['frecuencia_dias'] . ' días' ?></strong></span>
-                    <?php elseif ($stats['compras'] === 1): ?>
-                      <span class="cliente-insight">1 compra hasta ahora</span>
-                    <?php endif; ?>
-                    <?php if ($stats['favorito']): ?>
-                      <span class="cliente-insight">Favorito: <strong><?= e($stats['favorito']) ?></strong></span>
-                    <?php endif; ?>
-                  </div>
-                <?php endif; ?>
-              </td>
+              <td class="col-notas"><?= $notasCliente($c, $stats) ?></td>
             </tr>
             <tr id="edicion-<?= e($c['id']) ?>" hidden>
-              <td colspan="4">
-                <form method="post" action="clientes.php" class="form-editar-cliente">
-                  <input type="hidden" name="csrf" value="<?= e($token) ?>">
-                  <input type="hidden" name="accion" value="editar">
-                  <input type="hidden" name="id" value="<?= e($c['id']) ?>">
-                  <div class="campo">
-                    <label>Nombre completo</label>
-                    <input type="text" name="nombre" value="<?= e($c['nombre']) ?>" placeholder="Nombre completo" required>
-                  </div>
-                  <div class="campo">
-                    <label>Teléfono</label>
-                    <input type="tel" name="telefono" value="<?= e($c['telefono']) ?>" placeholder="Teléfono" inputmode="numeric">
-                  </div>
-                  <div class="campo">
-                    <label>Saldo a favor</label>
-                    <input type="number" name="saldo_favor" value="<?= $saldo ?>" min="0" step="500">
-                  </div>
-                  <div class="campo">
-                    <label>Notas</label>
-                    <input type="text" name="notas" value="<?= e($c['notas']) ?>" placeholder="Notas">
-                  </div>
-                  <button type="submit" class="boton mini">Guardar</button>
-                  <button type="button" class="boton mini btn-cancelar-cliente" data-id="<?= e($c['id']) ?>">Cancelar</button>
-                </form>
-              </td>
+              <td colspan="4"><?= $formEditarCliente($c, $saldo) ?></td>
             </tr>
           <?php endforeach; ?>
         </tbody>
       </table>
+      </div>
+
+      <!-- Solo en celular: cada cliente es una tarjeta que se despliega
+           al tocarla, en vez de una fila de tabla angosta. La casilla
+           comparte value con la de la tabla (sin id propio) para que
+           seleccion-lote.js las trate como una sola selección. -->
+      <div class="filas-esencial">
+        <?php foreach ($clientes as $c): $saldo = (int) ($c['saldo_favor'] ?? 0); $stats = estadisticas_compra_cliente($c, $facturas); ?>
+          <details class="fila-lista" id="vista-movil-<?= e($c['id']) ?>">
+            <summary>
+              <input type="checkbox" class="chk-cliente" value="<?= e($c['id']) ?>" aria-label="Seleccionar a <?= e($c['nombre']) ?>" onclick="event.stopPropagation()">
+              <span class="fila-lista-resumen">
+                <span class="fila-lista-titulo"><?= e($c['nombre']) ?></span>
+                <?php if ($stats && $stats['favorito']): ?>
+                  <span class="fila-lista-pista">Favorito: <?= e($stats['favorito']) ?></span>
+                <?php elseif ($c['telefono'] !== ''): ?>
+                  <span class="fila-lista-pista"><?= e($c['telefono']) ?></span>
+                <?php endif; ?>
+              </span>
+              <svg class="fila-lista-flecha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <div class="fila-lista-detalle">
+              <div class="campo-detalle"><strong>Teléfono</strong><?= $c['telefono'] !== '' ? e($c['telefono']) : 'Sin teléfono' ?></div>
+              <?= $notasCliente($c, $stats) ?>
+            </div>
+          </details>
+          <div id="edicion-movil-<?= e($c['id']) ?>" class="fila-lista-editar" hidden><?= $formEditarCliente($c, $saldo) ?></div>
+        <?php endforeach; ?>
       </div>
     <?php endif; ?>
   </section>
@@ -214,7 +258,32 @@ require __DIR__ . '/includes/cabecera.php';
 /* Seleccionar todas, confirmar antes de borrar y habilitar "Editar"
    solo con una marcada: todo eso vive en assets/js/seleccion-lote.js,
    compartido con Productos. Acá solo va lo propio de esta página:
-   mostrar la fila de edición de la clienta elegida. */
+   mostrar la fila de edición de la clienta elegida.
+
+   Cada cliente existe por partida doble en el HTML: la fila de la tabla
+   (escritorio/tablet) y la tarjeta desplegable (celular) — solo una de
+   las dos está visible a la vez, según el ancho de pantalla (CSS). Las
+   funciones de abajo tocan las dos copias por igual; la que esté oculta
+   por CSS simplemente no se nota. Las casillas comparten value en vez
+   de id (seleccion-lote.js ya trabaja por value), así que no hace falta
+   distinguir cuál copia se marcó. */
+function mostrarEdicionCliente(id) {
+  document.getElementById('vista-' + id).hidden = true;
+  const vistaMovil = document.getElementById('vista-movil-' + id);
+  if (vistaMovil) vistaMovil.hidden = true;
+  document.getElementById('edicion-' + id).hidden = false;
+  const edicionMovil = document.getElementById('edicion-movil-' + id);
+  if (edicionMovil) edicionMovil.hidden = false;
+}
+function ocultarEdicionCliente(id) {
+  document.getElementById('vista-' + id).hidden = false;
+  const vistaMovil = document.getElementById('vista-movil-' + id);
+  if (vistaMovil) vistaMovil.hidden = false;
+  document.getElementById('edicion-' + id).hidden = true;
+  const edicionMovil = document.getElementById('edicion-movil-' + id);
+  if (edicionMovil) edicionMovil.hidden = true;
+}
+
 const loteClientes = seleccionEnLote({
   item:         '.chk-cliente',
   chkTodos:     '#chkTodosClientes',
@@ -222,9 +291,9 @@ const loteClientes = seleccionEnLote({
   campoValores: '#idsEliminarClientes',
   btnEditar:    '#btnEditarSeleccionada',
   alEditar: id => {
-    document.getElementById('vista-' + id).hidden   = true;
-    document.getElementById('edicion-' + id).hidden = false;
-    document.getElementById('edicion-' + id).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    mostrarEdicionCliente(id);
+    (document.getElementById('edicion-movil-' + id) ?? document.getElementById('edicion-' + id))
+      .scrollIntoView({ behavior: 'smooth', block: 'center' });
   },
   textos: {
     ninguno: 'Selecciona al menos un cliente para eliminar.',
@@ -234,15 +303,15 @@ const loteClientes = seleccionEnLote({
   },
 });
 
-/* Cancelar una edición vuelve a mostrar la fila normal y desmarca la
-   casilla. Como desmarcarla por código no dispara "change", hay que
+/* Cancelar una edición vuelve a mostrar la fila/tarjeta normal y
+   desmarca la casilla (la de tabla y la de celular: comparten value, no
+   id). Como desmarcarla por código no dispara "change", hay que
    avisarle a la selección para que el botón "Editar" se deshabilite. */
 document.querySelectorAll('.btn-cancelar-cliente').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.getElementById('vista-' + btn.dataset.id).hidden   = false;
-    document.getElementById('edicion-' + btn.dataset.id).hidden = true;
-    const chk = document.getElementById('chk-' + btn.dataset.id);
-    if (chk) chk.checked = false;
+    ocultarEdicionCliente(btn.dataset.id);
+    document.querySelectorAll('.chk-cliente[value="' + CSS.escape(btn.dataset.id) + '"]')
+      .forEach(chk => { chk.checked = false; });
     loteClientes.refrescar();
   });
 });

@@ -1189,6 +1189,32 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
 }
 .fila-lista-detalle .form-abono input[type="number"] { flex: 1 1 auto; width: auto; }
 
+/* =========================================================
+   Clientes: mismo criterio que Pedidos/Cartera — tabla con columnas
+   proporcionales en escritorio/tablet, tarjeta desplegable en celular.
+   4 columnas es mucho menos denso que las tablas de Cartera, pero se
+   deja igual de consistente con el resto del panel. */
+.tabla-clientes { table-layout: fixed; }
+.tabla-clientes td { white-space: normal; overflow-wrap: anywhere; }
+.tabla-clientes th:nth-child(1), .tabla-clientes td:nth-child(1) { width: 7%; }
+.tabla-clientes th:nth-child(2), .tabla-clientes td:nth-child(2) { width: 26%; }
+.tabla-clientes th:nth-child(3), .tabla-clientes td:nth-child(3) { width: 20%; }
+.tabla-clientes th:nth-child(4), .tabla-clientes td:nth-child(4) { width: 47%; }
+
+/* La casilla de selección vive dentro de <summary>, junto al nombre —
+   event.stopPropagation() en el onclick evita que tocarla abra o
+   cierre la tarjeta. La tarjeta de edición (mismo formulario que la
+   fila oculta de la tabla) aparece como panel aparte entre una
+   tarjeta y la siguiente, no adentro del <details>. */
+.fila-lista > summary > input[type="checkbox"] { flex: none; width: 18px; height: 18px; }
+.fila-lista-editar {
+  padding: 14px;
+  border: 1px solid var(--linea);
+  border-radius: 14px;
+  background: rgba(224, 184, 126, 0.05);
+}
+.fila-lista-editar + .fila-lista { margin-top: 10px; }
+
 .form-busqueda {
   display: flex;
   align-items: center;
