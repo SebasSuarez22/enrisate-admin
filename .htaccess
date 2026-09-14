@@ -1,5 +1,5 @@
 # Bloquea el acceso web a carpetas internas
-RedirectMatch 404 /(includes|storage|tools)/
+RedirectMatch 404 /(includes|storage|tools|vendor)/
 
 # Comprime HTML/CSS/JS antes de enviarlos: páginas más livianas en celular.
 <IfModule mod_deflate.c>

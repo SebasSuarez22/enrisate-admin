@@ -121,8 +121,14 @@ son cachés de seguridad efímeras, no datos del negocio).
 
 ```bash
 cd enrisate-admin
+composer install
 php -S localhost:8000
 ```
+
+`composer install` solo hace falta la primera vez (y cada vez que cambie
+`composer.json`): descarga en `vendor/` las librerías de PHP que usa el
+proyecto — hoy únicamente dompdf, para generar el PDF de cada factura. Sin
+ese paso, `factura-pdf.php` se cae con un error de "clase no encontrada".
 
 Abre http://localhost:8000
 
@@ -157,8 +163,13 @@ Abre http://localhost:8000
 - Pago **de contado** o **en 2 cuotas**: primera hoy, segunda con fecha de vencimiento
 - Ganancia visible solo para ustedes — nunca sale en el documento
 - Los precios se recalculan en el servidor, no se confía en el navegador
-- PDF: botón "Guardar como PDF" (usa la impresión del navegador, sin librerías)
-- Botón de WhatsApp con el mensaje ya redactado
+- PDF: botón "Guardar como PDF" (usa la impresión del navegador) para ustedes,
+  y un PDF de verdad generado con dompdf (`factura-pdf.php`) para la clienta
+- El mensaje de WhatsApp ya viene con el link de descarga del PDF incluido —
+  no hay que adjuntar nada a mano. El link no pide iniciar sesión: lo protege
+  un token que se calcula a partir del número de factura (no se guarda en
+  ningún lado), así nadie puede armar el link de otra factura adivinando el
+  número
 - Cada factura queda guardada en `storage/facturas.json` — de ahí saldrá la cartera
 
 Para cambiar precios: edita `datos/catalogo.php`.
@@ -175,7 +186,9 @@ includes/escena.php   fondo de hebras (SVG)
 assets/css/           estilos
 assets/img/logo.svg   isotipo (reemplázalo cuando tengan el definitivo)
 facturar.php          armar la cuenta de cobro
-factura.php           factura imprimible / PDF
+factura.php            factura imprimible / PDF
+factura-pdf.php        PDF de verdad de una factura (público, sin sesión, protegido por token)
+composer.json          librerías de PHP del proyecto (hoy: dompdf)
 includes/db.php       conexión PDO a MySQL
 includes/facturas.php catálogo, facturas y numeración (ahora en MySQL)
 includes/clientes.php clientas (ahora en MySQL)

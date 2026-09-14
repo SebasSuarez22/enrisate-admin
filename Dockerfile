@@ -20,6 +20,12 @@ RUN docker-php-ext-install pdo_mysql mysqli \
     && docker-php-ext-install gd \
     && rm -rf /var/lib/apt/lists/*
 
+# Composer (solo para instalar las librerías de PHP listadas en
+# composer.json — hoy únicamente dompdf, para generar el PDF de cada
+# factura). No hace falta instalar el paquete completo de Composer, con
+# copiar el ejecutable ya alcanza.
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
 # El proyecto ya trae su propio .htaccess (bloquea /includes, /storage,
 # /tools, y activa compresión y caché) — solo hace falta permitirle a
 # Apache leerlo.
@@ -37,6 +43,12 @@ RUN a2enmod rewrite \
 
 WORKDIR /var/www/html
 COPY . .
+
+# Instala dompdf (ver composer.json) sin las dependencias de desarrollo.
+# vendor/ no se sube al repositorio (ver .gitignore) — se genera acá,
+# como una capa más del build, igual que las extensiones de PHP de
+# arriba.
+RUN composer install --no-dev --no-interaction --optimize-autoloader
 
 # "COPY" deja todo dueño de root, pero Apache atiende las visitas como
 # el usuario www-data — sin esto, cosas como guardar el conteo de

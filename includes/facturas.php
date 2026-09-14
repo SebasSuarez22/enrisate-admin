@@ -904,3 +904,38 @@ function enlace_whatsapp(string $telefono, string $mensaje): string
     return 'https://wa.me/' . ($telefono !== '' ? '57' . $telefono : '')
         . '?text=' . rawurlencode($mensaje);
 }
+
+/**
+ * Token que autoriza ver/descargar el PDF de una factura sin haber
+ * iniciado sesión: el link va dentro del mensaje de WhatsApp, que la
+ * clienta abre en su propio celular, no en el panel. No se guarda en
+ * ningún lado — se recalcula a partir del número de factura firmado con
+ * ADMIN_HASH (ya es secreto y distinto en cada servidor), así nadie
+ * puede armar el link de otra factura solo por adivinar el número.
+ */
+function factura_pdf_token(string $numero): string
+{
+    return substr(hash_hmac('sha256', $numero, ADMIN_HASH), 0, 24);
+}
+
+function factura_pdf_token_valido(string $numero, string $token): bool
+{
+    return $token !== '' && hash_equals(factura_pdf_token($numero), $token);
+}
+
+/**
+ * URL pública (sin sesión) del PDF de una factura, lista para pegar en
+ * el mensaje de WhatsApp. Arma la URL absoluta con el host real de la
+ * visita — Railway pone la app detrás de un proxy HTTPS, por eso se
+ * revisa X-Forwarded-Proto igual que en includes/auth.php.
+ */
+function factura_pdf_url(string $numero): string
+{
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+    return ($https ? 'https://' : 'http://') . $host
+        . '/factura-pdf.php?n=' . rawurlencode($numero)
+        . '&t=' . factura_pdf_token($numero);
+}
