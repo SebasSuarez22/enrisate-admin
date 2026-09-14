@@ -743,6 +743,95 @@ function aplicar_descuento_cuota(string $numero, int $indiceCuota, int $monto, s
 }
 
 /**
+ * Agrega uno o más productos a una factura ya existente — la clienta pidió
+ * algo más días después y no hace falta una factura aparte. Lo agregado
+ * queda como una cuota pendiente nueva (con su propia fecha de
+ * vencimiento), nunca se marca pagada de una: así aparece sola en Cartera
+ * para cobrarla, reutilizando WhatsApp/registrar abono/aplicar descuento
+ * que ya existen para las demás cuotas — sin ninguna pantalla nueva ahí.
+ *
+ * Si la factura era "de contado", pasa a ser "a cuotas" (ya no tiene
+ * sentido lo contrario con un saldo pendiente): lo que ya se había pagado
+ * de contado se deja como una cuota "Recibida" aparte, con su propio
+ * abono por ese monto, para no perder el rastro de que esa plata ya
+ * había entrado. Las facturas de contado siempre nacen totalmente
+ * pagadas (ver facturar.php), así que ese monto es $f['pagado'] tal cual
+ * quedó guardado.
+ *
+ * Rechaza facturas anuladas y listas de ítems vacías o sin ningún
+ * producto real del catálogo — igual que facturar.php, los precios se
+ * recalculan aquí con producto_por_sku(), nunca se confía en lo que
+ * mande el formulario.
+ */
+function agregar_lineas_factura(string $numero, array $items, string $vence): bool
+{
+    $f = factura_por_numero($numero);
+    if (!$f || !empty($f['anulada'])) {
+        return false;
+    }
+
+    $lineasNuevas  = [];
+    $subtotalNuevo = 0;
+    $costoNuevo    = 0;
+    foreach ($items as $it) {
+        $p = producto_por_sku((string) ($it['sku'] ?? ''));
+        $c = max(1, min(99, (int) ($it['cant'] ?? 1)));
+        if (!$p) {
+            continue;
+        }
+        $lineasNuevas[] = [
+            'sku'    => $p['sku'],
+            'nombre' => $p['nombre'],
+            'marca'  => $p['marca'],
+            'precio' => $p['precio'],
+            'costo'  => $p['costo'],
+            'cant'   => $c,
+        ];
+        $subtotalNuevo += $p['precio'] * $c;
+        $costoNuevo    += $p['costo'] * $c;
+    }
+
+    if (!$lineasNuevas) {
+        return false;
+    }
+
+    $vence  = trim($vence) !== '' ? $vence : date('Y-m-d');
+    $cuotas = $f['cuotas'] ?? [];
+
+    if (($f['plan'] ?? 'contado') !== 'cuotas') {
+        $montoYaPagado = (int) ($f['pagado'] ?? $f['total']);
+        if ($montoYaPagado > 0) {
+            $fechaPago = (string) ($f['fecha_pago'] ?? $f['creada']);
+            $cuotas[]  = [
+                'monto'  => $montoYaPagado,
+                'vence'  => substr($fechaPago, 0, 10),
+                'abonos' => [[
+                    'monto'  => $montoYaPagado,
+                    'fecha'  => $fechaPago,
+                    'tipo'   => 'abono',
+                    'motivo' => '',
+                ]],
+            ];
+        }
+    }
+
+    $cuotas[] = ['monto' => $subtotalNuevo, 'vence' => $vence, 'abonos' => []];
+
+    $cambios = [
+        'lineas'   => array_merge($f['lineas'], $lineasNuevas),
+        'subtotal' => (int) $f['subtotal'] + $subtotalNuevo,
+        'total'    => (int) $f['total'] + $subtotalNuevo,
+        'costo'    => (int) $f['costo'] + $costoNuevo,
+        'margen'   => (int) $f['margen'] + ($subtotalNuevo - $costoNuevo),
+        'plan'     => 'cuotas',
+        'cuotas'   => $cuotas,
+    ];
+    $cambios['pagado'] = total_pagado_cuotas(array_merge($f, $cambios));
+
+    return actualizar_factura($numero, $cambios);
+}
+
+/**
  * Anula una factura: no se borra, queda marcada como anulada (deja rastro
  * contable y conserva el consecutivo). Sale de todos los cálculos y de la
  * cartera, pero sigue viéndose en el historial. Devuelve true si la halló.

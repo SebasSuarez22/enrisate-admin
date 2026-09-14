@@ -40,6 +40,32 @@
   text-decoration: none;
   display: inline-block;
 }
+/* --- Agregar producto (no se imprime): la clienta pidió algo más días
+   después de la factura original. Es una herramienta del panel, no parte
+   del documento — por eso se ve como el resto del panel (tarjeta oscura)
+   y no como una hoja de papel, aunque esté flotando sobre el fondo claro
+   de esta página. */
+.panel-agregar-producto {
+  max-width: 720px;
+  margin: 0 auto 18px;
+}
+.panel-agregar-producto .pista { margin: 4px 0 16px; color: var(--marfil-70); }
+.form-agregar-producto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.form-agregar-producto .campo { margin-bottom: 0; flex: 1 1 200px; }
+.form-agregar-producto .campo.cantidad { flex: 0 1 90px; }
+.form-agregar-producto .campo.fecha { flex: 0 1 160px; }
+.form-agregar-producto .boton.mini { flex: none; height: var(--alto-control); }
+
+@media print {
+  .panel-agregar-producto,
+  .aviso { display: none; }
+}
+
 .boton.mini.verde {
   background: var(--verde);
   color: #FFF;

@@ -4,7 +4,31 @@ require_once __DIR__ . '/includes/facturas.php';
 
 requerir_sesion();
 
-$f = factura_por_numero((string) ($_GET['n'] ?? ''));
+$numero = (string) ($_GET['n'] ?? '');
+
+$errorAgregar = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $numero = (string) ($_POST['numero'] ?? $numero);
+
+    if (!csrf_valido($_POST['csrf'] ?? null)) {
+        $errorAgregar = 'La página estuvo abierta demasiado tiempo. Recárgala e intenta de nuevo.';
+    } else {
+        $sku   = (string) ($_POST['sku'] ?? '');
+        $cant  = (int) ($_POST['cant'] ?? 1);
+        $vence = (string) ($_POST['vence'] ?? '');
+
+        if ($sku === '') {
+            $errorAgregar = 'Escoge un producto.';
+        } elseif (agregar_lineas_factura($numero, [['sku' => $sku, 'cant' => $cant]], $vence)) {
+            header('Location: factura.php?n=' . urlencode($numero) . '&ok=1');
+            exit;
+        } else {
+            $errorAgregar = 'No pude agregar ese producto. Revisa que exista en el catálogo y que la factura no esté anulada.';
+        }
+    }
+}
+
+$f = factura_por_numero($numero);
 
 if (!$f) {
     http_response_code(404);
@@ -12,6 +36,13 @@ if (!$f) {
 }
 
 $fecha = fecha_larga(fecha_factura($f));
+$token = csrf_token();
+
+$porMarcaAgregar = [];
+foreach (catalogo() as $p) {
+    $porMarcaAgregar[$p['marca']][] = $p;
+}
+ksort($porMarcaAgregar);
 
 /* Mensaje de WhatsApp */
 $msg  = "Hola " . $f['cliente'] . " 💛\n";
@@ -179,6 +210,46 @@ $wa = enlace_whatsapp($f['telefono'], $msg);
   </footer>
 
 </article>
+
+<?php if (empty($f['anulada'])): ?>
+  <section class="panel panel-agregar-producto">
+    <h2 class="titulo-panel">Agregar producto a esta factura</h2>
+    <p class="pista">Para cuando la clienta pide algo más días después de esta cuenta: el producto se suma al detalle y su valor queda como una cuota pendiente nueva, lista para cobrar desde Cartera.</p>
+
+    <?php if ($errorAgregar): ?>
+      <p class="aviso" role="alert"><?= e($errorAgregar) ?></p>
+    <?php elseif (!empty($_GET['ok'])): ?>
+      <p class="aviso neutro">Producto agregado. Usa «Enviar por WhatsApp» arriba para avisarle a la clienta con la cuenta actualizada.</p>
+    <?php endif; ?>
+
+    <form method="post" action="factura.php?n=<?= e($f['numero']) ?>" class="form-agregar-producto">
+      <input type="hidden" name="csrf" value="<?= e($token) ?>">
+      <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
+      <div class="campo">
+        <label for="agregarSku">Producto</label>
+        <select id="agregarSku" name="sku" required>
+          <option value="">Selecciona un producto…</option>
+          <?php foreach ($porMarcaAgregar as $marca => $ps): ?>
+            <optgroup label="<?= e($marca) ?>">
+              <?php foreach ($ps as $p): ?>
+                <option value="<?= e($p['sku']) ?>"><?= e($p['nombre']) ?> — <?= pesos($p['precio']) ?></option>
+              <?php endforeach; ?>
+            </optgroup>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="campo cantidad">
+        <label for="agregarCant">Cantidad</label>
+        <input type="number" id="agregarCant" name="cant" min="1" max="99" value="1" required>
+      </div>
+      <div class="campo fecha">
+        <label for="agregarVence">Vence</label>
+        <input type="date" id="agregarVence" name="vence" value="<?= e(date('Y-m-d')) ?>" required>
+      </div>
+      <button type="submit" class="boton mini">Agregar producto</button>
+    </form>
+  </section>
+<?php endif; ?>
 
 </body>
 </html>
