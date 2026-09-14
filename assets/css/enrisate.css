@@ -1145,7 +1145,12 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   align-items: stretch;
   gap: 6px;
 }
-.tabla-cartera-pendiente .acciones-cartera .boton-icono,
+/* ">" y no el descendiente general: el botón "Registrar abono" es
+   también un .boton-icono, pero vive DENTRO de .form-abono (no es hijo
+   directo de .acciones-cartera) — con el selector de descendiente de
+   antes, también se estiraba a 100% y le quitaba casi todo el ancho al
+   campo del monto, que quedaba reducido a un cuadradito. */
+.tabla-cartera-pendiente .acciones-cartera > .boton-icono,
 .tabla-cartera-pendiente .acciones-cartera .form-abono { width: 100%; }
 .tabla-cartera-pendiente .form-abono { flex-wrap: nowrap; }
 .tabla-cartera-pendiente .form-abono input[type="number"] { width: 100%; min-width: 0; }
