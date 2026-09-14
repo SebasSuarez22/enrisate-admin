@@ -15,7 +15,7 @@ FROM php:8.4-apache
 # unos MB más la imagen, pero así no se rompe.
 RUN docker-php-ext-install pdo_mysql mysqli \
     && apt-get update \
-    && apt-get install -y --no-install-recommends libpng-dev libjpeg62-turbo-dev libwebp-dev \
+    && apt-get install -y --no-install-recommends libpng-dev libjpeg62-turbo-dev libwebp-dev unzip \
     && docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install gd \
     && rm -rf /var/lib/apt/lists/*
@@ -23,7 +23,9 @@ RUN docker-php-ext-install pdo_mysql mysqli \
 # Composer (solo para instalar las librerías de PHP listadas en
 # composer.json — hoy únicamente dompdf, para generar el PDF de cada
 # factura). No hace falta instalar el paquete completo de Composer, con
-# copiar el ejecutable ya alcanza.
+# copiar el ejecutable ya alcanza. "unzip" (arriba, junto a las
+# librerías de gd) es aparte: sin eso, "composer install" se cae
+# porque no tiene con qué descomprimir los paquetes que baja.
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # El proyecto ya trae su propio .htaccess (bloquea /includes, /storage,
