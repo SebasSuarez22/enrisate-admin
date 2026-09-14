@@ -194,7 +194,7 @@ require __DIR__ . '/includes/cabecera.php';
 
       <form class="form-busqueda" onsubmit="return false;">
         <div class="campo apretado">
-          <input type="search" id="buscarProductos" placeholder="Buscar por nombre, SKU o categoría…" autocomplete="off">
+          <input type="search" id="buscarProductos" placeholder="Buscar por nombre, SKU o marca…" autocomplete="off">
         </div>
         <button type="button" class="boton mini" id="btnBuscarProductos">Buscar</button>
       </form>
@@ -629,8 +629,9 @@ const loteProductos = seleccionEnLote({
          coincide con la búsqueda; la tarjeta comparte el mismo sku y se
          oculta/muestra igual, así el buscador filtra las dos vistas sin
          importar cuál esté visible según el ancho de pantalla. */
+      const marcaCoincide = marca.toLowerCase().includes(q);
       sec.querySelectorAll('tbody tr[data-sku]').forEach(fila => {
-        const coincide = !buscando || fila.textContent.toLowerCase().includes(q);
+        const coincide = !buscando || marcaCoincide || fila.textContent.toLowerCase().includes(q);
         fila.style.display = coincide ? '' : 'none';
         const tarjeta = sec.querySelector('.filas-esencial [data-sku="' + CSS.escape(fila.dataset.sku) + '"]');
         if (tarjeta) tarjeta.style.display = coincide ? '' : 'none';
