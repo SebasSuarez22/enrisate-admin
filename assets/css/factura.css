@@ -49,7 +49,7 @@
   max-width: 720px;
   margin: 0 auto 18px;
 }
-.panel-agregar-producto .pista { margin: 4px 0 16px; color: var(--marfil-70); }
+.panel-agregar-producto .pista { margin: 4px 0 16px; color: var(--marfil-70); text-align: center; }
 .form-agregar-producto {
   display: flex;
   flex-wrap: wrap;
