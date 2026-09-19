@@ -8,7 +8,15 @@ $error = '';
 $ok    = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!csrf_valido($_POST['csrf'] ?? null)) {
+    // Cuando el archivo subido supera post_max_size, PHP descarta TODO el
+    // formulario antes de que el código llegue a verlo: $_POST y $_FILES
+    // quedan vacíos, sin ningún error que capturar. Sin este caso aparte,
+    // eso se veía como "La página estuvo abierta demasiado tiempo" (por
+    // el csrf ausente) — un mensaje que no tiene nada que ver con lo que
+    // de verdad pasó y no le dice a nadie que la foto era muy pesada.
+    if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+        $error = 'La imagen pesa demasiado y el servidor no alcanzó a recibirla. Usa una foto más liviana (máx. 8 MB).';
+    } elseif (!csrf_valido($_POST['csrf'] ?? null)) {
         $error = 'La página estuvo abierta demasiado tiempo. Recárgala e intenta de nuevo.';
     } elseif (($_POST['accion'] ?? '') === 'eliminar') {
         $skus     = array_filter(array_map('trim', explode(',', (string) ($_POST['skus'] ?? ''))));

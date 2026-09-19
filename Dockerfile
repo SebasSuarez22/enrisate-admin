@@ -20,6 +20,13 @@ RUN docker-php-ext-install pdo_mysql mysqli \
     && docker-php-ext-install gd \
     && rm -rf /var/lib/apt/lists/*
 
+# Sin esto, PHP corre con sus límites de fábrica (upload_max_filesize=2M,
+# post_max_size=8M) — una foto de celular normal (2-6 MB) nunca llegaba
+# ni siquiera a guardar_imagen_producto() (ver includes/imagenes.php, que
+# sí valida hasta 8 MB): PHP la rechazaba antes, en el parseo del propio
+# formulario, con un mensaje de error que no explica la verdadera razón.
+COPY docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+
 # Composer (solo para instalar las librerías de PHP listadas en
 # composer.json — hoy únicamente dompdf, para generar el PDF de cada
 # factura). No hace falta instalar el paquete completo de Composer, con
