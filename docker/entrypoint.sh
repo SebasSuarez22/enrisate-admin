@@ -10,6 +10,18 @@ echo "Puerto que va a usar Apache: ${PORT}"
 sed -ri "s/Listen 80/Listen ${PORT}/" /etc/apache2/ports.conf
 sed -ri "s/:80/:${PORT}/" /etc/apache2/sites-enabled/000-default.conf
 
+# Fotos de producto: assets/img/productos ahora es un Volume persistente
+# de Railway (antes cualquier foto subida desde el panel se perdía en el
+# siguiente despliegue — vivía solo en el contenedor de esa sesión). Un
+# Volume nuevo arranca vacío, así que en el primer arranque se rellena
+# con las fotos que ya venían guardadas en el repositorio (ver el "cp"
+# al respaldo en el Dockerfile) — "cp -n" no pisa nada que el Volume ya
+# tenga (fotos subidas después del primer arranque), así que esto es
+# seguro correrlo en cada arranque, no solo en el primero.
+mkdir -p assets/img/productos
+cp -rn assets/img/productos-semilla/. assets/img/productos/
+chown -R www-data:www-data assets/img/productos
+
 # La base de datos (servicio aparte en Railway) puede tardar más de lo
 # esperado en aceptar conexiones, sobre todo si arrancó al mismo tiempo
 # que esta app; se reintenta bastante antes de seguir sin ella.

@@ -53,6 +53,14 @@ RUN a2enmod rewrite \
 WORKDIR /var/www/html
 COPY . .
 
+# Copia de respaldo de las fotos que ya vienen en el repositorio, ANTES
+# de que Railway monte el Volume persistente sobre assets/img/productos
+# (ver docker/entrypoint.sh). Un Volume nuevo siempre arranca vacío y
+# tapa lo que la imagen traía en esa misma ruta — sin este respaldo en
+# otra carpeta, las fotos que ya están guardadas en git desaparecerían
+# la primera vez que el Volume se conecta.
+RUN cp -r assets/img/productos assets/img/productos-semilla
+
 # Instala dompdf (ver composer.json) sin las dependencias de desarrollo.
 # vendor/ no se sube al repositorio (ver .gitignore) — se genera acá,
 # como una capa más del build, igual que las extensiones de PHP de
