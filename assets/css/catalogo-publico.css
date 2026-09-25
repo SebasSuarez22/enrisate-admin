@@ -581,11 +581,23 @@ body.cp-con-carrito .cp-pie {
 /* --- Ficha de producto: foto + descripción al tocar una tarjeta --- */
 .cp-hoja-producto { max-height: 92vh; }
 .cp-producto-cuerpo { display: flex; flex-direction: column; gap: var(--sp-4); }
+/* flex: none — la foto es un ítem de una columna flex; con overflow:hidden
+   su alto mínimo pasa a ser 0, así que una descripción larga la encogía y
+   recortaba el producto (en celular acostado llegaba a desaparecer). Así
+   conserva su alto y es la ficha la que se desliza. Cuadrada porque las
+   fotos de producto son cuadradas; el tope de alto evita que en pantallas
+   bajas empuje la descripción y el botón fuera de la vista. */
 .cp-producto-foto {
+  flex: none;
   border-radius: var(--radio);
   overflow: hidden;
 }
-.cp-producto-foto .cp-img-wrap { aspect-ratio: 4 / 3; border-bottom: 0; }
+.cp-producto-foto .cp-img-wrap {
+  aspect-ratio: 1 / 1;
+  max-height: min(58vh, 460px);
+  width: 100%;
+  border-bottom: 0;
+}
 .cp-producto-texto { display: flex; flex-direction: column; gap: var(--sp-2); }
 .cp-producto-etiqueta {
   margin: 0;
