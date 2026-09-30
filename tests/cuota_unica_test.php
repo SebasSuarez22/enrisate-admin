@@ -1,17 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../includes/facturas.php';
-
-$fallos = 0;
-function verificar(bool $cond, string $msg): void
-{
-    if ($cond) {
-        echo "OK   - $msg\n";
-    } else {
-        echo "FAIL - $msg\n";
-        $GLOBALS['fallos']++;
-    }
-}
+require_once __DIR__ . '/bootstrap.php';
 
 /* --- rotulo_cuota: "Pago único" solo cuando de verdad hay una sola cuota --- */
 
@@ -26,16 +15,13 @@ verificar(rotulo_cuota(0) === 'Primera cuota',
 
 /* --- Un "pago único a plazo" real: factura con plan cuotas y un solo elemento en cuotas --- */
 
-$ruta     = ruta_facturas();
-$respaldo = is_file($ruta) ? file_get_contents($ruta) : null;
-
-try {
+{
     $numero = crear_factura([
         'cliente' => '__TEST_UNICA__', 'telefono' => '3000000000', 'nota' => '', 'lineas' => [],
         'subtotal' => 80000, 'descuento' => 0, 'total' => 80000, 'costo' => 0, 'margen' => 80000,
         'plan' => 'cuotas', 'abono' => 0, 'saldo_aplicado' => 0,
         'cuotas' => [
-            ['monto' => 80000, 'vence' => '2026-01-01', 'abonos' => []],
+            ['monto' => 80000, 'vence' => '2020-01-01', 'abonos' => []],
         ],
         'pagado' => 0, 'fecha_pago' => null,
     ]);
@@ -53,13 +39,6 @@ try {
     $f = factura_por_numero($numero);
     verificar(cuota_esta_pagada($f['cuotas'][0]) === true,
         'pago único: queda pagada tras registrar el abono completo');
-} finally {
-    if ($respaldo === null) {
-        @unlink($ruta);
-    } else {
-        file_put_contents($ruta, $respaldo, LOCK_EX);
-    }
 }
 
-echo "\n" . ($fallos === 0 ? "TODO OK" : "$fallos prueba(s) fallaron") . "\n";
-exit($fallos === 0 ? 0 : 1);
+terminar_pruebas();

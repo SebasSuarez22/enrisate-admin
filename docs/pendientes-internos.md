@@ -2,6 +2,19 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 30 de septiembre, 2026
+
+**Resuelto — las 3 pruebas automáticas rotas:** `cuota_unica_test.php`, `facturas_cuotas_test.php` y `leer_facturas_raw_test.php` llamaban a `ruta_facturas()`, una función del almacenamiento en JSON que desapareció con la migración a MySQL (no tenía nada que ver con Railway ni con la conexión: fallaban igual con un MySQL sano — verificado corriéndolas contra un MariaDB local antes de tocarlas). Se reescribieron para usar las funciones reales contra MySQL.
+- Nuevo `tests/bootstrap.php`: se niega a correr si `DB_NOMBRE` no termina en `_test` (las pruebas borran facturas; se verificó que contra una base llamada `railway` se detiene sin crear ni tocar nada), aplica `storage/esquema.sql` y deja las tablas vacías antes y después.
+- Nuevo `tests/correr_todas.php`: corre las 4 y resume. Uso: `MYSQLDATABASE=enrisate_test php tests/correr_todas.php` (ver README, "Pruebas automáticas").
+- `leer_facturas_raw_test.php` se rehízo entero, no solo se parchó: su premisa (que el JSON crudo no se "re-migraba") ya no existe con MySQL. Ahora comprueba que lo guardado es lo leído (líneas, cuotas, abonos vs descuentos con motivo, fecha_pago null, anulaciones, acentos/ñ/emoji) y que tocar una factura no altera otra — importante porque `guardar_facturas()` hace `DELETE FROM facturas` + reinserta TODO en cada cambio.
+- Se comprobó que las pruebas de verdad detectan errores rompiendo el código a propósito (3 mutaciones). La del charset (`utf8mb4`→`latin1`) al principio NO se detectaba —el texto regresa igual pero queda corrupto en la base—, así que se agregó una verificación con `CHAR_LENGTH` directamente en MySQL.
+- `cuotas_puras_test.php` no se tocó (solo prueba funciones puras, sin base de datos).
+
+**Riesgo observado, NO corregido (a decidir):** `guardar_facturas()` lee todo, cambia en memoria y reescribe todo (sin bloqueo). Si dos personas guardan cambios casi al mismo tiempo (p. ej. registrar un abono mientras llega un pedido y se factura), la segunda escritura puede pisar la primera. Con una sola administradora es poco probable, pero es el punto débil natural de este diseño; el arreglo sería actualizar solo la fila afectada (UPDATE/INSERT puntual) en vez de reescribir todo.
+
+**Corrección de la entrada del 13 de septiembre:** el pendiente "Productos (`inventario.php`) todavía usa el patrón viejo" ya se resolvió ese mismo día (tabla proporcional + tarjeta en celular, igual que Pedidos/Cartera/Clientes); la nota nunca se actualizó.
+
 ## 19 de septiembre, 2026
 
 **Aprendizaje / causa raíz encontrada — subir foto de producto fallaba (reportado con "Crema de Peinar Rizos", SKU LP-06):**

@@ -1,22 +1,8 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../includes/facturas.php';
+require_once __DIR__ . '/bootstrap.php';
 
-$fallos = 0;
-function verificar(bool $cond, string $msg): void
 {
-    if ($cond) {
-        echo "OK   - $msg\n";
-    } else {
-        echo "FAIL - $msg\n";
-        $GLOBALS['fallos']++;
-    }
-}
-
-$ruta     = ruta_facturas();
-$respaldo = is_file($ruta) ? file_get_contents($ruta) : null;
-
-try {
     $numero = crear_factura([
         'cliente' => '__TEST__', 'telefono' => '', 'nota' => '', 'lineas' => [],
         'subtotal' => 150000, 'descuento' => 0, 'total' => 150000, 'costo' => 0, 'margen' => 150000,
@@ -59,13 +45,6 @@ try {
     $metricas = metricas_panel();
     verificar(is_int($metricas['porCobrar']),
         'metricas_panel: sigue devolviendo porCobrar como entero, sin fatal error');
-} finally {
-    if ($respaldo === null) {
-        @unlink($ruta);
-    } else {
-        file_put_contents($ruta, $respaldo, LOCK_EX);
-    }
 }
 
-echo "\n" . ($fallos === 0 ? "TODO OK" : "$fallos prueba(s) fallaron") . "\n";
-exit($fallos === 0 ? 0 : 1);
+terminar_pruebas();

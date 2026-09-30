@@ -135,6 +135,21 @@ Abre http://localhost:8000
 **Usuario:** `admin`
 **Contraseña:** `Enrisate2026*`
 
+## Pruebas automáticas
+
+```bash
+MYSQLDATABASE=enrisate_test php tests/correr_todas.php
+```
+
+Corre las 4 pruebas de `tests/` (cuotas, abonos, descuentos, y que lo que se
+guarda en MySQL sea exactamente lo que se lee). Necesitan una base **aparte y
+vacía cuyo nombre termine en `_test`** (créala vacía en phpMyAdmin o con
+`CREATE DATABASE enrisate_test CHARACTER SET utf8mb4`; el esquema se aplica
+solo). Crean y borran facturas de verdad, así que se niegan a correr contra
+cualquier otra base — nunca las apuntes a la de Gina ni a la de Railway. Si tu
+MySQL no es el de XAMPP por defecto, agrega también `MYSQLHOST`, `MYSQLPORT`,
+`MYSQLUSER` y `MYSQLPASSWORD`.
+
 ## Antes de subirlo a un servidor
 
 1. Cambia la contraseña:
@@ -206,5 +221,7 @@ tools/verificar_migracion.php  compara JSON vs MySQL (herramienta, no la usa la 
 tools/prueba_escritura.php     prueba de escritura de extremo a extremo (herramienta, no la usa la app)
 tools/prueba_descuento.php     prueba de aplicar_descuento_cuota() (herramienta, no la usa la app)
 tools/generar_hash.php
+tests/correr_todas.php         corre todas las pruebas automáticas (ver "Pruebas automáticas")
+tests/bootstrap.php            arranque común de las pruebas: exige una base _test, aplica el esquema y la deja vacía
 storage/              intentos fallidos, pedidos_intentos.json y respaldo-json/ (se crean solos)
 ```
