@@ -2,6 +2,23 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 30 de septiembre, 2026 (auditoría · paso 4, parte 1: pedidos guardados por fila)
+
+Paso 4 = dejar de "leer todo → cambiar uno → borrar todo → reinsertar todo". Se hace de a una tabla, empezando por **pedidos** (la más expuesta: el formulario público reescribía TODOS los pedidos de la historia cada vez que entraba uno). Siguen: clientas, catálogo y al final facturas.
+
+**Qué cambió en `includes/pedidos.php`:**
+- `crear_pedido()`: `INSERT` solo del pedido nuevo y sus líneas. Si el número ya existiera falla (no pisa). El siguiente número se calcula en MySQL (`MAX(CAST(RIGHT(numero,4) AS UNSIGNED))`, misma regla de siempre) en vez de cargar todos.
+- `actualizar_pedido()` (y con él confirmar/descartar): lee solo ese pedido, `UPDATE` de su fila, borra y reinserta solo SUS líneas.
+- Lecturas: `leer_pedidos_donde(numero, estado)` filtra en SQL; `pedido_por_numero()` y `pedidos_pendientes()` ya no cargan la historia. Se conserva la comparación exacta en PHP (MySQL no distingue mayúsculas/espacios). Pedidos + líneas se leen en una misma transacción.
+- `guardar_pedido($p, $esNuevo)` usa `en_transaccion()` → dentro de facturar (`crear_cuenta_desde_formulario`) sigue siendo parte de la misma transacción de todo o nada.
+- `guardar_pedidos()` (masivo) queda solo para `tools/normalizar_telefonos_existentes.php`.
+- **El candado `con_bloqueo('pedidos')` se dejó igual a propósito:** cada operación ahora toca una fila y dura milisegundos, así que la espera ya no pesa; pasarlo a bloqueo por fila agregaría riesgo (facturar depende de él para no confirmar dos veces el mismo pedido) sin ganancia real a este tamaño.
+
+**Prueba diferencial nueva `tests/pedidos_por_fila_test.php`:** corre el mismo guion (5 pedidos variados con tildes/emoji, 0–4 líneas, cuotas o contado; confirmar, descartar con y sin motivo, descartar uno ya confirmado, actualizar, actualizar uno inexistente, cambiar líneas; más pedidos importados con números raros `P-2025-0042` y `RARO`) con la implementación ANTERIOR (copiada en la prueba) y con la nueva, y exige: mismos números, mismas respuestas, mismo siguiente número, base idéntica campo por campo y línea por línea, mismos pendientes en el mismo orden, misma búsqueda (inexistente, otra mayúscula, con espacio). **Única diferencia encontrada, y es la buscada:** la implementación anterior, al guardar CUALQUIER pedido, reescribía todos y de paso normalizaba el estado de pedidos que nadie tocó (un `Pendiente` importado pasaba a `pendiente`); la nueva deja intactas las filas ajenas. En producción no cambia nada: como la versión anterior normalizaba en cada guardado, los estados reales ya son válidos. Además comprueba que actualizar o crear un pedido deja intactas las filas (ids) de los demás, y que un INSERT con número repetido falla sin pisar.
+- Mutaciones detectadas: no borrar las líneas viejas al actualizar; **UPDATE sin WHERE** (pisaría todos); buscar sin comparación exacta; numeración por el texto completo; crear con `ON DUPLICATE KEY UPDATE`.
+- `tests/cuentas_test.php`: la falla simulada de "confirmar el pedido" era un disparador `BEFORE INSERT`; como confirmar ahora es un `UPDATE`, se agregó el `BEFORE UPDATE`. Con eso se re-verificó que facturar sigue siendo de todo o nada con el guardado por fila.
+- 11 pruebas pasan; concurrencia repetida 3 veces (20/20 pedidos simultáneos, sin números repetidos); dos pedidos reales por `pedido-publico.php`.
+
 ## 30 de septiembre, 2026 (auditoría · paso 3: IP real y límite de pedidos)
 
 **Corrección de la auditoría:** supuse que detrás del proxy todos los visitantes compartían UNA IP. Los registros de Apache en Railway muestran otra cosa: la app ve direcciones internas del proxy (`100.64.0.0/10`) y **una misma persona llega con una distinta en cada petición** (mismo navegador, mismo segundo: 100.64.0.1, .2, .13, .15, .22…). Con eso el límite de 8 pedidos/hora "por IP" era casi aleatorio: no frenaba a quien mandara muchos pedidos (se repartían entre decenas de direcciones) y podía bloquear a una clienta real que compartiera cupo al azar con otras. Además vivía en `storage/pedidos_intentos.json`, que se borraba en cada despliegue.

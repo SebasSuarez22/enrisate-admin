@@ -13,6 +13,7 @@ require_once __DIR__ . '/../includes/cuentas.php';
 function limpiar_cuentas(): void
 {
     db()->exec('DROP TRIGGER IF EXISTS falla_al_confirmar');
+    db()->exec('DROP TRIGGER IF EXISTS falla_al_confirmar_update');
     foreach (['pedido_lineas', 'pedidos', 'clientes', 'productos'] as $t) {
         db()->exec("DELETE FROM $t");
     }
@@ -82,7 +83,11 @@ $id  = clienta_con_saldo(20000);
 db()->exec('DELETE FROM pedidos');
 $ped = pedido_nuevo();
 $antes = n('SELECT COUNT(*) FROM facturas');
+// La falla se simula tanto si el pedido se guarda insertándolo como actualizándolo
+// (desde el paso 4 de la auditoría, confirmar un pedido es un UPDATE de su fila).
 db()->exec("CREATE TRIGGER falla_al_confirmar BEFORE INSERT ON pedidos FOR EACH ROW
+    BEGIN IF NEW.estado = 'confirmado' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fallo simulado'; END IF; END");
+db()->exec("CREATE TRIGGER falla_al_confirmar_update BEFORE UPDATE ON pedidos FOR EACH ROW
     BEGIN IF NEW.estado = 'confirmado' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fallo simulado'; END IF; END");
 $cayo = false;
 try {
@@ -91,6 +96,7 @@ try {
     $cayo = true;
 }
 db()->exec('DROP TRIGGER falla_al_confirmar');
+db()->exec('DROP TRIGGER falla_al_confirmar_update');
 verificar($cayo, 'setup: el último paso (confirmar el pedido) falla a propósito');
 verificar(n('SELECT COUNT(*) FROM facturas') === $antes, 'no queda ninguna factura creada');
 verificar(saldo_de($id) === 20000, 'el saldo a favor de la clienta sigue intacto (no se gastó)');

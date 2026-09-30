@@ -23,37 +23,76 @@ require_once __DIR__ . '/red.php';
 
 function leer_pedidos(): array
 {
+    return leer_pedidos_donde(null, null);
+}
+
+/**
+ * Pedidos (con sus líneas) filtrados por número exacto o por estado, o todos si
+ * ambos son null. Solo lee las filas pedidas. Las dos consultas (pedidos y líneas)
+ * van en una misma transacción para ver la base en un mismo instante.
+ */
+function leer_pedidos_donde(?string $numero, ?string $estado): array
+{
     $pdo = db();
 
-    $pedidos = $pdo->query('SELECT * FROM pedidos ORDER BY numero')->fetchAll();
-    if (!$pedidos) {
-        return [];
+    $donde  = [];
+    $params = [];
+    if ($numero !== null) {
+        $donde[]  = 'p.numero = ?';
+        $params[] = $numero;
     }
+    if ($estado !== null) {
+        $donde[]  = 'p.estado = ?';
+        $params[] = $estado;
+    }
+    $where = $donde ? ' WHERE ' . implode(' AND ', $donde) : '';
 
-    $lineasPorPedido = [];
-    foreach ($pdo->query('SELECT * FROM pedido_lineas ORDER BY pedido_numero, orden')->fetchAll() as $l) {
-        $lineasPorPedido[$l['pedido_numero']][] = [
-            'sku'    => (string) $l['sku'],
-            'nombre' => (string) $l['nombre'],
-            'marca'  => (string) $l['marca'],
-            'precio' => (int) $l['precio'],
-            'cant'   => (int) $l['cant'],
-        ];
+    $abrio = !$pdo->inTransaction();
+    if ($abrio) {
+        $pdo->beginTransaction();
+    }
+    try {
+        $st = $pdo->prepare('SELECT p.* FROM pedidos p' . $where . ' ORDER BY p.numero');
+        $st->execute($params);
+        $pedidos = $st->fetchAll();
+        if (!$pedidos) {
+            return [];
+        }
+
+        $st = $pdo->prepare(
+            'SELECT l.* FROM pedido_lineas l JOIN pedidos p ON p.numero = l.pedido_numero'
+            . $where . ' ORDER BY l.pedido_numero, l.orden'
+        );
+        $st->execute($params);
+        $lineasPorPedido = [];
+        foreach ($st->fetchAll() as $l) {
+            $lineasPorPedido[$l['pedido_numero']][] = [
+                'sku'    => (string) $l['sku'],
+                'nombre' => (string) $l['nombre'],
+                'marca'  => (string) $l['marca'],
+                'precio' => (int) $l['precio'],
+                'cant'   => (int) $l['cant'],
+            ];
+        }
+    } finally {
+        if ($abrio && $pdo->inTransaction()) {
+            $pdo->commit();
+        }
     }
 
     $resultado = [];
     foreach ($pedidos as $p) {
-        $numero = (string) $p['numero'];
+        $numeroFila = (string) $p['numero'];
 
         $fila = [
             'cliente'  => (string) $p['cliente'],
             'telefono' => (string) $p['telefono'],
-            'lineas'   => $lineasPorPedido[$numero] ?? [],
+            'lineas'   => $lineasPorPedido[$numeroFila] ?? [],
             'subtotal' => (int) $p['subtotal'],
             'total'    => (int) $p['total'],
             'plan'     => (string) $p['plan'],
             'cuotas'   => [], // el pedido nunca trae cuotas calculadas, solo la preferencia
-            'numero'   => $numero,
+            'numero'   => $numeroFila,
             'creado'   => (string) $p['creado'],
             'estado'   => (string) $p['estado'],
         ];
@@ -80,20 +119,93 @@ function leer_pedidos(): array
     return $resultado;
 }
 
-/** Reemplaza la lista completa de pedidos en la base de datos (igual que antes reemplazaba el archivo entero). */
+/** Valores de la fila `pedidos` para un pedido (mismas reglas de siempre). */
+function pedido_a_parametros(array $p): array
+{
+    return [
+        ':numero'               => (string) $p['numero'],
+        ':cliente'              => (string) ($p['cliente'] ?? ''),
+        ':telefono'             => (string) ($p['telefono'] ?? ''),
+        ':subtotal'             => (int) ($p['subtotal'] ?? 0),
+        ':total'                => (int) ($p['total'] ?? 0),
+        ':plan'                 => ($p['plan'] ?? 'contado') === 'cuotas' ? 'cuotas' : 'contado',
+        ':num_cuotas_preferido' => isset($p['num_cuotas_preferido']) ? (int) $p['num_cuotas_preferido'] : null,
+        ':estado'               => in_array($p['estado'] ?? '', ['pendiente', 'confirmado', 'descartado'], true)
+                                        ? $p['estado'] : 'pendiente',
+        ':factura_numero'       => $p['factura_numero'] ?? null,
+        ':creado'               => (string) ($p['creado'] ?? date('c')),
+        ':confirmado_el'        => $p['confirmado_el'] ?? null,
+        ':descartado_el'        => $p['descartado_el'] ?? null,
+        ':motivo_descartado'    => (string) ($p['motivo_descartado'] ?? ''),
+    ];
+}
+
+/** Inserta las líneas de un pedido (las viejas de ese pedido ya deben estar borradas). */
+function insertar_lineas_pedido(PDO $pdo, string $numero, array $lineas): void
+{
+    $st = $pdo->prepare(
+        'INSERT INTO pedido_lineas (pedido_numero, orden, sku, nombre, marca, precio, cant)
+         VALUES (:pedido_numero, :orden, :sku, :nombre, :marca, :precio, :cant)'
+    );
+    foreach (array_values($lineas) as $i => $l) {
+        $st->execute([
+            ':pedido_numero' => $numero,
+            ':orden'         => $i,
+            ':sku'           => (string) ($l['sku'] ?? ''),
+            ':nombre'        => (string) ($l['nombre'] ?? ''),
+            ':marca'         => (string) ($l['marca'] ?? ''),
+            ':precio'        => (int) ($l['precio'] ?? 0),
+            ':cant'          => (int) ($l['cant'] ?? 1),
+        ]);
+    }
+}
+
+/**
+ * Guarda UN pedido: si es nuevo lo inserta (y falla si el número ya existiera,
+ * en vez de pisar otro pedido); si ya existe, actualiza solo su fila y reescribe
+ * solo sus líneas. Los demás pedidos no se tocan.
+ */
+function guardar_pedido(array $p, bool $esNuevo): void
+{
+    en_transaccion(function () use ($p, $esNuevo): void {
+        $pdo    = db();
+        $params = pedido_a_parametros($p);
+
+        if ($esNuevo) {
+            $pdo->prepare(
+                'INSERT INTO pedidos
+                    (numero, cliente, telefono, subtotal, total, plan, num_cuotas_preferido,
+                     estado, factura_numero, creado, confirmado_el, descartado_el, motivo_descartado)
+                 VALUES
+                    (:numero, :cliente, :telefono, :subtotal, :total, :plan, :num_cuotas_preferido,
+                     :estado, :factura_numero, :creado, :confirmado_el, :descartado_el, :motivo_descartado)'
+            )->execute($params);
+        } else {
+            $pdo->prepare(
+                'UPDATE pedidos SET
+                    cliente = :cliente, telefono = :telefono, subtotal = :subtotal, total = :total,
+                    plan = :plan, num_cuotas_preferido = :num_cuotas_preferido, estado = :estado,
+                    factura_numero = :factura_numero, creado = :creado, confirmado_el = :confirmado_el,
+                    descartado_el = :descartado_el, motivo_descartado = :motivo_descartado
+                 WHERE numero = :numero'
+            )->execute($params);
+            $pdo->prepare('DELETE FROM pedido_lineas WHERE pedido_numero = ?')->execute([$params[':numero']]);
+        }
+
+        insertar_lineas_pedido($pdo, $params[':numero'], $p['lineas'] ?? []);
+    });
+}
+
+/**
+ * Reemplaza la lista COMPLETA de pedidos. La app ya no lo usa (guarda de a un pedido
+ * con guardar_pedido()); queda para herramientas que reescriben todo a propósito
+ * (tools/normalizar_telefonos_existentes.php).
+ */
 function guardar_pedidos(array $pedidos): void
 {
-    $pdo = db();
-
-    $propia = !$pdo->inTransaction(); // dentro de en_transaccion() se une a la de afuera
-    if ($propia) {
-        $pdo->beginTransaction();
-    }
-    try {
-        // pedido_lineas NO tiene borrado en cascada (a diferencia de las tablas de
-        // facturas): sin borrarlas a mano primero, al reinsertar las líneas de un
-        // pedido que ya existía chocan con las viejas (clave única pedido_numero+orden)
-        // y desde el segundo pedido con productos ya no se podía guardar nada.
+    en_transaccion(function () use ($pedidos): void {
+        $pdo = db();
+        // pedido_lineas NO tiene borrado en cascada: se borran a mano primero.
         $pdo->exec('DELETE FROM pedido_lineas');
         $pdo->exec('DELETE FROM pedidos');
 
@@ -105,92 +217,42 @@ function guardar_pedidos(array $pedidos): void
                 (:numero, :cliente, :telefono, :subtotal, :total, :plan, :num_cuotas_preferido,
                  :estado, :factura_numero, :creado, :confirmado_el, :descartado_el, :motivo_descartado)'
         );
-        $stLinea = $pdo->prepare(
-            'INSERT INTO pedido_lineas (pedido_numero, orden, sku, nombre, marca, precio, cant)
-             VALUES (:pedido_numero, :orden, :sku, :nombre, :marca, :precio, :cant)'
-        );
-
         foreach ($pedidos as $p) {
-            $numero = (string) $p['numero'];
-
-            $stPed->execute([
-                ':numero'               => $numero,
-                ':cliente'              => (string) ($p['cliente'] ?? ''),
-                ':telefono'             => (string) ($p['telefono'] ?? ''),
-                ':subtotal'             => (int) ($p['subtotal'] ?? 0),
-                ':total'                => (int) ($p['total'] ?? 0),
-                ':plan'                 => ($p['plan'] ?? 'contado') === 'cuotas' ? 'cuotas' : 'contado',
-                ':num_cuotas_preferido' => isset($p['num_cuotas_preferido']) ? (int) $p['num_cuotas_preferido'] : null,
-                ':estado'               => in_array($p['estado'] ?? '', ['pendiente', 'confirmado', 'descartado'], true)
-                                                ? $p['estado'] : 'pendiente',
-                ':factura_numero'       => $p['factura_numero'] ?? null,
-                ':creado'               => (string) ($p['creado'] ?? date('c')),
-                ':confirmado_el'        => $p['confirmado_el'] ?? null,
-                ':descartado_el'        => $p['descartado_el'] ?? null,
-                ':motivo_descartado'    => (string) ($p['motivo_descartado'] ?? ''),
-            ]);
-
-            foreach (($p['lineas'] ?? []) as $i => $l) {
-                $stLinea->execute([
-                    ':pedido_numero' => $numero,
-                    ':orden'         => $i,
-                    ':sku'           => (string) ($l['sku'] ?? ''),
-                    ':nombre'        => (string) ($l['nombre'] ?? ''),
-                    ':marca'         => (string) ($l['marca'] ?? ''),
-                    ':precio'        => (int) ($l['precio'] ?? 0),
-                    ':cant'          => (int) ($l['cant'] ?? 1),
-                ]);
-            }
+            $stPed->execute(pedido_a_parametros($p));
+            insertar_lineas_pedido($pdo, (string) $p['numero'], $p['lineas'] ?? []);
         }
-
-        if ($propia) {
-            $pdo->commit();
-        }
-    } catch (Throwable $e) {
-        if ($propia && $pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        throw $e;
-    }
+    });
 }
 
 /** Numeración propia (P-2026-0001...), separada de las facturas para no confundirlas. */
 function siguiente_numero_pedido(): string
 {
-    $pedidos = leer_pedidos();
-    $max     = 0;
-    foreach ($pedidos as $p) {
-        $n = (int) substr((string) $p['numero'], -4);
-        if ($n > $max) {
-            $max = $n;
-        }
-    }
+    // Misma regla de siempre (el mayor de los 4 últimos dígitos, más uno), pero
+    // calculada en MySQL en vez de cargar todos los pedidos.
+    $max = (int) db()->query('SELECT COALESCE(MAX(CAST(RIGHT(numero, 4) AS UNSIGNED)), 0) FROM pedidos')->fetchColumn();
     return 'P-' . date('Y') . '-' . str_pad((string) ($max + 1), 4, '0', STR_PAD_LEFT);
 }
 
 function pedido_por_numero(string $numero): ?array
 {
-    foreach (leer_pedidos() as $p) {
-        if ($p['numero'] === $numero) {
-            return $p;
-        }
-    }
-    return null;
+    $uno = leer_pedidos_donde($numero, null);
+    // MySQL compara sin distinguir mayúsculas ni espacios al final; se exige el
+    // número exacto, como siempre.
+    return ($uno && $uno[0]['numero'] === $numero) ? $uno[0] : null;
 }
 
 /** Guarda un pedido nuevo (estado 'pendiente') y devuelve su número. */
 function crear_pedido(array $datos): string
 {
+    // El candado sigue para que dos pedidos simultáneos no reciban el mismo número.
     return con_bloqueo('pedidos', function () use ($datos) {
-        $pedidos = leer_pedidos();
-        $numero  = siguiente_numero_pedido();
+        $numero = siguiente_numero_pedido();
 
         $datos['numero'] = $numero;
         $datos['creado'] = date('c');
         $datos['estado'] = 'pendiente';
 
-        $pedidos[] = $datos;
-        guardar_pedidos($pedidos);
+        guardar_pedido($datos, true);
 
         return $numero;
     });
@@ -199,20 +261,13 @@ function crear_pedido(array $datos): string
 function actualizar_pedido(string $numero, array $cambios): bool
 {
     return con_bloqueo('pedidos', function () use ($numero, $cambios) {
-        $pedidos = leer_pedidos();
-        $hallado = false;
-        foreach ($pedidos as &$p) {
-            if ($p['numero'] === $numero) {
-                $p       = array_merge($p, $cambios);
-                $hallado = true;
-                break;
-            }
+        $p = pedido_por_numero($numero);
+        if ($p === null) {
+            return false;
         }
-        unset($p);
-        if ($hallado) {
-            guardar_pedidos($pedidos);
-        }
-        return $hallado;
+        // El número nunca cambia: es la llave de la fila.
+        guardar_pedido(array_merge($p, $cambios, ['numero' => $numero]), false);
+        return true;
     });
 }
 
@@ -244,8 +299,10 @@ function descartar_pedido(string $numero, string $motivo = ''): bool
 
 function pedidos_pendientes(): array
 {
+    // MySQL compara sin distinguir mayúsculas ni espacios: se vuelve a exigir el
+    // estado exacto, como siempre.
     $pendientes = array_values(array_filter(
-        leer_pedidos(),
+        leer_pedidos_donde(null, 'pendiente'),
         fn($p) => ($p['estado'] ?? '') === 'pendiente'
     ));
     usort($pendientes, fn($a, $b) => ($b['creado'] ?? '') <=> ($a['creado'] ?? ''));
