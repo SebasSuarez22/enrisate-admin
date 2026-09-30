@@ -2,3 +2,8 @@
 .agents/
 skills-lock.json
 /vendor/
+
+# Recibos técnicos de archify (se regeneran); el diagrama, su JSON y la captura sí se guardan
+.archify/*/*.finalize*.json
+.archify/*/*.browser-check.json
+.archify/*/*.delivery*.json
