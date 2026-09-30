@@ -2,6 +2,17 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 30 de septiembre, 2026 (cuenta de cobro de todo o nada)
+
+**Resuelto — `facturar.php` guardaba en cuatro pasos sueltos** (crear factura → agregar clienta → descontar saldo a favor → confirmar pedido). Reproducido con el código de master forzando que falle el último paso: quedaba la factura creada y el saldo ya gastado, pero el pedido seguía "pendiente" (se veía otra vez en Pedidos por revisar y se podía facturar dos veces). Además el saldo y el estado del pedido se leían ANTES de guardar: dos personas podían gastar el mismo saldo o facturar el mismo pedido a la vez.
+- Nuevo `includes/cuentas.php` → `crear_cuenta_desde_formulario(array $post): string`: la lógica que estaba dentro de `facturar.php` (movida tal cual), ahora dentro de `con_bloqueos(['facturas','clientes','pedidos'], …)` + `en_transaccion(…)`. `facturar.php` solo llama a la función y muestra el mensaje (`DomainException` = error de formulario, `RuntimeException` = no consiguió turno).
+- `includes/db.php`: `con_bloqueos()` (varios candados siempre en el mismo orden: facturas, clientes, pedidos, catálogo → no hay deadlock) y `en_transaccion()` (se une a la transacción de afuera si ya hay una). `guardar_facturas/clientes/pedidos/catalogo` ahora usan la transacción de afuera si existe, en vez de abrir la suya (PDO no anida).
+- **Orden que importa:** primero los candados y DESPUÉS la transacción. La transacción ve la base como estaba en su primera lectura; si esperara el candado ya dentro, leería una copia vieja.
+- **Nuevo comportamiento:** facturar un pedido que ya está confirmado (doble clic) o descartado se rechaza con aviso y no crea nada.
+- Prueba nueva `tests/cuentas_test.php` (+ `_worker_cuentas.php`): caso normal, cuotas + saldo + pedido, todo o nada (fallo forzado con un trigger de MySQL en el último paso: no queda factura, el saldo no se gasta, el pedido sigue pendiente y reintentar funciona), doble envío, validaciones y 10 procesos a la vez (6 con el mismo saldo, 4 con el mismo pedido). Mutaciones: sin transacción falla 4 comprobaciones; sin el chequeo del pedido, 3; sin candados falla siempre el del pedido (4 de 4 veces: 4 facturas del mismo pedido) y el del saldo en 2 de 4 corridas (la ventana es de milisegundos), así que la prueba en conjunto siempre lo detecta. Probado también de extremo a extremo con el servidor real (login → facturar desde pedido → doble clic).
+- **Regla para el futuro:** una operación que toque varios recursos usa `con_bloqueos([...])` y `en_transaccion()`; nunca tomar un candado suelto mientras se tiene otro.
+- Sigue igual: `catalogo_cache` etc. (ver entrada anterior); `tools/normalizar_telefonos_existentes.php` llama a `guardar_*` directo (migración única ya ejecutada).
+
 ## 30 de septiembre, 2026 (revisión con graphify)
 
 Se construyó el grafo de conocimiento del proyecto con graphify (56 archivos: 330 nodos de código + 68 de los documentos, 47 comunidades; 88 % de las conexiones extraídas directamente del código, 12 % inferidas). Los nodos más conectados fueron `db()`, `guardar_catalogo()`, `leer_clientes()` y `con_bloqueo_facturas()`: la estructura se concentra en el acceso a MySQL y en los guardados que reescriben todo. De ahí salieron dos arreglos:

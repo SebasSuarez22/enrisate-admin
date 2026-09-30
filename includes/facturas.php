@@ -123,7 +123,10 @@ function guardar_catalogo(array $productos): void
     $productos = array_values($productos);
     $pdo       = db();
 
-    $pdo->beginTransaction();
+    $propia = !$pdo->inTransaction(); // dentro de en_transaccion() se une a la de afuera
+    if ($propia) {
+        $pdo->beginTransaction();
+    }
     try {
         $conCategoria   = productos_tiene_categoria();
         $conDescripcion = productos_tiene_descripcion();
@@ -156,9 +159,13 @@ function guardar_catalogo(array $productos): void
             }
             $st->execute($fila);
         }
-        $pdo->commit();
+        if ($propia) {
+            $pdo->commit();
+        }
     } catch (Throwable $e) {
-        $pdo->rollBack();
+        if ($propia && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $e;
     }
 
@@ -480,7 +487,10 @@ function guardar_facturas(array $f): void
 {
     $pdo = db();
 
-    $pdo->beginTransaction();
+    $propia = !$pdo->inTransaction(); // dentro de en_transaccion() se une a la de afuera
+    if ($propia) {
+        $pdo->beginTransaction();
+    }
     try {
         // Igual que antes con el archivo completo: se reconstruye todo desde cero
         // a partir del array en memoria. Los ON DELETE CASCADE de factura_lineas/
@@ -569,9 +579,13 @@ function guardar_facturas(array $f): void
             }
         }
 
-        $pdo->commit();
+        if ($propia) {
+            $pdo->commit();
+        }
     } catch (Throwable $e) {
-        $pdo->rollBack();
+        if ($propia && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $e;
     }
 }

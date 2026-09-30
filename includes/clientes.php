@@ -33,7 +33,10 @@ function guardar_clientes(array $clientes): void
 {
     $pdo = db();
 
-    $pdo->beginTransaction();
+    $propia = !$pdo->inTransaction(); // dentro de en_transaccion() se une a la de afuera
+    if ($propia) {
+        $pdo->beginTransaction();
+    }
     try {
         $pdo->exec('DELETE FROM clientes');
         $st = $pdo->prepare(
@@ -50,9 +53,13 @@ function guardar_clientes(array $clientes): void
                 ':creado'      => (string) ($c['creado'] ?? date('c')),
             ]);
         }
-        $pdo->commit();
+        if ($propia) {
+            $pdo->commit();
+        }
     } catch (Throwable $e) {
-        $pdo->rollBack();
+        if ($propia && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $e;
     }
 }

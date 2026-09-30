@@ -141,11 +141,11 @@ Abre http://localhost:8000
 MYSQLDATABASE=enrisate_test php tests/correr_todas.php
 ```
 
-Corre las 7 pruebas de `tests/` (cuotas, abonos, descuentos, pedidos del
-catálogo, que lo que se guarda en MySQL sea exactamente lo que se lee, y que
-varias personas guardando a la vez —facturas, clientas, pedidos o catálogo— no
-se pisen; las dos de concurrencia lanzan procesos en paralelo y tardan unos
-10 segundos cada una). Necesitan una base **aparte y
+Corre las 8 pruebas de `tests/` (cuotas, abonos, descuentos, pedidos del
+catálogo, crear una cuenta de cobro de todo o nada, que lo que se guarda en
+MySQL sea exactamente lo que se lee, y que varias personas guardando a la vez
+—facturas, clientas, pedidos o catálogo— no se pisen; las de concurrencia lanzan
+procesos en paralelo y tardan unos 10 segundos cada una). Necesitan una base **aparte y
 vacía cuyo nombre termine en `_test`** (créala vacía en phpMyAdmin o con
 `CREATE DATABASE enrisate_test CHARACTER SET utf8mb4`; el esquema se aplica
 solo). Crean y borran facturas de verdad, así que se niegan a correr contra
@@ -224,6 +224,7 @@ tools/verificar_migracion.php  compara JSON vs MySQL (herramienta, no la usa la 
 tools/prueba_escritura.php     prueba de escritura de extremo a extremo (herramienta, no la usa la app)
 tools/prueba_descuento.php     prueba de aplicar_descuento_cuota() (herramienta, no la usa la app)
 tools/generar_hash.php
+includes/cuentas.php           crear una cuenta de cobro (factura + clienta + saldo + pedido) en una sola transacción
 tests/correr_todas.php         corre todas las pruebas automáticas (ver "Pruebas automáticas")
 tests/bootstrap.php            arranque común de las pruebas: exige una base _test, aplica el esquema y la deja vacía
 storage/              intentos fallidos, pedidos_intentos.json y respaldo-json/ (se crean solos)

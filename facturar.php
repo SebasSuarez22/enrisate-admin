@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/includes/pedidos.php';
 require_once __DIR__ . '/includes/clientes.php';
+require_once __DIR__ . '/includes/cuentas.php';
 
 requerir_sesion();
 
@@ -11,145 +12,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_valido($_POST['csrf'] ?? null)) {
         $error = 'La página estuvo abierta demasiado tiempo. Recárgala e intenta de nuevo.';
     } else {
-        $cliente  = trim((string) ($_POST['cliente'] ?? ''));
-        $telefono = normalizar_telefono((string) ($_POST['telefono'] ?? ''));
-        $items    = json_decode((string) ($_POST['items'] ?? '[]'), true);
-
-        if ($cliente === '') {
-            $error = 'Escribe el nombre del cliente.';
-        } elseif (!is_array($items) || count($items) === 0) {
-            $error = 'Agrega al menos un producto a la cuenta.';
-        } else {
-            // Se recalcula todo en el servidor: los precios del navegador no son de fiar
-            $lineas   = [];
-            $subtotal = 0;
-            $costo    = 0;
-
-            foreach ($items as $it) {
-                $p = producto_por_sku((string) ($it['sku'] ?? ''));
-                $c = max(1, min(99, (int) ($it['cant'] ?? 1)));
-                if (!$p) {
-                    continue;
-                }
-                $lineas[] = [
-                    'sku'    => $p['sku'],
-                    'nombre' => $p['nombre'],
-                    'marca'  => $p['marca'],
-                    'precio' => $p['precio'],
-                    'costo'  => $p['costo'],
-                    'cant'   => $c,
-                ];
-                $subtotal += $p['precio'] * $c;
-                $costo    += $p['costo'] * $c;
-            }
-
-            if (!$lineas) {
-                $error = 'Ninguno de los productos existe en el catálogo.';
-            } else {
-                $descuento = max(0, min($subtotal, (int) ($_POST['descuento'] ?? 0)));
-                $total     = $subtotal - $descuento;
-
-                $plan = ($_POST['plan'] ?? 'contado') === 'cuotas' ? 'cuotas' : 'contado';
-
-                // Saldo a favor de la clienta aplicado a esta cuenta (solo clienta
-                // existente, y nunca más de lo que tiene ni más que el total).
-                $clienteId       = trim((string) ($_POST['cliente_id'] ?? ''));
-                $clienteRec      = $clienteId !== '' ? cliente_por_id($clienteId) : null;
-                $saldoDisponible = $clienteRec ? (int) ($clienteRec['saldo_favor'] ?? 0) : 0;
-                $saldoAplicado   = max(0, min($saldoDisponible, $total, (int) ($_POST['saldo_aplicado'] ?? 0)));
-
-                $abono     = 0;
-                $cuotas    = [];
-                $fechaPago = null;
-
-                if ($plan === 'cuotas' && $total > 1) {
-                    // Abono en efectivo + saldo a favor son plata ya cubierta contra el
-                    // precio completo — no son descuento, no tocan $total ni $margen.
-                    // Solo reducen lo que queda por repartir en cuotas.
-                    $abono = max(0, min($total - $saldoAplicado, (int) ($_POST['abono'] ?? 0)));
-                    $resto = $total - $saldoAplicado - $abono;
-
-                    if ($resto <= 1) {
-                        $cuotas[] = [
-                            'monto'  => max(0, $resto),
-                            'vence'  => date('Y-m-d'),
-                            'abonos' => [],
-                        ];
-                    } else {
-                        $numCuotas    = max(1, min(4, (int) ($_POST['num_cuotas'] ?? 2)));
-                        $montosPost   = is_array($_POST['cuota_monto'] ?? null) ? $_POST['cuota_monto'] : [];
-                        $vencesPost   = is_array($_POST['cuota_vence'] ?? null) ? $_POST['cuota_vence'] : [];
-                        $sumaAnterior = 0;
-
-                        for ($i = 0; $i < $numCuotas; $i++) {
-                            $vence = trim((string) ($vencesPost[$i] ?? ''));
-                            if ($vence === '') {
-                                $vence = date('Y-m-d', strtotime('+' . (30 * $i) . ' days'));
-                            }
-
-                            if ($i === $numCuotas - 1) {
-                                // La última cuota es siempre el resto exacto: nunca se
-                                // confía en lo que mande el navegador, para que la suma
-                                // cuadre con el total.
-                                $monto = $resto - $sumaAnterior;
-                            } else {
-                                $restantesDespues = $numCuotas - 1 - $i;
-                                $monto = (int) ($montosPost[$i] ?? 0);
-                                $monto = max(1, min($resto - $sumaAnterior - $restantesDespues, $monto));
-                            }
-
-                            $cuotas[] = ['monto' => $monto, 'vence' => $vence, 'abonos' => []];
-                            $sumaAnterior += $monto;
-                        }
-                    }
-                } else {
-                    $plan = 'contado';
-
-                    $fechaPago = trim((string) ($_POST['fecha_pago'] ?? ''));
-                    if ($fechaPago === '') {
-                        $fechaPago = date('Y-m-d');
-                    }
-                }
-
-                // Lo ya cubierto: contado = todo el total (parte con saldo, parte en
-                // efectivo hoy). Cuotas = saldo aplicado + abono en efectivo.
-                $pagado = $plan === 'contado' ? $total : ($saldoAplicado + $abono);
-
-                $numero = crear_factura([
-                    'cliente'        => $cliente,
-                    'telefono'       => $telefono,
-                    'nota'           => trim((string) ($_POST['nota'] ?? '')),
-                    'lineas'         => $lineas,
-                    'subtotal'       => $subtotal,
-                    'descuento'      => $descuento,
-                    'total'          => $total,
-                    'costo'          => $costo,          // interno, nunca se imprime
-                    'margen'         => $total - $costo, // interno, no lo afecta el abono ni el saldo
-                    'plan'           => $plan,
-                    'abono'          => $abono,
-                    'saldo_aplicado' => $saldoAplicado,
-                    'cuotas'         => $cuotas,
-                    'pagado'         => $pagado,
-                    'fecha_pago'     => $fechaPago,
-                ]);
-
-                agregar_cliente_desde_factura($cliente, $telefono);
-
-                // Descuenta de la cuenta de la clienta el saldo que se usó aquí.
-                if ($clienteRec && $saldoAplicado > 0) {
-                    restar_saldo_favor($clienteId, $saldoAplicado);
-                }
-
-                // Si esta cuenta vino de un pedido del catálogo público, lo marca
-                // como confirmado y lo enlaza con la factura recién creada.
-                $numeroPedidoOrigen = trim((string) ($_POST['desde_pedido'] ?? ''));
-                if ($numeroPedidoOrigen !== '') {
-                    marcar_pedido_confirmado($numeroPedidoOrigen, $numero);
-                }
-
-                header('Location: factura.php?n=' . urlencode($numero));
-                exit;
-            }
+        // Toda la lógica (validar, calcular y guardar factura, clienta, saldo y pedido
+        // en una sola operación de todo o nada) vive en includes/cuentas.php.
+        try {
+            $numero = crear_cuenta_desde_formulario($_POST);
+            header('Location: factura.php?n=' . urlencode($numero));
+            exit;
+        } catch (DomainException | RuntimeException $e) {
+            $error = $e->getMessage();
         }
     }
 }

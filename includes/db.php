@@ -57,8 +57,10 @@ function db(): PDO
  * consigue turno en 15 s lanza un error en vez de guardar a ciegas.
  *
  * Regla: toda función que LEA un recurso para luego ESCRIBIRLO debe hacer las dos
- * cosas dentro del mismo bloqueo. Para evitar bloqueos cruzados, no tomes un
- * recurso mientras tienes otro distinto reservado.
+ * cosas dentro del mismo bloqueo. Si una operación necesita varios recursos a la
+ * vez, pídelos juntos con con_bloqueos() (siempre en el mismo orden, así dos
+ * peticiones nunca se esperan la una a la otra); no tomes uno mientras tienes otro
+ * reservado por tu cuenta.
  */
 function con_bloqueo(string $recurso, callable $fn): mixed
 {
@@ -83,5 +85,57 @@ function con_bloqueo(string $recurso, callable $fn): mixed
             $st = $pdo->prepare('SELECT RELEASE_LOCK(?)');
             $st->execute([$nombre]);
         }
+    }
+}
+
+/**
+ * Reserva varios recursos a la vez, siempre en el mismo orden (facturas, clientes,
+ * pedidos, catálogo) sin importar el orden en que se pidan: así dos operaciones que
+ * necesitan los mismos recursos nunca se quedan esperando una a la otra (deadlock).
+ */
+function con_bloqueos(array $recursos, callable $fn): mixed
+{
+    $orden      = ['facturas', 'clientes', 'pedidos', 'catalogo'];
+    $recursos   = array_values(array_unique($recursos));
+    $desconocido = array_diff($recursos, $orden);
+    if ($desconocido) {
+        throw new InvalidArgumentException('Recurso sin candado: ' . implode(', ', $desconocido));
+    }
+    usort($recursos, fn($a, $b) => array_search($a, $orden, true) <=> array_search($b, $orden, true));
+
+    $paso = $fn;
+    foreach (array_reverse($recursos) as $recurso) {
+        $siguiente = $paso;
+        $paso = fn() => con_bloqueo($recurso, $siguiente);
+    }
+    return $paso();
+}
+
+/**
+ * Ejecuta $fn dentro de una transacción de MySQL: o se guarda todo, o no se guarda
+ * nada. Si ya hay una transacción abierta, se une a ella (la que la abrió decide el
+ * commit o el rollback), así los guardar_*() se pueden usar solos o dentro de una
+ * operación más grande.
+ *
+ * Importante: reserva los candados (con_bloqueos) ANTES de abrir la transacción. La
+ * transacción ve la base tal como estaba en su primera lectura; si esperara el
+ * candado ya dentro, leería una copia vieja.
+ */
+function en_transaccion(callable $fn): mixed
+{
+    $pdo = db();
+    if ($pdo->inTransaction()) {
+        return $fn();
+    }
+    $pdo->beginTransaction();
+    try {
+        $resultado = $fn();
+        $pdo->commit();
+        return $resultado;
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
     }
 }

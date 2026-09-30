@@ -85,7 +85,10 @@ function guardar_pedidos(array $pedidos): void
 {
     $pdo = db();
 
-    $pdo->beginTransaction();
+    $propia = !$pdo->inTransaction(); // dentro de en_transaccion() se une a la de afuera
+    if ($propia) {
+        $pdo->beginTransaction();
+    }
     try {
         // pedido_lineas NO tiene borrado en cascada (a diferencia de las tablas de
         // facturas): sin borrarlas a mano primero, al reinsertar las líneas de un
@@ -140,9 +143,13 @@ function guardar_pedidos(array $pedidos): void
             }
         }
 
-        $pdo->commit();
+        if ($propia) {
+            $pdo->commit();
+        }
     } catch (Throwable $e) {
-        $pdo->rollBack();
+        if ($propia && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $e;
     }
 }
