@@ -66,9 +66,15 @@ function productos_tiene_descripcion(): bool
  * catalogo() y guardar_catalogo() siempre vean el mismo estado dentro
  * de una misma petición.
  */
-function &catalogo_cache(): array
+function &catalogo_cache(bool $recargar = false): array
 {
     static $cat = null;
+
+    // Dentro de con_bloqueo('catalogo') se pide $recargar = true: la copia que esta
+    // petición ya tenía en memoria puede ser vieja si otra guardó mientras esperaba turno.
+    if ($recargar) {
+        $cat = null;
+    }
 
     if ($cat === null) {
         $columnaCategoria   = productos_tiene_categoria()   ? 'categoria, '   : '';
@@ -179,156 +185,171 @@ function sku_orden(string $sku): int
 /** Agrega un producto nuevo al catálogo. Devuelve '' si quedó bien, o un mensaje de error. */
 function agregar_producto(string $sku, string $marca, string $nombre, int $precio, int $costo, string $categoria = ''): string
 {
-    $sku    = strtoupper(trim($sku));
-    $marca  = trim($marca);
-    $nombre = trim($nombre);
+    return con_bloqueo('catalogo', function () use ($sku, $marca, $nombre, $precio, $costo, $categoria) {
+        catalogo_cache(true);
+        $sku    = strtoupper(trim($sku));
+        $marca  = trim($marca);
+        $nombre = trim($nombre);
 
-    if ($sku === '' || !preg_match('/^[A-Z0-9\-_]+$/', $sku)) {
-        return 'El SKU es obligatorio y solo puede tener letras, números, guiones y guion bajo.';
-    }
-    if ($marca === '' || $nombre === '') {
-        return 'Escribe la marca y el nombre del producto.';
-    }
-    if ($precio < 0 || $costo < 0) {
-        return 'Precio y costo no pueden ser negativos.';
-    }
-    if (producto_por_sku($sku)) {
-        return 'Ya existe un producto con el SKU ' . $sku . '.';
-    }
-    $categoria = trim($categoria);
-    if (!categoria_valida($categoria)) {
-        return 'Esa categoría no existe.';
-    }
-    if ($categoria === '') {
-        $categoria = categoria_deducida($nombre);
-    }
+        if ($sku === '' || !preg_match('/^[A-Z0-9\-_]+$/', $sku)) {
+            return 'El SKU es obligatorio y solo puede tener letras, números, guiones y guion bajo.';
+        }
+        if ($marca === '' || $nombre === '') {
+            return 'Escribe la marca y el nombre del producto.';
+        }
+        if ($precio < 0 || $costo < 0) {
+            return 'Precio y costo no pueden ser negativos.';
+        }
+        if (producto_por_sku($sku)) {
+            return 'Ya existe un producto con el SKU ' . $sku . '.';
+        }
+        $categoria = trim($categoria);
+        if (!categoria_valida($categoria)) {
+            return 'Esa categoría no existe.';
+        }
+        if ($categoria === '') {
+            $categoria = categoria_deducida($nombre);
+        }
 
-    $productos   = catalogo();
-    $productos[] = [
-        'sku'       => $sku,
-        'marca'     => $marca,
-        'nombre'    => $nombre,
-        'categoria' => $categoria,
-        'precio'    => $precio,
-        'costo'     => $costo,
-        'stock'     => 0,
-    ];
-    // El SKU, la marca y el nombre no tienen límite de largo validado
-    // arriba (el esquema real vive fuera del repo, en storage/esquema.sql,
-    // que no se versiona). Si algo llega más largo de lo que la columna
-    // acepta, MySQL rechaza el INSERT con una excepción — sin este catch
-    // eso tumbaba la página entera con la traza de PHP a la vista, en vez
-    // de un aviso normal.
-    try {
-        guardar_catalogo($productos);
-    } catch (PDOException $e) {
-        return 'No se pudo guardar: revisa que el SKU, la marca y el nombre no sean demasiado largos.';
-    }
+        $productos   = catalogo();
+        $productos[] = [
+            'sku'       => $sku,
+            'marca'     => $marca,
+            'nombre'    => $nombre,
+            'categoria' => $categoria,
+            'precio'    => $precio,
+            'costo'     => $costo,
+            'stock'     => 0,
+        ];
+        // El SKU, la marca y el nombre no tienen límite de largo validado
+        // arriba (el esquema real vive fuera del repo, en storage/esquema.sql,
+        // que no se versiona). Si algo llega más largo de lo que la columna
+        // acepta, MySQL rechaza el INSERT con una excepción — sin este catch
+        // eso tumbaba la página entera con la traza de PHP a la vista, en vez
+        // de un aviso normal.
+        try {
+            guardar_catalogo($productos);
+        } catch (PDOException $e) {
+            return 'No se pudo guardar: revisa que el SKU, la marca y el nombre no sean demasiado largos.';
+        }
 
-    return '';
+        return '';
+    });
 }
 
 /** Fija el precio y el costo de un SKU existente. Devuelve true si lo encontró. */
 function actualizar_precio_costo(string $sku, int $precio, int $costo): bool
 {
-    $productos = catalogo();
-    $hallado   = false;
-    foreach ($productos as &$p) {
-        if ($p['sku'] === $sku) {
-            $p['precio'] = max(0, $precio);
-            $p['costo']  = max(0, $costo);
-            $hallado     = true;
-            break;
+    return con_bloqueo('catalogo', function () use ($sku, $precio, $costo) {
+        catalogo_cache(true);
+        $productos = catalogo();
+        $hallado   = false;
+        foreach ($productos as &$p) {
+            if ($p['sku'] === $sku) {
+                $p['precio'] = max(0, $precio);
+                $p['costo']  = max(0, $costo);
+                $hallado     = true;
+                break;
+            }
         }
-    }
-    unset($p);
-    if ($hallado) {
-        guardar_catalogo($productos);
-    }
-    return $hallado;
+        unset($p);
+        if ($hallado) {
+            guardar_catalogo($productos);
+        }
+        return $hallado;
+    });
 }
 
 /** Fija la descripción de un SKU existente. Devuelve true si lo encontró. */
 function actualizar_descripcion(string $sku, string $descripcion): bool
 {
-    $descripcion = trim($descripcion);
+    return con_bloqueo('catalogo', function () use ($sku, $descripcion) {
+        catalogo_cache(true);
+        $descripcion = trim($descripcion);
 
-    $productos = catalogo();
-    $hallado   = false;
-    foreach ($productos as &$p) {
-        if ($p['sku'] === $sku) {
-            $p['descripcion'] = $descripcion;
-            $hallado          = true;
-            break;
+        $productos = catalogo();
+        $hallado   = false;
+        foreach ($productos as &$p) {
+            if ($p['sku'] === $sku) {
+                $p['descripcion'] = $descripcion;
+                $hallado          = true;
+                break;
+            }
         }
-    }
-    unset($p);
-    if ($hallado) {
-        guardar_catalogo($productos);
-    }
-    return $hallado;
+        unset($p);
+        if ($hallado) {
+            guardar_catalogo($productos);
+        }
+        return $hallado;
+    });
 }
 
 /** Actualiza marca y nombre de un SKU existente. Devuelve true si lo encontró. */
 function actualizar_producto(string $sku, string $marca, string $nombre, ?string $categoria = null): bool
 {
-    $marca  = trim($marca);
-    $nombre = trim($nombre);
-    if ($marca === '' || $nombre === '') {
-        return false;
-    }
-    if ($categoria !== null) {
-        $categoria = trim($categoria);
-        if (!categoria_valida($categoria)) {
+    return con_bloqueo('catalogo', function () use ($sku, $marca, $nombre, $categoria) {
+        catalogo_cache(true);
+        $marca  = trim($marca);
+        $nombre = trim($nombre);
+        if ($marca === '' || $nombre === '') {
             return false;
         }
-    }
-
-    $productos = catalogo();
-    $hallado   = false;
-    foreach ($productos as &$p) {
-        if ($p['sku'] === $sku) {
-            $p['marca']  = $marca;
-            $p['nombre'] = $nombre;
-            if ($categoria !== null) {
-                $p['categoria'] = $categoria;
+        if ($categoria !== null) {
+            $categoria = trim($categoria);
+            if (!categoria_valida($categoria)) {
+                return false;
             }
-            $hallado     = true;
-            break;
         }
-    }
-    unset($p);
-    if ($hallado) {
-        // Mismo caso que en agregar_producto(): un nombre o marca más
-        // largo de lo que la columna acepta tumbaba la página con la
-        // traza de PHP en vez de un aviso. Al editar no hay un mensaje
-        // específico que devolver (la función solo entrega bool), así
-        // que se trata igual que "no se pudo": el llamador ya muestra un
-        // aviso genérico para ese caso.
-        try {
-            guardar_catalogo($productos);
-        } catch (PDOException $e) {
-            return false;
+
+        $productos = catalogo();
+        $hallado   = false;
+        foreach ($productos as &$p) {
+            if ($p['sku'] === $sku) {
+                $p['marca']  = $marca;
+                $p['nombre'] = $nombre;
+                if ($categoria !== null) {
+                    $p['categoria'] = $categoria;
+                }
+                $hallado     = true;
+                break;
+            }
         }
-    }
-    return $hallado;
+        unset($p);
+        if ($hallado) {
+            // Mismo caso que en agregar_producto(): un nombre o marca más
+            // largo de lo que la columna acepta tumbaba la página con la
+            // traza de PHP en vez de un aviso. Al editar no hay un mensaje
+            // específico que devolver (la función solo entrega bool), así
+            // que se trata igual que "no se pudo": el llamador ya muestra un
+            // aviso genérico para ese caso.
+            try {
+                guardar_catalogo($productos);
+            } catch (PDOException $e) {
+                return false;
+            }
+        }
+        return $hallado;
+    });
 }
 
 /** Elimina varios productos del catálogo por SKU. Devuelve cuántos encontró y quitó. */
 function eliminar_productos(array $skus): int
 {
-    $skus = array_values(array_unique(array_filter($skus, fn($sku) => $sku !== '')));
-    if (!$skus) {
-        return 0;
-    }
+    return con_bloqueo('catalogo', function () use ($skus) {
+        catalogo_cache(true);
+        $skus = array_values(array_unique(array_filter($skus, fn($sku) => $sku !== '')));
+        if (!$skus) {
+            return 0;
+        }
 
-    $productos = catalogo();
-    $filtrados = array_values(array_filter($productos, fn($p) => !in_array($p['sku'], $skus, true)));
-    $borrados  = count($productos) - count($filtrados);
-    if ($borrados > 0) {
-        guardar_catalogo($filtrados);
-    }
-    return $borrados;
+        $productos = catalogo();
+        $filtrados = array_values(array_filter($productos, fn($p) => !in_array($p['sku'], $skus, true)));
+        $borrados  = count($productos) - count($filtrados);
+        if ($borrados > 0) {
+            guardar_catalogo($filtrados);
+        }
+        return $borrados;
+    });
 }
 
 /**
@@ -447,32 +468,11 @@ function leer_facturas(): array
  * lanza un error en vez de guardar a ciegas.
  *
  * Toda función que LEA facturas para luego ESCRIBIRLAS debe hacer las dos
- * cosas dentro del mismo bloqueo.
+ * cosas dentro del mismo bloqueo. La mecánica está en con_bloqueo() (includes/db.php).
  */
 function con_bloqueo_facturas(callable $fn): mixed
 {
-    static $profundidad = 0;
-    $pdo    = db();
-    $nombre = 'enrisate_facturas:' . DB_NOMBRE;
-
-    if ($profundidad === 0) {
-        $st = $pdo->prepare('SELECT GET_LOCK(?, 15)');
-        $st->execute([$nombre]);
-        if ((int) $st->fetchColumn() !== 1) {
-            throw new RuntimeException('No se pudo guardar: otra operación sobre las facturas está tardando demasiado. Intenta de nuevo en unos segundos.');
-        }
-    }
-
-    $profundidad++;
-    try {
-        return $fn();
-    } finally {
-        $profundidad--;
-        if ($profundidad === 0) {
-            $st = $pdo->prepare('SELECT RELEASE_LOCK(?)');
-            $st->execute([$nombre]);
-        }
-    }
+    return con_bloqueo('facturas', $fn);
 }
 
 /** Reemplaza todas las facturas en la base de datos (igual que antes reemplazaba el archivo entero). */

@@ -2,6 +2,25 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 30 de septiembre, 2026 (revisión con graphify)
+
+Se construyó el grafo de conocimiento del proyecto con graphify (56 archivos: 330 nodos de código + 68 de los documentos, 47 comunidades; 88 % de las conexiones extraídas directamente del código, 12 % inferidas). Los nodos más conectados fueron `db()`, `guardar_catalogo()`, `leer_clientes()` y `con_bloqueo_facturas()`: la estructura se concentra en el acceso a MySQL y en los guardados que reescriben todo. De ahí salieron dos arreglos:
+
+**1. Candado para clientas, pedidos y catálogo (antes solo facturas).** Reproducido primero con el código anterior: 20 clientas creadas a la vez → quedaban 8; 20 pedidos → 13 (y un deadlock); 20 productos agregados → 0; 20 descuentos de $1.000 al saldo a favor de una clienta → quedaba $94.000 en vez de $80.000 (se descontaba MENOS de lo usado: la clienta conservaba saldo ya gastado); editar el precio de dos productos a la vez → un cambio se perdía.
+- `con_bloqueo($recurso, $fn)` en `includes/db.php` (genérico, `GET_LOCK('enrisate_<recurso>:<base>', 15)`, anidable por recurso). `con_bloqueo_facturas()` ahora solo delega en él (mismo nombre de candado que antes).
+- Envuelven su ciclo leer→cambiar→guardar: clientas (`agregar_cliente`, `actualizar_cliente`, `eliminar_clientes`, `restar_saldo_favor`, `agregar_cliente_desde_factura`, `sincronizar_clientes_desde_facturas`), pedidos (`crear_pedido`, `actualizar_pedido`, `descartar_pedido`) y catálogo (`agregar_producto`, `actualizar_precio_costo`, `actualizar_descripcion`, `actualizar_producto`, `eliminar_productos`).
+- El catálogo tiene una caché en memoria por petición: `catalogo_cache(true)` la recarga DENTRO del candado (si no, se escribe una copia vieja). Se comprobó con una mutación: sin esa recarga la prueba falla.
+- Prueba nueva `tests/concurrencia_otros_test.php` (+ `_worker_concurrencia_otros.php`): 10 procesos en paralelo. Con el arreglo: 20/20 de todo, saldo exacto, 2/2 cambios de precio; repetida 8 veces sin fallar. Sin candado falla en 5 de 6 comprobaciones.
+- **Regla:** no tomar un recurso mientras se tiene otro distinto reservado (evita bloqueos cruzados). Hoy ninguna función anida recursos distintos. `tools/normalizar_telefonos_existentes.php` (migración única ya ejecutada) llama a `guardar_*` directo sin candado.
+- **Sigue sin cubrir:** `facturar.php` toca facturas, clientas y pedidos en pasos separados (crear factura → agregar clienta → restar saldo → confirmar pedido). Cada paso es seguro por sí solo, pero si la petición se cae a medias puede quedar la factura creada sin el pedido confirmado. Requeriría una transacción única, no solo candados.
+
+**2. Bug anterior y más grave: a partir del segundo pedido con productos ya no se podía guardar nada.** `pedido_lineas` NO tiene borrado en cascada (las tablas de facturas sí), pero `guardar_pedidos()` solo hacía `DELETE FROM pedidos`; al reinsertar las líneas de un pedido existente chocaban con las viejas (clave única `pedido_numero + orden`) → error 1062. Reproducido con el código de master: el pedido 1 se guardaba, el 2 y el 3 fallaban; también fallaría confirmar o descartar un pedido con líneas. Arreglo: `guardar_pedidos()` borra `pedido_lineas` antes que `pedidos` (una línea, sin cambio de esquema; la migración vieja `migrar_json_a_mysql.php` ya lo hacía). Prueba nueva `tests/pedidos_test.php` (12 comprobaciones); sin el arreglo falla. **No se pudo verificar en producción** (sin acceso a la base de Railway desde aquí): si allá el esquema es el de `storage/esquema.sql`, el bug existía tal cual; conviene revisar en el panel si hay pedidos que "no llegaron" desde el catálogo público.
+
+**Observado en el grafo, sin tocar (por riesgo o poco valor):**
+- `e()` y `normalizar_telefono()` viven en `includes/auth.php` pero las usan clientas, facturas y páginas: helpers mal ubicados (mover a un `includes/util.php`).
+- `includes/facturas.php` (~1.100 líneas) mezcla catálogo, facturas, formato de pesos/fechas, enlaces de WhatsApp y token del PDF: candidato a dividirse (catálogo aparte), refactor grande que pide su propia sesión.
+- 70 nodos aislados son variables del DOM en JS (ruido, no huecos reales). Sin ciclos de importación.
+
 ## 30 de septiembre, 2026 (noche)
 
 **Resuelto — pérdida de datos al guardar facturas a la vez** (el riesgo anotado esta mañana en `guardar_facturas()`). Reproducido primero con el código anterior: 2 procesos registrando 25 abonos cada uno en la misma factura dejaron **5 de 50**, 2 procesos creando 12 facturas cada uno dejaron **9 de 25**, y un lector vio **41 lecturas con una factura a medias** — y todos los procesos reportaron "ok", sin ningún error visible.

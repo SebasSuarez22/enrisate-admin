@@ -87,6 +87,11 @@ function guardar_pedidos(array $pedidos): void
 
     $pdo->beginTransaction();
     try {
+        // pedido_lineas NO tiene borrado en cascada (a diferencia de las tablas de
+        // facturas): sin borrarlas a mano primero, al reinsertar las líneas de un
+        // pedido que ya existía chocan con las viejas (clave única pedido_numero+orden)
+        // y desde el segundo pedido con productos ya no se podía guardar nada.
+        $pdo->exec('DELETE FROM pedido_lineas');
         $pdo->exec('DELETE FROM pedidos');
 
         $stPed = $pdo->prepare(
@@ -169,35 +174,39 @@ function pedido_por_numero(string $numero): ?array
 /** Guarda un pedido nuevo (estado 'pendiente') y devuelve su número. */
 function crear_pedido(array $datos): string
 {
-    $pedidos = leer_pedidos();
-    $numero  = siguiente_numero_pedido();
+    return con_bloqueo('pedidos', function () use ($datos) {
+        $pedidos = leer_pedidos();
+        $numero  = siguiente_numero_pedido();
 
-    $datos['numero'] = $numero;
-    $datos['creado'] = date('c');
-    $datos['estado'] = 'pendiente';
+        $datos['numero'] = $numero;
+        $datos['creado'] = date('c');
+        $datos['estado'] = 'pendiente';
 
-    $pedidos[] = $datos;
-    guardar_pedidos($pedidos);
+        $pedidos[] = $datos;
+        guardar_pedidos($pedidos);
 
-    return $numero;
+        return $numero;
+    });
 }
 
 function actualizar_pedido(string $numero, array $cambios): bool
 {
-    $pedidos = leer_pedidos();
-    $hallado = false;
-    foreach ($pedidos as &$p) {
-        if ($p['numero'] === $numero) {
-            $p       = array_merge($p, $cambios);
-            $hallado = true;
-            break;
+    return con_bloqueo('pedidos', function () use ($numero, $cambios) {
+        $pedidos = leer_pedidos();
+        $hallado = false;
+        foreach ($pedidos as &$p) {
+            if ($p['numero'] === $numero) {
+                $p       = array_merge($p, $cambios);
+                $hallado = true;
+                break;
+            }
         }
-    }
-    unset($p);
-    if ($hallado) {
-        guardar_pedidos($pedidos);
-    }
-    return $hallado;
+        unset($p);
+        if ($hallado) {
+            guardar_pedidos($pedidos);
+        }
+        return $hallado;
+    });
 }
 
 /** Marca un pedido pendiente como confirmado y lo enlaza con la factura ya creada. */
@@ -213,15 +222,17 @@ function marcar_pedido_confirmado(string $numeroPedido, string $numeroFactura): 
 /** Descarta un pedido (la clienta no contestó, cambió de opinión, pedido de prueba, etc.). */
 function descartar_pedido(string $numero, string $motivo = ''): bool
 {
-    $p = pedido_por_numero($numero);
-    if (!$p || ($p['estado'] ?? '') !== 'pendiente') {
-        return false;
-    }
-    return actualizar_pedido($numero, [
-        'estado'            => 'descartado',
-        'descartado_el'     => date('c'),
-        'motivo_descartado' => trim($motivo),
-    ]);
+    return con_bloqueo('pedidos', function () use ($numero, $motivo) {
+        $p = pedido_por_numero($numero);
+        if (!$p || ($p['estado'] ?? '') !== 'pendiente') {
+            return false;
+        }
+        return actualizar_pedido($numero, [
+            'estado'            => 'descartado',
+            'descartado_el'     => date('c'),
+            'motivo_descartado' => trim($motivo),
+        ]);
+    });
 }
 
 function pedidos_pendientes(): array
