@@ -7,3 +7,4 @@ skills-lock.json
 .archify/*/*.finalize*.json
 .archify/*/*.browser-check.json
 .archify/*/*.delivery*.json
+.archify/*/review-*/
