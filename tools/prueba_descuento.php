@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+// Solo desde la terminal: si alguien la abre desde el navegador, no existe.
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
 /* Prueba TEMPORAL de aplicar_descuento_cuota() contra MySQL.
    No forma parte de la app — se borra después de validar la funcionalidad. */
 

@@ -1,5 +1,11 @@
 <?php
 declare(strict_types=1);
+
+// Solo desde la terminal: si alguien la abre desde el navegador, no existe.
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
 require_once __DIR__ . '/../includes/facturas.php';
 
 $fallos = 0;

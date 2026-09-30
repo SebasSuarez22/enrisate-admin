@@ -27,6 +27,10 @@ RUN docker-php-ext-install pdo_mysql mysqli \
 # formulario, con un mensaje de error que no explica la verdadera razón.
 COPY docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 
+# No anunciar versiones de PHP ni de Apache (ver los dos archivos).
+COPY docker/seguridad.ini /usr/local/etc/php/conf.d/seguridad.ini
+COPY docker/seguridad-apache.conf /etc/apache2/conf-available/zz-seguridad.conf
+
 # Composer (solo para instalar las librerías de PHP listadas en
 # composer.json — hoy únicamente dompdf, para generar el PDF de cada
 # factura). No hace falta instalar el paquete completo de Composer, con
@@ -35,16 +39,17 @@ COPY docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 # porque no tiene con qué descomprimir los paquetes que baja.
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# El proyecto ya trae su propio .htaccess (bloquea /includes, /storage,
-# /tools, y activa compresión y caché) — solo hace falta permitirle a
-# Apache leerlo.
+# El proyecto ya trae su propio .htaccess (bloquea carpetas y archivos
+# internos, agrega encabezados de seguridad —por eso "headers"— y activa
+# compresión y caché) — solo hace falta permitirle a Apache leerlo.
 #
 # mpm_prefork es el único módulo de procesos compatible con mod_php.
 # Se borran a mano los enlaces de mpm_event/mpm_worker (en vez de
 # confiar en que "a2dismod" los detecte y los quite) para que quede
 # garantizado sin importar cuál haya quedado activo de fábrica, y
 # después se prende prefork.
-RUN a2enmod rewrite \
+RUN a2enmod rewrite headers \
+    && a2enconf zz-seguridad \
     && rm -f /etc/apache2/mods-enabled/mpm_event.load /etc/apache2/mods-enabled/mpm_event.conf \
              /etc/apache2/mods-enabled/mpm_worker.load /etc/apache2/mods-enabled/mpm_worker.conf \
     && a2enmod mpm_prefork \

@@ -2,6 +2,23 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 30 de septiembre, 2026 (auditoría · paso 1: cerrar la exposición)
+
+Primer paso del plan de la auditoría con graphify. **El login queda fuera a propósito** (decisión de Sebastián): no se tocó la clave inicial en `config.php`/`README.md`, `ADMIN_HASH` ni el conteo de intentos.
+
+**Qué estaba expuesto** (medido con Apache real sirviendo lo que entra a la imagen, con las reglas de antes): `docs/pendientes-internos.md`, `README.md`, `Dockerfile`, `composer.json/lock`, `.gitignore`, `docker/`, `datos/`, `tests/`, los diagramas de `.archify/` y **`/.git/config`** (si `.git` está en el contexto de construcción, entra a la imagen). Además `/assets/` y `/assets/img/productos/` listaban todos sus archivos. La imagen llevaba 1.616 archivos.
+
+**Qué se hizo** (OWASP A05 · CWE-538/527/548/200):
+- `.dockerignore` (primera barrera): `.git`, docs, `*.md`, `.archify`, `graphify-out`, `tests`, `vendor` (se reinstala con composer), `Dockerfile`. La imagen pasa de 1.616 a 144 archivos; se verificó que siguen adentro todos los que usa el arranque (esquema, `aplicar_esquema.php`, `datos/catalogo.php`, `docker/*`, composer).
+- `.htaccess` (segunda barrera, y la única en un XAMPP local): `Options -Indexes`; 404 para rutas con punto (`/.git`, `/.env`…), carpetas internas (`includes, storage, tools, vendor, docs, tests, datos, docker`), extensiones de configuración/datos/respaldo (`md, sql, json, lock, ini, sh, log, bak, old, orig, swp, dist, yml`) y `Dockerfile`/`config.php`. Probado también con el repositorio COMPLETO (con `.git`) y sin `.dockerignore`: todo 404.
+- Encabezados: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin` (el token del PDF viaja en la URL y no debe filtrarse por Referer), `Permissions-Policy` (sin cámara/micrófono/ubicación/pagos) y HSTS 180 días **solo si la visita llegó por HTTPS** (`X-Forwarded-Proto`), para no afectar un XAMPP en http. Sin `includeSubDomains` (no sabemos qué subdominios tendrá un dominio propio).
+- Sin versiones: `docker/seguridad.ini` (`expose_php = Off`) y `docker/seguridad-apache.conf` (`ServerTokens Prod`, `ServerSignature Off`, `TraceEnable Off`); el `Dockerfile` los copia y activa `mod_headers`.
+- Guarda de terminal (`PHP_SAPI !== 'cli'` → 404) en `tools/prueba_escritura.php` (¡escribe en la base!), `tools/prueba_descuento.php`, `tools/verificar_migracion.php` y `tests/cuotas_puras_test.php`, las únicas que no la tenían. Probado con `php -S`: 404 sin ejecutar nada.
+
+**Sin verificar:** la imagen completa no se pudo construir aquí (Docker Hub respondió 429 a `composer:2` y `php:8.4-apache`); cada pieza se probó por separado y Railway hace la construcción real. Tras desplegar, comprobar en el dominio real que `/README.md`, `/docs/pendientes-internos.md` y `/.git/config` dan 404 y que el panel y el catálogo abren normal.
+
+**Pendiente de este tema (no se hizo):** Content-Security-Policy (hay mucho JS en línea: requiere sacarlo a archivos primero); `Cache-Control: no-store` en páginas del panel; `assets/img/productos/_referencia_no_usar/` sigue siendo público (fotos de producto, no sensibles; decisión en el paso 7); el repositorio de GitHub sigue teniendo la clave inicial en el README (login, excluido).
+
 ## 30 de septiembre, 2026 (cuenta de cobro de todo o nada)
 
 **Resuelto — `facturar.php` guardaba en cuatro pasos sueltos** (crear factura → agregar clienta → descontar saldo a favor → confirmar pedido). Reproducido con el código de master forzando que falle el último paso: quedaba la factura creada y el saldo ya gastado, pero el pedido seguía "pendiente" (se veía otra vez en Pedidos por revisar y se podía facturar dos veces). Además el saldo y el estado del pedido se leían ANTES de guardar: dos personas podían gastar el mismo saldo o facturar el mismo pedido a la vez.

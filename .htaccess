@@ -1,5 +1,45 @@
-# Bloquea el acceso web a carpetas internas
-RedirectMatch 404 /(includes|storage|tools|vendor)/
+# ---------------------------------------------------------------------
+# Exposición: solo se sirven las páginas .php de la raíz y assets/.
+# Todo lo interno responde 404 (como si no existiera, para no confirmar
+# qué hay). La primera barrera es .dockerignore (docs, tests, .git, etc.
+# ni siquiera entran a la imagen); esto cubre lo que sí tiene que estar
+# en el servidor y un XAMPP local, donde el proyecto entero está en htdocs.
+# (OWASP A05 Security Misconfiguration · CWE-538 · CWE-548)
+# ---------------------------------------------------------------------
+
+# Sin listados de carpetas (antes /assets/ mostraba todos sus archivos)
+Options -Indexes
+
+# Archivos y carpetas ocultos: .git, .env, .gitignore, .archify...
+RedirectMatch 404 /\.
+
+# Carpetas internas
+RedirectMatch 404 /(includes|storage|tools|vendor|docs|tests|datos|docker)(/|$)
+
+# Archivos de configuración, documentación, datos y respaldos
+RedirectMatch 404 (?i)\.(md|sql|json|lock|ini|sh|log|bak|old|orig|swp|dist|ya?ml)$
+RedirectMatch 404 /(Dockerfile|config\.php)$
+
+# ---------------------------------------------------------------------
+# Encabezados de seguridad (OWASP Secure Headers)
+# ---------------------------------------------------------------------
+<IfModule mod_headers.c>
+  # El navegador no "adivina" tipos: un archivo subido no se ejecuta como script
+  Header always set X-Content-Type-Options "nosniff"
+  # Ninguna otra web puede meter el panel en un marco (clickjacking)
+  Header always set X-Frame-Options "SAMEORIGIN"
+  # Al salir a otra web solo viaja el dominio, nunca la ruta: el enlace del PDF
+  # lleva su token en la dirección y no debe filtrarse a terceros
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  # La app no usa cámara, micrófono, ubicación ni pagos
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+  # Obliga HTTPS en visitas futuras. Solo cuando la visita ya llegó por HTTPS
+  # (Railway avisa con X-Forwarded-Proto), así un XAMPP local en http no se afecta.
+  Header always set Strict-Transport-Security "max-age=15552000" "expr=%{HTTP:X-Forwarded-Proto} == 'https'"
+  # No anunciar la versión de PHP
+  Header always unset X-Powered-By
+  Header unset X-Powered-By
+</IfModule>
 
 # Comprime HTML/CSS/JS antes de enviarlos: páginas más livianas en celular.
 <IfModule mod_deflate.c>

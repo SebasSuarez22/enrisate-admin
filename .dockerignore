@@ -1,0 +1,27 @@
+# Qué NO entra a la imagen de Docker (Railway construye con "COPY . .").
+# Todo lo que entra queda dentro de /var/www/html, la carpeta pública de Apache:
+# lo que no hace falta para que la app funcione se queda afuera, así no hay nada
+# que el .htaccess tenga que esconder. (OWASP A05 · CWE-538 / CWE-527)
+
+# Control de versiones y herramientas de desarrollo
+.git
+.gitignore
+.dockerignore
+.claude
+.agents
+skills-lock.json
+
+# Documentación interna, diagramas y mapas del código
+docs
+**/*.md
+.archify
+graphify-out
+
+# Pruebas automáticas (solo se corren en desarrollo)
+tests
+
+# Se reconstruye dentro de la imagen (composer install)
+vendor
+
+# El propio Dockerfile no hace falta en tiempo de ejecución
+Dockerfile

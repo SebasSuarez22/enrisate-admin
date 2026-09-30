@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+// Solo desde la terminal: si alguien la abre desde el navegador, no existe.
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
 /* Script de verificación TEMPORAL (no forma parte de la app):
    compara lo que devuelven las funciones nuevas (leídas de MySQL) contra
    los archivos JSON originales, campo por campo. Se borra al final del
