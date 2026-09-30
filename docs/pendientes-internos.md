@@ -2,6 +2,16 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 30 de septiembre, 2026 (noche)
+
+**Resuelto — pérdida de datos al guardar facturas a la vez** (el riesgo anotado esta mañana en `guardar_facturas()`). Reproducido primero con el código anterior: 2 procesos registrando 25 abonos cada uno en la misma factura dejaron **5 de 50**, 2 procesos creando 12 facturas cada uno dejaron **9 de 25**, y un lector vio **41 lecturas con una factura a medias** — y todos los procesos reportaron "ok", sin ningún error visible.
+- Causa: cada escritura hace leer TODO → cambiar una factura → `DELETE FROM facturas` + reinsertar TODO. Dos escrituras cruzadas: la segunda guarda una copia vieja y borra lo de la primera. Además `leer_facturas_raw()` hacía 4 consultas sueltas y podía mezclar datos de antes y después de un guardado (los ids de cuota se regeneran en cada guardado).
+- Arreglo (opción A, sin cambios de esquema ni migración): `con_bloqueo_facturas()` en `includes/facturas.php` usa `GET_LOCK('enrisate_facturas:<base>', 15)` y serializa las escrituras. Envuelve el ciclo completo leer→cambiar→guardar de `crear_factura`, `actualizar_factura`, `registrar_abono`, `aplicar_descuento_cuota`, `agregar_lineas_factura`, `anular_factura` y `reactivar_factura` (anidable; solo el nivel externo toma/suelta el candado; si no consigue turno en 15 s lanza error en vez de guardar a ciegas). `leer_facturas_raw()` ahora lee dentro de una transacción (foto consistente).
+- Prueba nueva `tests/concurrencia_test.php` (+ `tests/_worker_concurrencia.php`, el guion bajo evita que `correr_todas.php` lo tome como prueba): 5 procesos PHP reales en paralelo. Con el arreglo: 50/50 abonos, 25/25 facturas, sin números repetidos, 0 lecturas incoherentes; repetida 5 veces seguidas, siempre OK.
+- Mutaciones: sin el candado → la prueba falla (26/50 abonos, 6/25 facturas); sin la transacción de lectura → falla solo la verificación de lecturas. Ambas se revirtieron.
+- **Regla a futuro:** toda función que LEA facturas para luego ESCRIBIRLAS debe hacerlo dentro de `con_bloqueo_facturas()`. `tools/normalizar_telefonos_existentes.php` llama a `guardar_facturas()` directo, pero es una migración de una sola vez ya ejecutada.
+- **Sigue pendiente (mismo patrón, no tocado):** `guardar_clientes()` y `guardar_pedidos()` reescriben todo igual, sin candado. El más delicado es el saldo a favor (`restar_saldo_favor`). Y `facturar.php` toca facturas, clientes y pedidos en un mismo flujo, así que el candado de facturas no lo cubre entero. Opción B (actualizar solo la fila afectada) queda para cuando haya cientos de facturas.
+
 ## 30 de septiembre, 2026
 
 **Resuelto — las 3 pruebas automáticas rotas:** `cuota_unica_test.php`, `facturas_cuotas_test.php` y `leer_facturas_raw_test.php` llamaban a `ruta_facturas()`, una función del almacenamiento en JSON que desapareció con la migración a MySQL (no tenía nada que ver con Railway ni con la conexión: fallaban igual con un MySQL sano — verificado corriéndolas contra un MariaDB local antes de tocarlas). Se reescribieron para usar las funciones reales contra MySQL.
@@ -11,7 +21,7 @@ _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad
 - Se comprobó que las pruebas de verdad detectan errores rompiendo el código a propósito (3 mutaciones). La del charset (`utf8mb4`→`latin1`) al principio NO se detectaba —el texto regresa igual pero queda corrupto en la base—, así que se agregó una verificación con `CHAR_LENGTH` directamente en MySQL.
 - `cuotas_puras_test.php` no se tocó (solo prueba funciones puras, sin base de datos).
 
-**Riesgo observado, NO corregido (a decidir):** `guardar_facturas()` lee todo, cambia en memoria y reescribe todo (sin bloqueo). Si dos personas guardan cambios casi al mismo tiempo (p. ej. registrar un abono mientras llega un pedido y se factura), la segunda escritura puede pisar la primera. Con una sola administradora es poco probable, pero es el punto débil natural de este diseño; el arreglo sería actualizar solo la fila afectada (UPDATE/INSERT puntual) en vez de reescribir todo.
+**Riesgo observado (RESUELTO esa misma noche, ver la entrada de arriba):** `guardar_facturas()` lee todo, cambia en memoria y reescribe todo (sin bloqueo). Si dos personas guardan cambios casi al mismo tiempo (p. ej. registrar un abono mientras llega un pedido y se factura), la segunda escritura puede pisar la primera. Con una sola administradora es poco probable, pero es el punto débil natural de este diseño; el arreglo sería actualizar solo la fila afectada (UPDATE/INSERT puntual) en vez de reescribir todo.
 
 **Corrección de la entrada del 13 de septiembre:** el pendiente "Productos (`inventario.php`) todavía usa el patrón viejo" ya se resolvió ese mismo día (tabla proporcional + tarjeta en celular, igual que Pedidos/Cartera/Clientes); la nota nunca se actualizó.
 

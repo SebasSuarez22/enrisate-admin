@@ -341,6 +341,25 @@ function leer_facturas_raw(): array
 {
     $pdo = db();
 
+    // Las 4 consultas de abajo (facturas, líneas, abonos, cuotas) deben ver la
+    // base en un mismo instante: sin esto, si otra persona guarda justo en
+    // medio, se mezclan datos de antes y de después (una factura sin sus
+    // abonos, por ejemplo). Dentro de una transacción todas ven la misma foto.
+    $abrioTransaccion = !$pdo->inTransaction();
+    if ($abrioTransaccion) {
+        $pdo->beginTransaction();
+    }
+    try {
+        return leer_facturas_en_transaccion($pdo);
+    } finally {
+        if ($abrioTransaccion && $pdo->inTransaction()) {
+            $pdo->commit();
+        }
+    }
+}
+
+function leer_facturas_en_transaccion(PDO $pdo): array
+{
     $facturas = $pdo->query(
         'SELECT * FROM facturas ORDER BY numero'
     )->fetchAll();
@@ -413,6 +432,47 @@ function leer_facturas_raw(): array
 function leer_facturas(): array
 {
     return array_map('normalizar_cuotas_factura', leer_facturas_raw());
+}
+
+/**
+ * Ejecuta $fn con las facturas "reservadas": mientras corre, ninguna otra
+ * petición puede escribir facturas. Cada escritura lee TODAS las facturas,
+ * cambia una y las guarda TODAS (guardar_facturas), así que si dos corren a la
+ * vez la segunda guardaría una copia vieja y borraría lo que hizo la primera
+ * (abonos y facturas nuevas perdidas sin ningún aviso). Esperar turno lo evita.
+ *
+ * Usa el candado de MySQL (GET_LOCK): se libera solo si la petición termina o
+ * se cae. Se puede anidar (registrar_abono llama a actualizar_factura), y solo
+ * el nivel de afuera toma y suelta el candado. Si no consigue turno en 15 s
+ * lanza un error en vez de guardar a ciegas.
+ *
+ * Toda función que LEA facturas para luego ESCRIBIRLAS debe hacer las dos
+ * cosas dentro del mismo bloqueo.
+ */
+function con_bloqueo_facturas(callable $fn): mixed
+{
+    static $profundidad = 0;
+    $pdo    = db();
+    $nombre = 'enrisate_facturas:' . DB_NOMBRE;
+
+    if ($profundidad === 0) {
+        $st = $pdo->prepare('SELECT GET_LOCK(?, 15)');
+        $st->execute([$nombre]);
+        if ((int) $st->fetchColumn() !== 1) {
+            throw new RuntimeException('No se pudo guardar: otra operación sobre las facturas está tardando demasiado. Intenta de nuevo en unos segundos.');
+        }
+    }
+
+    $profundidad++;
+    try {
+        return $fn();
+    } finally {
+        $profundidad--;
+        if ($profundidad === 0) {
+            $st = $pdo->prepare('SELECT RELEASE_LOCK(?)');
+            $st->execute([$nombre]);
+        }
+    }
 }
 
 /** Reemplaza todas las facturas en la base de datos (igual que antes reemplazaba el archivo entero). */
@@ -621,35 +681,39 @@ function normalizar_cuotas_factura(array $f): array
 /** Guarda una factura nueva y devuelve su número. */
 function crear_factura(array $datos): string
 {
-    $facturas = leer_facturas_raw();
-    $numero   = siguiente_numero();
+    return con_bloqueo_facturas(function () use ($datos) {
+        $facturas = leer_facturas_raw();
+        $numero   = siguiente_numero();
 
-    $datos['numero'] = $numero;
-    $datos['creada'] = date('c');
+        $datos['numero'] = $numero;
+        $datos['creada'] = date('c');
 
-    $facturas[] = $datos;
-    guardar_facturas($facturas);
+        $facturas[] = $datos;
+        guardar_facturas($facturas);
 
-    return $numero;
+        return $numero;
+    });
 }
 
 /** Aplica cambios a una factura existente. Devuelve true si la encontró. */
 function actualizar_factura(string $numero, array $cambios): bool
 {
-    $facturas = leer_facturas_raw();
-    $hallada  = false;
-    foreach ($facturas as &$f) {
-        if ($f['numero'] === $numero) {
-            $f       = array_merge($f, $cambios);
-            $hallada = true;
-            break;
+    return con_bloqueo_facturas(function () use ($numero, $cambios) {
+        $facturas = leer_facturas_raw();
+        $hallada  = false;
+        foreach ($facturas as &$f) {
+            if ($f['numero'] === $numero) {
+                $f       = array_merge($f, $cambios);
+                $hallada = true;
+                break;
+            }
         }
-    }
-    unset($f);
-    if ($hallada) {
-        guardar_facturas($facturas);
-    }
-    return $hallada;
+        unset($f);
+        if ($hallada) {
+            guardar_facturas($facturas);
+        }
+        return $hallada;
+    });
 }
 
 /** Total realmente cobrado de una factura a cuotas: saldo a favor aplicado + abono inicial + todos los abonos de todas las cuotas. */
@@ -670,33 +734,35 @@ function total_pagado_cuotas(array $f): int
  */
 function registrar_abono(string $numero, int $indiceCuota, int $monto): bool
 {
-    $f = factura_por_numero($numero);
-    if (!$f || !empty($f['anulada']) || ($f['plan'] ?? '') !== 'cuotas') {
-        return false;
-    }
-    if (!isset($f['cuotas'][$indiceCuota])) {
-        return false;
-    }
-    if ($monto <= 0) {
-        return false;
-    }
+    return con_bloqueo_facturas(function () use ($numero, $indiceCuota, $monto) {
+        $f = factura_por_numero($numero);
+        if (!$f || !empty($f['anulada']) || ($f['plan'] ?? '') !== 'cuotas') {
+            return false;
+        }
+        if (!isset($f['cuotas'][$indiceCuota])) {
+            return false;
+        }
+        if ($monto <= 0) {
+            return false;
+        }
 
-    $pendiente = cuota_pendiente($f['cuotas'][$indiceCuota]);
-    if ($monto > $pendiente) {
-        return false;
-    }
+        $pendiente = cuota_pendiente($f['cuotas'][$indiceCuota]);
+        if ($monto > $pendiente) {
+            return false;
+        }
 
-    $f['cuotas'][$indiceCuota]['abonos'][] = [
-        'monto'  => $monto,
-        'fecha'  => date('c'),
-        'tipo'   => 'abono',
-        'motivo' => '',
-    ];
+        $f['cuotas'][$indiceCuota]['abonos'][] = [
+            'monto'  => $monto,
+            'fecha'  => date('c'),
+            'tipo'   => 'abono',
+            'motivo' => '',
+        ];
 
-    return actualizar_factura($numero, [
-        'cuotas' => $f['cuotas'],
-        'pagado' => total_pagado_cuotas($f),
-    ]);
+        return actualizar_factura($numero, [
+            'cuotas' => $f['cuotas'],
+            'pagado' => total_pagado_cuotas($f),
+        ]);
+    });
 }
 
 /**
@@ -708,38 +774,40 @@ function registrar_abono(string $numero, int $indiceCuota, int $monto): bool
  */
 function aplicar_descuento_cuota(string $numero, int $indiceCuota, int $monto, string $motivo): bool
 {
-    $motivo = trim($motivo);
-    if ($motivo === '') {
-        return false;
-    }
+    return con_bloqueo_facturas(function () use ($numero, $indiceCuota, $monto, $motivo) {
+        $motivo = trim($motivo);
+        if ($motivo === '') {
+            return false;
+        }
 
-    $f = factura_por_numero($numero);
-    if (!$f || !empty($f['anulada']) || ($f['plan'] ?? '') !== 'cuotas') {
-        return false;
-    }
-    if (!isset($f['cuotas'][$indiceCuota])) {
-        return false;
-    }
-    if ($monto <= 0) {
-        return false;
-    }
+        $f = factura_por_numero($numero);
+        if (!$f || !empty($f['anulada']) || ($f['plan'] ?? '') !== 'cuotas') {
+            return false;
+        }
+        if (!isset($f['cuotas'][$indiceCuota])) {
+            return false;
+        }
+        if ($monto <= 0) {
+            return false;
+        }
 
-    $pendiente = cuota_pendiente($f['cuotas'][$indiceCuota]);
-    if ($monto > $pendiente) {
-        return false;
-    }
+        $pendiente = cuota_pendiente($f['cuotas'][$indiceCuota]);
+        if ($monto > $pendiente) {
+            return false;
+        }
 
-    $f['cuotas'][$indiceCuota]['abonos'][] = [
-        'monto'  => $monto,
-        'fecha'  => date('c'),
-        'tipo'   => 'descuento',
-        'motivo' => $motivo,
-    ];
+        $f['cuotas'][$indiceCuota]['abonos'][] = [
+            'monto'  => $monto,
+            'fecha'  => date('c'),
+            'tipo'   => 'descuento',
+            'motivo' => $motivo,
+        ];
 
-    return actualizar_factura($numero, [
-        'cuotas' => $f['cuotas'],
-        'pagado' => total_pagado_cuotas($f),
-    ]);
+        return actualizar_factura($numero, [
+            'cuotas' => $f['cuotas'],
+            'pagado' => total_pagado_cuotas($f),
+        ]);
+    });
 }
 
 /**
@@ -765,70 +833,72 @@ function aplicar_descuento_cuota(string $numero, int $indiceCuota, int $monto, s
  */
 function agregar_lineas_factura(string $numero, array $items, string $vence): bool
 {
-    $f = factura_por_numero($numero);
-    if (!$f || !empty($f['anulada'])) {
-        return false;
-    }
-
-    $lineasNuevas  = [];
-    $subtotalNuevo = 0;
-    $costoNuevo    = 0;
-    foreach ($items as $it) {
-        $p = producto_por_sku((string) ($it['sku'] ?? ''));
-        $c = max(1, min(99, (int) ($it['cant'] ?? 1)));
-        if (!$p) {
-            continue;
+    return con_bloqueo_facturas(function () use ($numero, $items, $vence) {
+        $f = factura_por_numero($numero);
+        if (!$f || !empty($f['anulada'])) {
+            return false;
         }
-        $lineasNuevas[] = [
-            'sku'    => $p['sku'],
-            'nombre' => $p['nombre'],
-            'marca'  => $p['marca'],
-            'precio' => $p['precio'],
-            'costo'  => $p['costo'],
-            'cant'   => $c,
-        ];
-        $subtotalNuevo += $p['precio'] * $c;
-        $costoNuevo    += $p['costo'] * $c;
-    }
 
-    if (!$lineasNuevas) {
-        return false;
-    }
-
-    $vence  = trim($vence) !== '' ? $vence : date('Y-m-d');
-    $cuotas = $f['cuotas'] ?? [];
-
-    if (($f['plan'] ?? 'contado') !== 'cuotas') {
-        $montoYaPagado = (int) ($f['pagado'] ?? $f['total']);
-        if ($montoYaPagado > 0) {
-            $fechaPago = (string) ($f['fecha_pago'] ?? $f['creada']);
-            $cuotas[]  = [
-                'monto'  => $montoYaPagado,
-                'vence'  => substr($fechaPago, 0, 10),
-                'abonos' => [[
-                    'monto'  => $montoYaPagado,
-                    'fecha'  => $fechaPago,
-                    'tipo'   => 'abono',
-                    'motivo' => '',
-                ]],
+        $lineasNuevas  = [];
+        $subtotalNuevo = 0;
+        $costoNuevo    = 0;
+        foreach ($items as $it) {
+            $p = producto_por_sku((string) ($it['sku'] ?? ''));
+            $c = max(1, min(99, (int) ($it['cant'] ?? 1)));
+            if (!$p) {
+                continue;
+            }
+            $lineasNuevas[] = [
+                'sku'    => $p['sku'],
+                'nombre' => $p['nombre'],
+                'marca'  => $p['marca'],
+                'precio' => $p['precio'],
+                'costo'  => $p['costo'],
+                'cant'   => $c,
             ];
+            $subtotalNuevo += $p['precio'] * $c;
+            $costoNuevo    += $p['costo'] * $c;
         }
-    }
 
-    $cuotas[] = ['monto' => $subtotalNuevo, 'vence' => $vence, 'abonos' => []];
+        if (!$lineasNuevas) {
+            return false;
+        }
 
-    $cambios = [
-        'lineas'   => array_merge($f['lineas'], $lineasNuevas),
-        'subtotal' => (int) $f['subtotal'] + $subtotalNuevo,
-        'total'    => (int) $f['total'] + $subtotalNuevo,
-        'costo'    => (int) $f['costo'] + $costoNuevo,
-        'margen'   => (int) $f['margen'] + ($subtotalNuevo - $costoNuevo),
-        'plan'     => 'cuotas',
-        'cuotas'   => $cuotas,
-    ];
-    $cambios['pagado'] = total_pagado_cuotas(array_merge($f, $cambios));
+        $vence  = trim($vence) !== '' ? $vence : date('Y-m-d');
+        $cuotas = $f['cuotas'] ?? [];
 
-    return actualizar_factura($numero, $cambios);
+        if (($f['plan'] ?? 'contado') !== 'cuotas') {
+            $montoYaPagado = (int) ($f['pagado'] ?? $f['total']);
+            if ($montoYaPagado > 0) {
+                $fechaPago = (string) ($f['fecha_pago'] ?? $f['creada']);
+                $cuotas[]  = [
+                    'monto'  => $montoYaPagado,
+                    'vence'  => substr($fechaPago, 0, 10),
+                    'abonos' => [[
+                        'monto'  => $montoYaPagado,
+                        'fecha'  => $fechaPago,
+                        'tipo'   => 'abono',
+                        'motivo' => '',
+                    ]],
+                ];
+            }
+        }
+
+        $cuotas[] = ['monto' => $subtotalNuevo, 'vence' => $vence, 'abonos' => []];
+
+        $cambios = [
+            'lineas'   => array_merge($f['lineas'], $lineasNuevas),
+            'subtotal' => (int) $f['subtotal'] + $subtotalNuevo,
+            'total'    => (int) $f['total'] + $subtotalNuevo,
+            'costo'    => (int) $f['costo'] + $costoNuevo,
+            'margen'   => (int) $f['margen'] + ($subtotalNuevo - $costoNuevo),
+            'plan'     => 'cuotas',
+            'cuotas'   => $cuotas,
+        ];
+        $cambios['pagado'] = total_pagado_cuotas(array_merge($f, $cambios));
+
+        return actualizar_factura($numero, $cambios);
+    });
 }
 
 /**
@@ -838,28 +908,32 @@ function agregar_lineas_factura(string $numero, array $items, string $vence): bo
  */
 function anular_factura(string $numero, string $motivo = ''): bool
 {
-    $f = factura_por_numero($numero);
-    if (!$f || !empty($f['anulada'])) {
-        return false;
-    }
-    return actualizar_factura($numero, [
-        'anulada'          => true,
-        'anulada_el'       => date('c'),
-        'motivo_anulacion' => trim($motivo),
-    ]);
+    return con_bloqueo_facturas(function () use ($numero, $motivo) {
+        $f = factura_por_numero($numero);
+        if (!$f || !empty($f['anulada'])) {
+            return false;
+        }
+        return actualizar_factura($numero, [
+            'anulada'          => true,
+            'anulada_el'       => date('c'),
+            'motivo_anulacion' => trim($motivo),
+        ]);
+    });
 }
 
 /** Revierte la anulación de una factura (por si se anuló por error). */
 function reactivar_factura(string $numero): bool
 {
-    $f = factura_por_numero($numero);
-    if (!$f || empty($f['anulada'])) {
-        return false;
-    }
-    return actualizar_factura($numero, [
-        'anulada'    => false,
-        'anulada_el' => null,
-    ]);
+    return con_bloqueo_facturas(function () use ($numero) {
+        $f = factura_por_numero($numero);
+        if (!$f || empty($f['anulada'])) {
+            return false;
+        }
+        return actualizar_factura($numero, [
+            'anulada'    => false,
+            'anulada_el' => null,
+        ]);
+    });
 }
 
 /** Fecha "de la venta" a mostrar: la de pago si es de contado, o la de creación. */

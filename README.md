@@ -141,8 +141,10 @@ Abre http://localhost:8000
 MYSQLDATABASE=enrisate_test php tests/correr_todas.php
 ```
 
-Corre las 4 pruebas de `tests/` (cuotas, abonos, descuentos, y que lo que se
-guarda en MySQL sea exactamente lo que se lee). Necesitan una base **aparte y
+Corre las 5 pruebas de `tests/` (cuotas, abonos, descuentos, que lo que se
+guarda en MySQL sea exactamente lo que se lee, y que varias personas guardando
+facturas a la vez no se pisen; esta última lanza procesos en paralelo y tarda
+unos 7 segundos). Necesitan una base **aparte y
 vacía cuyo nombre termine en `_test`** (créala vacía en phpMyAdmin o con
 `CREATE DATABASE enrisate_test CHARACTER SET utf8mb4`; el esquema se aplica
 solo). Crean y borran facturas de verdad, así que se niegan a correr contra
