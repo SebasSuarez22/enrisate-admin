@@ -7,9 +7,9 @@ require_once __DIR__ . '/db.php';
 /* =========================================================
    Clientes · almacén en MySQL (capa 3)
    =========================================================
-   Misma lógica de negocio que la versión en JSON. Solo cambiaron
-   leer_clientes() y guardar_clientes(), que ahora hablan con MySQL
-   en vez de storage/clientes.json.
+   Misma lógica de negocio que la versión en JSON. Cada cambio guarda
+   solo la fila de esa clienta (guardar_cliente); antes se reescribía la
+   lista completa en cada cambio.
    ========================================================= */
 
 function leer_clientes(): array
@@ -28,40 +28,52 @@ function leer_clientes(): array
     ], $filas);
 }
 
-/** Reemplaza la lista completa de clientas en la base de datos (igual que antes reemplazaba el archivo entero). */
+/** Valores de la fila `clientes` para una clienta (mismas reglas de siempre). */
+function cliente_a_parametros(array $c): array
+{
+    return [
+        ':id'          => (string) $c['id'],
+        ':nombre'      => (string) $c['nombre'],
+        ':telefono'    => (string) $c['telefono'],
+        ':notas'       => (string) ($c['notas'] ?? ''),
+        ':saldo_favor' => (int) ($c['saldo_favor'] ?? 0),
+        ':creado'      => (string) ($c['creado'] ?? date('c')),
+    ];
+}
+
+/**
+ * Guarda UNA clienta: si es nueva la inserta (y falla si el id ya existiera, en
+ * vez de pisar a otra); si ya existe, actualiza solo su fila. Las demás no se tocan.
+ */
+function guardar_cliente(array $c, bool $esNueva): void
+{
+    $sql = $esNueva
+        ? 'INSERT INTO clientes (id, nombre, telefono, notas, saldo_favor, creado)
+           VALUES (:id, :nombre, :telefono, :notas, :saldo_favor, :creado)'
+        : 'UPDATE clientes SET nombre = :nombre, telefono = :telefono, notas = :notas,
+                  saldo_favor = :saldo_favor, creado = :creado
+           WHERE id = :id';
+    db()->prepare($sql)->execute(cliente_a_parametros($c));
+}
+
+/**
+ * Reemplaza la lista COMPLETA de clientas. La app ya no lo usa (guarda de a una
+ * con guardar_cliente()); queda para herramientas que reescriben todo a propósito
+ * (tools/normalizar_telefonos_existentes.php).
+ */
 function guardar_clientes(array $clientes): void
 {
-    $pdo = db();
-
-    $propia = !$pdo->inTransaction(); // dentro de en_transaccion() se une a la de afuera
-    if ($propia) {
-        $pdo->beginTransaction();
-    }
-    try {
+    en_transaccion(function () use ($clientes): void {
+        $pdo = db();
         $pdo->exec('DELETE FROM clientes');
         $st = $pdo->prepare(
             'INSERT INTO clientes (id, nombre, telefono, notas, saldo_favor, creado)
              VALUES (:id, :nombre, :telefono, :notas, :saldo_favor, :creado)'
         );
         foreach ($clientes as $c) {
-            $st->execute([
-                ':id'          => (string) $c['id'],
-                ':nombre'      => (string) $c['nombre'],
-                ':telefono'    => (string) $c['telefono'],
-                ':notas'       => (string) ($c['notas'] ?? ''),
-                ':saldo_favor' => (int) ($c['saldo_favor'] ?? 0),
-                ':creado'      => (string) ($c['creado'] ?? date('c')),
-            ]);
+            $st->execute(cliente_a_parametros($c));
         }
-        if ($propia) {
-            $pdo->commit();
-        }
-    } catch (Throwable $e) {
-        if ($propia && $pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        throw $e;
-    }
+    });
 }
 
 /** Agrega una clienta nueva a la lista. Devuelve '' si quedó bien, o un mensaje de error. */
@@ -76,15 +88,13 @@ function agregar_cliente(string $nombre, string $telefono, string $notas): strin
             return 'Escribe el nombre completo de la clienta.';
         }
 
-        $clientes   = leer_clientes();
-        $clientes[] = [
+        guardar_cliente([
             'id'       => uniqid('cli_', true),
             'nombre'   => $nombre,
             'telefono' => $telefono,
             'notas'    => $notas,
             'creado'   => date('c'),
-        ];
-        guardar_clientes($clientes);
+        ], true);
 
         return '';
     });
@@ -102,25 +112,16 @@ function actualizar_cliente(string $id, string $nombre, string $telefono, string
             return 'Escribe el nombre completo de la clienta.';
         }
 
-        $clientes = leer_clientes();
-        $hallada  = false;
-        foreach ($clientes as &$c) {
-            if ($c['id'] === $id) {
-                $c['nombre']      = $nombre;
-                $c['telefono']    = $telefono;
-                $c['notas']       = $notas;
-                $c['saldo_favor'] = max(0, $saldoFavor);
-                $hallada          = true;
-                break;
-            }
-        }
-        unset($c);
-
-        if (!$hallada) {
+        $c = cliente_por_id($id);
+        if ($c === null) {
             return 'No encontré esa clienta.';
         }
 
-        guardar_clientes($clientes);
+        $c['nombre']      = $nombre;
+        $c['telefono']    = $telefono;
+        $c['notas']       = $notas;
+        $c['saldo_favor'] = max(0, $saldoFavor);
+        guardar_cliente($c, false);
 
         return '';
     });
@@ -135,25 +136,40 @@ function eliminar_clientes(array $ids): int
             return 0;
         }
 
-        $clientes  = leer_clientes();
-        $filtrados = array_values(array_filter($clientes, fn($c) => !in_array($c['id'], $ids, true)));
-        $borradas  = count($clientes) - count($filtrados);
-        if ($borradas > 0) {
-            guardar_clientes($filtrados);
+        $ids = array_map('strval', $ids);
+        // Se buscan las filas pedidas y solo se borran las que coinciden EXACTO
+        // (MySQL no distingue mayúsculas ni espacios al final; antes se comparaba exacto).
+        $marcas = implode(',', array_fill(0, count($ids), '?'));
+        $st = db()->prepare("SELECT id FROM clientes WHERE id IN ($marcas)");
+        $st->execute($ids);
+        $exactas = array_values(array_filter($st->fetchAll(PDO::FETCH_COLUMN), fn($id) => in_array($id, $ids, true)));
+        if (!$exactas) {
+            return 0;
         }
-        return $borradas;
+        $marcas = implode(',', array_fill(0, count($exactas), '?'));
+        db()->prepare("DELETE FROM clientes WHERE id IN ($marcas)")->execute($exactas);
+        return count($exactas);
     });
 }
 
 /** Devuelve una clienta por su id, o null. */
 function cliente_por_id(string $id): ?array
 {
-    foreach (leer_clientes() as $c) {
-        if ($c['id'] === $id) {
-            return $c;
-        }
+    $st = db()->prepare('SELECT id, nombre, telefono, notas, saldo_favor, creado FROM clientes WHERE id = ?');
+    $st->execute([$id]);
+    $fila = $st->fetch();
+    // Mismo resultado que antes: solo el id idéntico (MySQL no distingue mayúsculas ni espacios).
+    if (!$fila || (string) $fila['id'] !== $id) {
+        return null;
     }
-    return null;
+    return [
+        'id'          => (string) $fila['id'],
+        'nombre'      => (string) $fila['nombre'],
+        'telefono'    => (string) $fila['telefono'],
+        'notas'       => (string) $fila['notas'],
+        'creado'      => (string) $fila['creado'],
+        'saldo_favor' => (int) $fila['saldo_favor'],
+    ];
 }
 
 /**
@@ -167,19 +183,15 @@ function restar_saldo_favor(string $id, int $monto): int
         if ($monto <= 0) {
             return 0;
         }
-        $clientes = leer_clientes();
-        $usado    = 0;
-        foreach ($clientes as &$c) {
-            if ($c['id'] === $id) {
-                $disponible = (int) ($c['saldo_favor'] ?? 0);
-                $usado      = max(0, min($disponible, $monto));
-                $c['saldo_favor'] = $disponible - $usado;
-                break;
-            }
+        $c = cliente_por_id($id);
+        if ($c === null) {
+            return 0;
         }
-        unset($c);
+        $disponible = (int) ($c['saldo_favor'] ?? 0);
+        $usado      = max(0, min($disponible, $monto));
         if ($usado > 0) {
-            guardar_clientes($clientes);
+            $c['saldo_favor'] = $disponible - $usado;
+            guardar_cliente($c, false);
         }
         return $usado;
     });
@@ -299,6 +311,7 @@ function sincronizar_clientes_desde_facturas(array $facturas): int
     return con_bloqueo('clientes', function () use ($facturas) {
         $clientes = leer_clientes();
         $agregadas = 0;
+        $nuevas    = [];
 
         foreach ($facturas as $f) {
             $nombre   = trim((string) ($f['cliente'] ?? ''));
@@ -308,18 +321,27 @@ function sincronizar_clientes_desde_facturas(array $facturas): int
                 continue;
             }
 
-            $clientes[] = [
+            $nueva = [
                 'id'       => uniqid('cli_', true),
                 'nombre'   => $nombre,
                 'telefono' => $telefono,
                 'notas'    => '',
                 'creado'   => $f['creada'] ?? date('c'),
             ];
+            // Se agrega también a la lista en memoria, para que otra factura de la
+            // misma clienta en este mismo lote no la duplique (igual que antes).
+            $clientes[] = $nueva;
+            $nuevas[]   = $nueva;
             $agregadas++;
         }
 
-        if ($agregadas > 0) {
-            guardar_clientes($clientes);
+        // Solo se insertan las nuevas, todas juntas o ninguna.
+        if ($nuevas) {
+            en_transaccion(function () use ($nuevas): void {
+                foreach ($nuevas as $c) {
+                    guardar_cliente($c, true);
+                }
+            });
         }
 
         return $agregadas;

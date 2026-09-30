@@ -141,8 +141,8 @@ Abre http://localhost:8000
 MYSQLDATABASE=enrisate_test php tests/correr_todas.php
 ```
 
-Corre las 11 pruebas de `tests/` (cuotas, abonos, descuentos, pedidos del
-catálogo (y que guardarlos por fila da lo mismo que antes), crear una cuenta de cobro de todo o nada, leer una sola factura,
+Corre las 12 pruebas de `tests/` (cuotas, abonos, descuentos, pedidos del
+catálogo y clientas (y que guardarlos por fila da lo mismo que antes), crear una cuenta de cobro de todo o nada, leer una sola factura,
 IP real del visitante y límite de pedidos por IP, que lo que se guarda en
 MySQL sea exactamente lo que se lee, y que varias personas guardando a la vez
 —facturas, clientas, pedidos o catálogo— no se pisen; las de concurrencia lanzan

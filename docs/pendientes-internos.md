@@ -2,6 +2,18 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 30 de septiembre, 2026 (auditoría · paso 4, parte 2: clientas guardadas por fila)
+
+**Qué cambió en `includes/clientes.php`** (misma lógica de negocio):
+- `guardar_cliente($c, $esNueva)`: `INSERT` (falla si el id existiera, no pisa) o `UPDATE ... WHERE id` de UNA fila. `guardar_clientes()` masivo queda solo para `tools/normalizar_telefonos_existentes.php`.
+- `agregar_cliente()` inserta solo esa; `actualizar_cliente()` y `restar_saldo_favor()` leen solo esa clienta (`cliente_por_id()` con `WHERE id = ?` + comparación exacta en PHP) y actualizan su fila; `eliminar_clientes()` busca las filas pedidas, se queda solo con las que coinciden EXACTO y borra esas; `sincronizar_clientes_desde_facturas()` inserta solo las nuevas, todas juntas o ninguna, y sigue recordando las del mismo lote para no duplicar.
+- **Se dejó a propósito leyendo la lista completa** la búsqueda de "¿ya existe esta clienta?" (`cliente_ya_existe`, `buscar_cliente_coincidente`, usada al facturar y al sincronizar): compara por teléfono o por nombre con `strcasecmp` + `trim`, y la collation de MySQL compararía distinto (ignora tildes: "María" = "Maria"). Pasarla a SQL cambiaría qué clientas se consideran repetidas. Leer es barato; lo caro era reescribir.
+- Candado `con_bloqueo('clientes')` igual (misma razón que en pedidos). `guardar_cliente()` se une a la transacción de facturar → sigue siendo de todo o nada.
+
+**Prueba diferencial nueva `tests/clientes_por_fila_test.php`:** mismo guion con la implementación anterior (copiada en la prueba) y la nueva — agregar (con espacios, +57, emoji, sin nombre), editar (saldo, saldo negativo, inexistente, sin nombre), descontar saldo (parcial, más de lo que tiene, sin saldo, 0, inexistente), agregar desde factura (ya existe por teléfono / por nombre con otra mayúscula / nueva / sin nombre), sincronizar un lote con la misma clienta dos veces, eliminar (repetidos, vacío, inexistente, id en MAYÚSCULAS, id con espacio) y buscar por id en todas esas variantes. Resultado: **21 respuestas y la lista final idénticas campo por campo, sin ninguna diferencia**. Con disparadores de MySQL que cuentan filas borradas/insertadas: editar o descontar saldo ya no borra ni reinserta ninguna fila (antes: las 7 borradas y reinsertadas por una sola edición); agregar inserta 1; eliminar borra 1. Mutaciones detectadas: UPDATE sin WHERE, búsqueda sin comparación exacta, eliminar sin filtro exacto (habría borrado otra clienta con el id en mayúsculas), sincronizar sin recordar el lote, descontar saldo sin tope.
+- De extremo a extremo con el servidor real: login → agregar dos clientas → editar saldo → eliminar una, desde la pantalla de Clientes. (La "Ñ" se veía rara en la consola de MySQL; los bytes guardados son UTF-8 correctos — era la consola.)
+- 12 pruebas pasan; concurrencia de clientas y saldo a favor 3 de 3.
+
 ## 30 de septiembre, 2026 (auditoría · paso 4, parte 1: pedidos guardados por fila)
 
 Paso 4 = dejar de "leer todo → cambiar uno → borrar todo → reinsertar todo". Se hace de a una tabla, empezando por **pedidos** (la más expuesta: el formulario público reescribía TODOS los pedidos de la historia cada vez que entraba uno). Siguen: clientas, catálogo y al final facturas.
