@@ -130,3 +130,15 @@ CREATE TABLE IF NOT EXISTS `pedido_lineas` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `pedido_numero` (`pedido_numero`,`orden`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Límite anti-spam del formulario de pedidos del catálogo público: un registro
+-- por pedido aceptado, por IP real del visitante (ver includes/red.php). Antes
+-- vivía en storage/pedidos_intentos.json, que se borraba con cada despliegue.
+CREATE TABLE IF NOT EXISTS `limite_pedidos` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `ip_clave` varchar(64) NOT NULL,
+  `momento` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `ip_momento` (`ip_clave`,`momento`),
+  KEY `momento` (`momento`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

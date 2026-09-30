@@ -2,6 +2,21 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 30 de septiembre, 2026 (auditoría · paso 3: IP real y límite de pedidos)
+
+**Corrección de la auditoría:** supuse que detrás del proxy todos los visitantes compartían UNA IP. Los registros de Apache en Railway muestran otra cosa: la app ve direcciones internas del proxy (`100.64.0.0/10`) y **una misma persona llega con una distinta en cada petición** (mismo navegador, mismo segundo: 100.64.0.1, .2, .13, .15, .22…). Con eso el límite de 8 pedidos/hora "por IP" era casi aleatorio: no frenaba a quien mandara muchos pedidos (se repartían entre decenas de direcciones) y podía bloquear a una clienta real que compartiera cupo al azar con otras. Además vivía en `storage/pedidos_intentos.json`, que se borraba en cada despliegue.
+
+**Qué se hizo** (OWASP ASVS V4 · CWE-348 · CWE-799). **El login queda fuera** (decisión de Sebastián): `ip_cliente()` y los intentos de inicio de sesión siguen igual, con el mismo problema — anotado abajo.
+- `includes/red.php`: `ip_visitante()` usa `X-Real-IP` (Railway la documenta como la IP del cliente) **solo si la conexión viene de `100.64.0.0/10`** y la cabecera es una IP válida; si no, `REMOTE_ADDR`. Así, en XAMPP o en una conexión directa nadie puede inventar su IP. `clave_limite_ip()` agrupa IPv6 por su `/64`.
+- Límite en MySQL: tabla nueva `limite_pedidos` (`storage/esquema.sql`, se crea sola al arrancar). `pedido_ip_bloqueada()` cuenta la última hora; `registrar_pedido_ip()` inserta y borra lo de más de una hora. Se eliminó el JSON.
+- `docker/seguridad-apache.conf`: el registro de visitas ahora dice `IP-real via IP-del-proxy …` (antes solo la del proxy).
+
+**Pruebas:** nueva `tests/red_test.php` (18 comprobaciones): IP real detrás del proxy, borde del rango (100.127.x.x sí, 100.128.0.1 no), cabecera ignorada sin proxy o desde IP pública, cabecera inválida o con varias IPs descartada, IPv6, mismo /64 = misma persona; límite: la misma persona llegando por 9 direcciones distintas del proxy queda bloqueada en el pedido 9, otra IP sigue pudiendo, rotar IPv6 dentro del /64 no sirve, lo de hace más de 1 h no cuenta y se borra. Mutaciones (creerle siempre a la cabecera / usar solo REMOTE_ADDR = lo de antes / no agrupar IPv6 / rango mal calculado): las 4 se detectan. De extremo a extremo con `php -S`: 9 pedidos cada uno con una `X-Real-IP` falsa distinta → cabeceras ignoradas, 8 aceptados y el 9.º con 429. Formato del registro probado en Apache real. Las 10 pruebas pasan.
+
+**Sin verificar (no hay acceso a producción desde aquí):** que el borde de Railway REEMPLACE una `X-Real-IP` enviada por el propio visitante (la documentación dice que la pone el borde, pero no dice explícitamente que pise la del cliente). Si no la reemplazara, alguien podría rotar IPs falsas para saltarse el límite: el mismo efecto que hoy, no peor. **Cómo comprobarlo tras el despliegue:** mandar `curl -H "X-Real-IP: 1.2.3.4" https://enrisate-admin-production.up.railway.app/catalogo-publico.php` y ver en los registros de Railway: si la línea empieza por la IP real de quien mandó el curl → bien; si empieza por `1.2.3.4` → hay que cambiar a otra cabecera.
+
+**Pendiente (login, excluido):** `ip_cliente()` en `includes/auth.php` sigue con `REMOTE_ADDR`, así que el bloqueo tras 5 intentos fallidos de login también es casi aleatorio (se reparte entre las direcciones del proxy) y vive en `storage/intentos.json` (se borra al desplegar). Arreglarlo es cambiar `ip_cliente()` por `ip_visitante()` y moverlo a MySQL, cuando se decida trabajar el login.
+
 ## 30 de septiembre, 2026 (auditoría · paso 2: errores y enlace del PDF)
 
 **Qué pasaba** (comparado contra master con la base apagada y con una consulta rota):

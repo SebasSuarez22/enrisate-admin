@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/facturas.php';
+require_once __DIR__ . '/red.php';
 
 /* =========================================================
    Pedidos pendientes · lo que llega del catálogo público
@@ -16,9 +17,8 @@ require_once __DIR__ . '/facturas.php';
    y pedido_lineas) en vez de storage/pedidos.json. La lógica de
    negocio es la misma que antes.
 
-   El límite de pedidos por IP (anti-spam) sigue en storage/pedidos_intentos.json:
-   es una caché de seguridad efímera, no un dato del negocio, así que no
-   hacía falta llevarla a la base de datos.
+   El límite de pedidos por IP (anti-spam) va en la tabla limite_pedidos,
+   con la IP REAL del visitante (ver includes/red.php).
    ========================================================= */
 
 function leer_pedidos(): array
@@ -261,50 +261,19 @@ function pedidos_pendientes_count(): int
    Límite simple por IP (anti-spam del formulario público)
    ========================================================= */
 
-function ruta_pedidos_intentos(): string
-{
-    if (!is_dir(STORAGE_DIR)) {
-        @mkdir(STORAGE_DIR, 0775, true);
-    }
-    return STORAGE_DIR . '/pedidos_intentos.json';
-}
-
-/** true si esta IP ya mandó demasiados pedidos en la última hora. */
+/** true si la IP real de quien visita ya mandó demasiados pedidos en la última hora. */
 function pedido_ip_bloqueada(): bool
 {
-    $ip     = ip_cliente();
-    $data   = leer_pedidos_intentos();
-    $recientes = array_filter($data[$ip] ?? [], fn($t) => $t > time() - 3600);
-    return count($recientes) >= MAX_PEDIDOS_POR_HORA;
+    $st = db()->prepare('SELECT COUNT(*) FROM limite_pedidos WHERE ip_clave = ? AND momento > ?');
+    $st->execute([clave_limite_ip(ip_visitante()), time() - 3600]);
+    return (int) $st->fetchColumn() >= MAX_PEDIDOS_POR_HORA;
 }
 
-function leer_pedidos_intentos(): array
-{
-    $ruta = ruta_pedidos_intentos();
-    if (!is_file($ruta)) {
-        return [];
-    }
-    $d = json_decode((string) file_get_contents($ruta), true);
-    return is_array($d) ? $d : [];
-}
-
-/** Registra un pedido nuevo de esta IP (para el límite por hora) y limpia lo viejo. */
+/** Registra un pedido aceptado de esta IP (para el límite por hora) y borra lo de hace más de una hora. */
 function registrar_pedido_ip(): void
 {
-    $ip   = ip_cliente();
-    $data = leer_pedidos_intentos();
-
-    $recientes  = array_filter($data[$ip] ?? [], fn($t) => $t > time() - 3600);
-    $recientes[] = time();
-    $data[$ip]  = array_values($recientes);
-
-    // Poda general: quita IPs sin actividad en la última hora para que el
-    // archivo no crezca sin control.
-    foreach ($data as $k => $v) {
-        if (!array_filter($v, fn($t) => $t > time() - 3600)) {
-            unset($data[$k]);
-        }
-    }
-
-    file_put_contents(ruta_pedidos_intentos(), json_encode($data), LOCK_EX);
+    $pdo = db();
+    $pdo->prepare('INSERT INTO limite_pedidos (ip_clave, momento) VALUES (?, ?)')
+        ->execute([clave_limite_ip(ip_visitante()), time()]);
+    $pdo->prepare('DELETE FROM limite_pedidos WHERE momento <= ?')->execute([time() - 3600]);
 }
