@@ -14,9 +14,14 @@ use Dompdf\Options;
 $numero = (string) ($_GET['n'] ?? '');
 $token  = (string) ($_GET['t'] ?? '');
 
-$f = $numero !== '' ? factura_por_numero($numero) : null;
+// Primero el token (no toca la base): un enlace inventado se rechaza sin
+// consultar nada. Después se lee solo esa factura. Las dos negativas responden
+// exactamente igual, para que nadie pueda averiguar qué números de factura existen.
+$f = ($numero !== '' && factura_pdf_token_valido($numero, $token))
+    ? factura_por_numero($numero)
+    : null;
 
-if (!$f || !factura_pdf_token_valido($numero, $token)) {
+if (!$f) {
     http_response_code(404);
     exit('Ese enlace no es válido o ya venció.');
 }

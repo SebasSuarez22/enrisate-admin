@@ -367,6 +367,25 @@ function eliminar_productos(array $skus): int
  */
 function leer_facturas_raw(): array
 {
+    return leer_facturas_consistente(null);
+}
+
+/**
+ * Una sola factura, tal cual está guardada (sin migrar formato viejo), o null.
+ * Lee solo sus filas en vez de cargar todas las facturas: la usan factura_por_numero()
+ * y, a través de ella, el PDF público, que antes cargaba la base entera en cada visita.
+ */
+function leer_factura_raw(string $numero): ?array
+{
+    $una = leer_facturas_consistente($numero);
+    // MySQL compara sin distinguir mayúsculas ni espacios al final ('2026-0001 '
+    // encontraría '2026-0001'); PHP siempre exigió el número exacto y se mantiene así.
+    return ($una && $una[0]['numero'] === $numero) ? $una[0] : null;
+}
+
+/** Todas las facturas ($numero = null) o solo una, leídas en una misma foto de la base. */
+function leer_facturas_consistente(?string $numero): array
+{
     $pdo = db();
 
     // Las 4 consultas de abajo (facturas, líneas, abonos, cuotas) deben ver la
@@ -378,7 +397,7 @@ function leer_facturas_raw(): array
         $pdo->beginTransaction();
     }
     try {
-        return leer_facturas_en_transaccion($pdo);
+        return leer_facturas_en_transaccion($pdo, $numero);
     } finally {
         if ($abrioTransaccion && $pdo->inTransaction()) {
             $pdo->commit();
@@ -386,18 +405,33 @@ function leer_facturas_raw(): array
     }
 }
 
-function leer_facturas_en_transaccion(PDO $pdo): array
+function leer_facturas_en_transaccion(PDO $pdo, ?string $numero = null): array
 {
-    $facturas = $pdo->query(
-        'SELECT * FROM facturas ORDER BY numero'
-    )->fetchAll();
+    // Con $numero, cada consulta se limita a esa factura; sin él, trae todo.
+    // Las consultas son siempre preparadas: el número llega de la URL del PDF.
+    $consulta = static function (string $sqlTodas, string $sqlUna) use ($pdo, $numero): array {
+        if ($numero === null) {
+            return $pdo->query($sqlTodas)->fetchAll();
+        }
+        $st = $pdo->prepare($sqlUna);
+        $st->execute([$numero]);
+        return $st->fetchAll();
+    };
+
+    $facturas = $consulta(
+        'SELECT * FROM facturas ORDER BY numero',
+        'SELECT * FROM facturas WHERE numero = ? ORDER BY numero'
+    );
 
     if (!$facturas) {
         return [];
     }
 
     $lineasPorFactura = [];
-    foreach ($pdo->query('SELECT * FROM factura_lineas ORDER BY factura_numero, orden')->fetchAll() as $l) {
+    foreach ($consulta(
+        'SELECT * FROM factura_lineas ORDER BY factura_numero, orden',
+        'SELECT * FROM factura_lineas WHERE factura_numero = ? ORDER BY factura_numero, orden'
+    ) as $l) {
         $lineasPorFactura[$l['factura_numero']][] = [
             'sku'    => (string) $l['sku'],
             'nombre' => (string) $l['nombre'],
@@ -409,7 +443,11 @@ function leer_facturas_en_transaccion(PDO $pdo): array
     }
 
     $abonosPorCuota = [];
-    foreach ($pdo->query('SELECT * FROM factura_abonos ORDER BY cuota_id, orden')->fetchAll() as $a) {
+    foreach ($consulta(
+        'SELECT * FROM factura_abonos ORDER BY cuota_id, orden',
+        'SELECT a.* FROM factura_abonos a JOIN factura_cuotas c ON c.id = a.cuota_id
+         WHERE c.factura_numero = ? ORDER BY a.cuota_id, a.orden'
+    ) as $a) {
         $abonosPorCuota[(int) $a['cuota_id']][] = [
             'monto'  => (int) $a['monto'],
             'fecha'  => (string) $a['fecha'],
@@ -419,7 +457,10 @@ function leer_facturas_en_transaccion(PDO $pdo): array
     }
 
     $cuotasPorFactura = [];
-    foreach ($pdo->query('SELECT * FROM factura_cuotas ORDER BY factura_numero, orden')->fetchAll() as $c) {
+    foreach ($consulta(
+        'SELECT * FROM factura_cuotas ORDER BY factura_numero, orden',
+        'SELECT * FROM factura_cuotas WHERE factura_numero = ? ORDER BY factura_numero, orden'
+    ) as $c) {
         $cuotasPorFactura[$c['factura_numero']][] = [
             'monto'  => (int) $c['monto'],
             'vence'  => (string) $c['vence'],
@@ -605,12 +646,8 @@ function siguiente_numero(): string
 
 function factura_por_numero(string $numero): ?array
 {
-    foreach (leer_facturas() as $f) {
-        if ($f['numero'] === $numero) {
-            return $f;
-        }
-    }
-    return null;
+    $f = leer_factura_raw($numero);
+    return $f === null ? null : normalizar_cuotas_factura($f);
 }
 
 /** Suma de los abonos registrados contra una cuota. */

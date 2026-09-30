@@ -29,13 +29,24 @@ function db(): PDO
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ]);
         } catch (PDOException $e) {
-            http_response_code(500);
-            die(
-                'No se pudo conectar a la base de datos MySQL. '
-                . 'Verifica que XAMPP tenga MySQL encendido y que la base "'
-                . DB_NOMBRE . '" exista (importa storage/esquema.sql desde phpMyAdmin). '
-                . 'Detalle técnico: ' . $e->getMessage()
-            );
+            $detalle = 'No se pudo conectar a la base de datos MySQL "' . DB_NOMBRE . '" en '
+                . DB_HOST . ':' . DB_PORT . ': ' . $e->getMessage();
+
+            // Desde la terminal (herramientas, pruebas, el arranque del contenedor)
+            // sí se muestra todo: ahí lo lee quien administra, no un visitante.
+            if (PHP_SAPI === 'cli') {
+                fwrite(STDERR, $detalle . "\nEn XAMPP: revisa que MySQL esté encendido y que la base exista "
+                    . "(importa storage/esquema.sql desde phpMyAdmin).\n");
+                exit(1);
+            }
+
+            // En la web: el detalle (servidor, nombre de la base, mensaje del driver)
+            // solo va al registro. El visitante ve un aviso genérico.
+            error_log('[enrisate] ' . $detalle);
+            if (!headers_sent()) {
+                header('Retry-After: 60');
+            }
+            responder_error_generico(503, 'El sistema no está disponible en este momento. Intenta de nuevo en unos minutos.');
         }
     }
 

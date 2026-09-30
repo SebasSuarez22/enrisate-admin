@@ -56,6 +56,9 @@ const SESION_INACTIVIDAD = 1800; // 30 minutos sin actividad = cierre de sesión
 define('BASE_DIR', __DIR__);
 define('STORAGE_DIR', BASE_DIR . '/storage');
 
+/* --- Errores: aviso genérico en pantalla, detalle al registro (ver el archivo) --- */
+require_once __DIR__ . '/includes/errores.php';
+
 /* --- Base de datos (MySQL) -------------------------------------------------
    En un XAMPP local, sin nada más que hacer, usa lo típico de XAMPP:
    127.0.0.1, usuario root, sin contraseña. En un servidor como Railway,

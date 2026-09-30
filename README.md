@@ -141,8 +141,8 @@ Abre http://localhost:8000
 MYSQLDATABASE=enrisate_test php tests/correr_todas.php
 ```
 
-Corre las 8 pruebas de `tests/` (cuotas, abonos, descuentos, pedidos del
-catálogo, crear una cuenta de cobro de todo o nada, que lo que se guarda en
+Corre las 9 pruebas de `tests/` (cuotas, abonos, descuentos, pedidos del
+catálogo, crear una cuenta de cobro de todo o nada, leer una sola factura, que lo que se guarda en
 MySQL sea exactamente lo que se lee, y que varias personas guardando a la vez
 —facturas, clientas, pedidos o catálogo— no se pisen; las de concurrencia lanzan
 procesos en paralelo y tardan unos 10 segundos cada una). Necesitan una base **aparte y
@@ -224,6 +224,7 @@ tools/verificar_migracion.php  compara JSON vs MySQL (herramienta, no la usa la 
 tools/prueba_escritura.php     prueba de escritura de extremo a extremo (herramienta, no la usa la app)
 tools/prueba_descuento.php     prueba de aplicar_descuento_cuota() (herramienta, no la usa la app)
 tools/generar_hash.php
+includes/errores.php           errores no previstos: aviso genérico en pantalla, detalle al registro
 includes/cuentas.php           crear una cuenta de cobro (factura + clienta + saldo + pedido) en una sola transacción
 tests/correr_todas.php         corre todas las pruebas automáticas (ver "Pruebas automáticas")
 tests/bootstrap.php            arranque común de las pruebas: exige una base _test, aplica el esquema y la deja vacía

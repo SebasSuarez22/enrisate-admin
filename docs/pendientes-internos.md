@@ -2,6 +2,27 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 30 de septiembre, 2026 (auditoría · paso 2: errores y enlace del PDF)
+
+**Qué pasaba** (comparado contra master con la base apagada y con una consulta rota):
+- La imagen `php:apache` no trae `php.ini`: PHP corría con `display_errors=1` y `log_errors=0`. Cualquier error se mostraba en la página y **no quedaba registrado** en ningún lado.
+- `db()` le mostraba a cualquier visitante el nombre de la base, que era MySQL/XAMPP y el mensaje del driver (`SQLSTATE[HY000] [2002] …`).
+- `factura-pdf.php` (público) cargaba TODAS las facturas antes de mirar el token: un enlace inventado ya consultaba la base entera (con la base caída respondía 500 con el detalle técnico).
+- **Bug encontrado de paso:** con la base caída `tools/aplicar_esquema.php` salía con código 0 (`die()` con texto), así que el bucle de reintentos de `docker/entrypoint.sh` creía que había funcionado y nunca reintentaba.
+
+**Qué se hizo** (OWASP A05 · CWE-209 · CWE-778):
+- `docker/seguridad.ini`: `display_errors=Off`, `display_startup_errors=Off`, `log_errors=On`, `error_reporting=E_ALL`. El detalle va al registro de Apache (logs de Railway).
+- `includes/errores.php` (cargado desde `config.php`): manejador de excepciones no controladas (solo web) que registra el detalle con la URL y la traza, descarta lo que se hubiera armado de la página y responde un aviso genérico; si la respuesta era JSON (envío de pedidos del catálogo) responde JSON para que el formulario se lo muestre a la clienta. `responder_error_generico()` es la salida común.
+- `db()`: en la web, registro + 503 + `Retry-After: 60` + aviso genérico; en la terminal, el detalle completo por STDERR y `exit(1)` (arregla los reintentos del arranque).
+- `factura_por_numero()` ahora lee solo esa factura (`leer_factura_raw()` / `leer_facturas_consistente()`, mismas 4 consultas con `WHERE`, preparadas, en una transacción). Mantiene la comparación exacta en PHP: MySQL (utf8mb4_general_ci) encontraría `"2026-0001 "` como `2026-0001` — una mutación lo confirmó.
+- `factura-pdf.php`: primero el token (sin tocar la base), después la factura. Mismo 404 y mismo texto para número inexistente, token malo o sin parámetros.
+
+**Pruebas:** nueva `tests/factura_por_numero_test.php` (13 comprobaciones: resultado idéntico a la implementación anterior para facturas a cuotas con abonos y descuento, contado, anulada y sin líneas; null para vacío, inexistente, con espacios, parecido, inyección SQL). Mutaciones: sin comparación exacta falla; sin filtrar la factura falla; sin filtrar los abonos NO falla (no cambia el resultado porque los abonos se asignan por id de cuota: ese filtro es solo de rendimiento). De extremo a extremo con `php -S` y los ajustes de producción: PDF válido 200 `application/pdf`; token malo/inexistente/con espacio/sin parámetros 404 idéntico; tabla rota → 500 JSON genérico; base apagada → 503 genérico en catálogo, PDF y pedido (JSON), token malo sigue en 404 sin tocar la base; ninguna respuesta contiene SQLSTATE, nombre de base, host, rutas ni trazas. Las 9 pruebas pasan.
+
+**Sin verificar:** la imagen real (Railway la construye). Tras desplegar, en los logs de Railway ya deberían aparecer los errores con prefijo `[enrisate]`.
+
+**Pendiente de este tema:** los errores fatales de PHP (no excepciones) ahora dan una página 500 en blanco en vez del detalle: seguro, pero sin aviso amable. Páginas del panel (con sesión) no se probaron con la base caída, pero pasan por el mismo `db()`.
+
 ## 30 de septiembre, 2026 (auditoría · paso 1: cerrar la exposición)
 
 Primer paso del plan de la auditoría con graphify. **El login queda fuera a propósito** (decisión de Sebastián): no se tocó la clave inicial en `config.php`/`README.md`, `ADMIN_HASH` ni el conteo de intentos.
