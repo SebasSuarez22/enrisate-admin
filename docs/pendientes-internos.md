@@ -2,6 +2,21 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 1 de octubre, 2026 (auditoría · paso 7: limpieza — primera parte, lo seguro)
+
+**Se borró** (todo sigue en el historial de git; `git show <commit>:ruta` lo recupera):
+- **7 herramientas** de una sola vez, 960 líneas: `migrar_json_a_mysql.php`, `verificar_migracion.php`, `importar_datos.php`, `preparar_reimportacion.php`, `contar_filas.php`, `prueba_escritura.php`, `prueba_descuento.php`. Nadie las llamaba (salvo el README y entre ellas: `preparar_reimportacion` → `importar_datos`). La migración de JSON a MySQL ya pasó. Las dos "prueba_*" eran las más peligrosas: **escribían facturas de verdad en la base a la que apuntaran las variables `MYSQL*`** (producción incluida); `tests/` las reemplaza y solo corre contra bases `*_test`.
+- **7 imágenes sin uso**, 1,06 MB: `Enrisatemejorado.png` (560 KB), `logo-enrisate-header.png`, `logo-enrisate-marca.png`, `logo-enrisate-pie.png` (reemplazados por `.webp` en el paso 6) y `marcas/femme.png`, `menta-hair.png`, `origen-botanico.png` (reemplazados por `.webp` el 2026-08-29). Se comprobó que ningún `.php`, `.css`, `.js` ni `.md` las nombra, que todo recurso `assets/...` que citan las páginas existe, y que el catálogo y el login cargan con 0 recursos faltantes.
+- README: se reescribió "Base de datos (XAMPP)" (ya no pide correr la migración) y se quitaron del listado las 4 herramientas.
+
+**Se conservó a propósito:** `aplicar_esquema.php` (lo usa el arranque del contenedor), `generar_hash.php` (README y `config.php`), `reoptimizar_fotos_productos.php` (inofensiva, se puede repetir), y `normalizar_telefonos_existentes.php`: **no se sabe si se corrió en producción**; si quedaron teléfonos con el "57" adelante en clientas, facturas o pedidos viejos, esa es la herramienta que los arregla (y es la única razón por la que siguen existiendo `guardar_clientes/guardar_pedidos/guardar_facturas` masivos; los usan además las pruebas). Si Sebastián confirma que ya se corrió (o que no hay teléfonos viejos), se puede borrar junto con esos tres guardados masivos.
+
+**Falta decidir con Sebastián (son sus archivos, no basura clara):**
+- `assets/img/productos/_referencia_no_usar/`: 17 fotos de referencia (no son fotografía propia), 9,1 MB. Con el Volume de Railway pesan en la imagen (entran por `productos-semilla`) y **son públicas por URL directa** (`/assets/img/productos/_referencia_no_usar/LP-05.png`) aunque el catálogo no las use: posible problema de derechos de imagen.
+- `assets/img/productos/_respaldo_original_2026-08-29/`: 25 originales de antes de reoptimizar, 1 MB; mismo caso (públicas por URL).
+- Si se borran del repositorio, el Volume de Railway **conserva su copia** (`cp -rn` nunca borra); habría que quitarlas de ahí a mano si se quiere que dejen de ser públicas.
+- `storage/actualizar-2026-08-23-categorias.sql` y `actualizar-2026-09-05-descripcion.sql`: migraciones viejas que `esquema.sql` ya incluye; solo sirven a un XAMPP con una base anterior. Se dejaron.
+
 ## 1 de octubre, 2026 (auditoría · paso 5: dividir `includes/facturas.php`)
 
 **Qué se hizo:** `includes/facturas.php` (1.243 líneas, mezclaba el catálogo, las facturas, las cuotas y el formato de texto) quedó repartido sin cambiar ni una línea de lógica:

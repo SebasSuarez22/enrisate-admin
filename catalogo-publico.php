@@ -54,7 +54,7 @@ $nombreVisible = [
 // menta-hair, origen-botanico y femme: reemplazados 2026-08-29 por versiones
 // .webp del tamaño real en que se muestran (los .png originales medían hasta
 // 4500x970 para un logo que se ve a menos de 90px de alto). Los .png viejos
-// quedan de respaldo en assets/img/marcas/_respaldo_original/.
+// se retiraron del proyecto el 2026-10-01 (siguen en el historial de git).
 $logosPorMarca = [
     'Etniker'          => 'etniker.png',
     'Femme'            => 'femme.webp',

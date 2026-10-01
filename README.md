@@ -38,33 +38,18 @@ Además del servicio de la app, hace falta:
 
 ## Base de datos (MySQL / XAMPP)
 
-Este proyecto ya no guarda los datos en `storage/*.json` — los guarda en
-MySQL. Para dejarlo andando en un XAMPP nuevo (o para migrar los JSON que
-ya tenías):
+Este proyecto guarda los datos en MySQL (antes eran `storage/*.json`; esa
+migración ya se hizo y sus herramientas se retiraron). Para dejarlo andando en
+un XAMPP nuevo:
 
 1. Enciende **Apache** y **MySQL** desde el panel de XAMPP.
 2. Importa el esquema: abre phpMyAdmin (`http://localhost/phpmyadmin`),
    pestaña **Importar**, elige `storage/esquema.sql` y dale a Continuar.
    (Crea la base `enrisate_admin` y sus tablas; si ya existía, no borra nada
-   porque usa `CREATE TABLE IF NOT EXISTS`.)
-3. Desde una terminal, parado en la carpeta del proyecto, corre la
-   migración — lee los JSON de `storage/` y llena las tablas:
-   ```bash
-   php tools/migrar_json_a_mysql.php
-   ```
-   Esto además guarda una copia de los JSON originales en
-   `storage/respaldo-json/<fecha-hora>/` antes de tocar nada, y se puede
-   correr varias veces sin duplicar datos (cada corrida reemplaza el
-   contenido de las tablas con lo que haya en los JSON en ese momento).
-4. Verifica que todo haya cuadrado:
-   ```bash
-   php tools/verificar_migracion.php
-   ```
-   Compara conteos y sumas entre los JSON y lo que quedó en MySQL. Si dice
-   "TODO OK", ya puedes usar la app normalmente. Cuando confirmes que todo
-   está bien, puedes borrar `tools/verificar_migracion.php` y
-   `tools/prueba_escritura.php` (son solo herramientas de verificación, no
-   las usa la app).
+   porque usa `CREATE TABLE IF NOT EXISTS`.) También se puede aplicar desde una
+   terminal con `php tools/aplicar_esquema.php`.
+3. Abre la app: el catálogo se siembra solo desde `datos/catalogo.php` la
+   primera vez.
 
 Si tu XAMPP tiene otro usuario, contraseña o puerto de MySQL, edítalo en
 `config.php` (constantes `DB_HOST`, `DB_PORT`, `DB_NOMBRE`, `DB_USUARIO`,
@@ -226,10 +211,6 @@ Dockerfile, docker/entrypoint.sh   imagen y arranque del contenedor en Railway
 storage/actualizar-2026-08-22-descuentos.sql   agrega tipo/motivo a factura_abonos (proyectos ya existentes)
 storage/actualizar-2026-08-23-categorias.sql   agrega la columna categoria a productos
 cartera-excel.php                              descarga en Excel de la cartera vencida/pendiente
-tools/migrar_json_a_mysql.php  migra storage/*.json → MySQL
-tools/verificar_migracion.php  compara JSON vs MySQL (herramienta, no la usa la app)
-tools/prueba_escritura.php     prueba de escritura de extremo a extremo (herramienta, no la usa la app)
-tools/prueba_descuento.php     prueba de aplicar_descuento_cuota() (herramienta, no la usa la app)
 tools/generar_hash.php
 includes/red.php               IP real del visitante detrás del proxy de Railway (X-Real-IP, solo si viene del proxy)
 includes/errores.php           errores no previstos: aviso genérico en pantalla, detalle al registro
