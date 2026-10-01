@@ -42,13 +42,17 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # El proyecto ya trae su propio .htaccess (bloquea carpetas y archivos
 # internos, agrega encabezados de seguridad —por eso "headers"— y activa
 # compresión y caché) — solo hace falta permitirle a Apache leerlo.
+# La compresión (deflate) ya viene encendida en la imagen; el caché
+# (expires) NO: sin "a2enmod expires" las reglas Expires del .htaccess
+# se ignoraban en silencio y fotos, estilos y logos salían sin ninguna
+# instrucción de caché.
 #
 # mpm_prefork es el único módulo de procesos compatible con mod_php.
 # Se borran a mano los enlaces de mpm_event/mpm_worker (en vez de
 # confiar en que "a2dismod" los detecte y los quite) para que quede
 # garantizado sin importar cuál haya quedado activo de fábrica, y
 # después se prende prefork.
-RUN a2enmod rewrite headers \
+RUN a2enmod rewrite headers expires \
     && a2enconf zz-seguridad \
     && rm -f /etc/apache2/mods-enabled/mpm_event.load /etc/apache2/mods-enabled/mpm_event.conf \
              /etc/apache2/mods-enabled/mpm_worker.load /etc/apache2/mods-enabled/mpm_worker.conf \
