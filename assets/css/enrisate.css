@@ -4,6 +4,30 @@
    champaña y un rosa contenido.
    ========================================================= */
 
+/* Fuentes propias (las mismas que sirve Google Fonts, copiadas en assets/fonts): el panel no
+   depende de otro servidor para pintar el texto. Ver assets/fonts/LEEME.txt. */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: swap;
+  src: url("../fonts/fraunces-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("../fonts/manrope-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url("../fonts/jetbrains-mono-latin.woff2") format("woff2");
+}
+
 :root {
   --tinta:      #150C12;
   --ciruela:    #241521;

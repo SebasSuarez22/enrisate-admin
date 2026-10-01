@@ -2,6 +2,12 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 1 de octubre, 2026 (auditoría: fuentes propias también en el panel)
+
+El panel (`index.php` login, `includes/cabecera.php` para todas las pantallas internas, `factura.php`) pedía Fraunces, Manrope y JetBrains Mono a Google Fonts (2 preconnect + 1 hoja de estilos que bloquea el pintado). Ahora los `@font-face` están al inicio de `assets/css/enrisate.css` y los archivos en `assets/fonts/` (se añadió `jetbrains-mono-latin.woff2`, 31 KB, la misma que servía Google); se quitaron los 3 `<link>` de Google de los 3 archivos. En el login solo cambió ese `<link>`. Ya no queda ninguna referencia a googleapis/gstatic en el código.
+- **Prueba:** comparación píxel a píxel del código anterior (con las fuentes reales de Google servidas desde disco) contra el nuevo, 7 pantallas × escritorio y celular: idénticas (0,00 %), salvo 12×50 px en el texto "0 pedidos" de Pedidos (~0,02–0,06 %, un detalle de animación del contador). Cero peticiones a otros servidores; las 3 fuentes cargan desde el propio sitio. `factura-pdf.php` (dompdf) no usaba Google Fonts.
+- **No se cubre:** subconjuntos latin-ext/cirílico (como en el catálogo): un carácter fuera de latin cae a la fuente del sistema.
+
 ## 1 de octubre, 2026 (catálogo público: nueva ficha de producto, opción B "foto protagonista")
 
 La ficha que se abre al tocar un producto se rehízo (`catalogo-publico.php`, `assets/css/catalogo-publico.css`, `assets/js/catalogo-publico.js`). Sin cambios en base de datos ni en el flujo del pedido.

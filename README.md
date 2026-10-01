@@ -189,7 +189,7 @@ includes/auth.php     sesión, CSRF, control de intentos
 includes/escena.php   fondo de hebras (SVG)
 assets/css/           estilos
 assets/js/            scripts de las páginas (catalogo-publico.js: todo el código del catálogo público)
-assets/fonts/         fuentes propias del catálogo (Fraunces y Manrope, licencia OFL; ver LEEME.txt)
+assets/fonts/         fuentes propias del catálogo y del panel (Fraunces, Manrope y JetBrains Mono, licencia OFL; ver LEEME.txt)
 assets/img/logo.svg   isotipo (reemplázalo cuando tengan el definitivo)
 facturar.php          armar la cuenta de cobro
 factura.php            factura imprimible / PDF
