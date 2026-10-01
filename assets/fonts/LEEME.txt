@@ -1,15 +1,15 @@
-Fuentes del catálogo público
+Fuentes propias (catálogo público y panel)
 ============================
-Fraunces  (fraunces-latin.woff2)  y  Manrope  (manrope-latin.woff2).
+Fraunces  (fraunces-latin.woff2), Manrope  (manrope-latin.woff2) y JetBrains Mono  (jetbrains-mono-latin.woff2, solo el panel: cifras y datos).
 
 Son los mismos archivos que servía Google Fonts (subconjunto "latin": ñ, tildes,
 ¿ ¡ y los signos del español), copiados aquí para que el catálogo no dependa de
-otro servidor. Pesos: Fraunces 500-600 (eje óptico incluido), Manrope 400-800.
+otro servidor. Pesos: Fraunces 500-600 (eje óptico incluido), Manrope 400-800, JetBrains Mono 400-500.
 
 Licencia: SIL Open Font License 1.1 (https://openfontlicense.org). Se pueden
 usar, copiar y servir desde el propio sitio; no se pueden vender por separado.
-Autores: Undercase Type (Fraunces) y Mikhail Sharanda (Manrope).
+Autores: Undercase Type (Fraunces), Mikhail Sharanda (Manrope) y JetBrains (JetBrains Mono).
 
 Si algún día se reemplaza un archivo, cámbiale el nombre (por ejemplo
-fraunces-latin-2.woff2) y actualiza catalogo-publico.css: el .htaccess hace que
+fraunces-latin-2.woff2) y actualiza el @font-face en catalogo-publico.css y en enrisate.css (panel): el .htaccess hace que
 el navegador los guarde un año.
