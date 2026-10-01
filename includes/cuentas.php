@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/formato.php';
+require_once __DIR__ . '/facturas.php';
 require_once __DIR__ . '/pedidos.php';
 require_once __DIR__ . '/clientes.php';
 

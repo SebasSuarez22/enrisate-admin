@@ -211,7 +211,11 @@ factura.php            factura imprimible / PDF
 factura-pdf.php        PDF de verdad de una factura (público, sin sesión, protegido por token)
 composer.json          librerías de PHP del proyecto (hoy: dompdf)
 includes/db.php       conexión PDO a MySQL
-includes/facturas.php catálogo, facturas y numeración (ahora en MySQL)
+includes/facturas.php        operaciones de las facturas: crear, abonar, descuentos, agregar productos, anular, números del panel, enlace del PDF
+includes/facturas_almacen.php leer y guardar facturas en MySQL (lectura consistente, guardado de una factura, candado, número que sigue)
+includes/cuotas.php           cuánto se pagó y cuánto falta de una cuota o factura (funciones puras, sin base de datos)
+includes/catalogo.php         productos: leer, guardar de a uno, caché por petición
+includes/formato.php          escape para HTML (e), teléfono, pesos, fechas en español, enlaces de WhatsApp (sin base de datos ni sesión)
 includes/clientes.php clientas (ahora en MySQL)
 includes/pedidos.php  pedidos del catálogo público (ahora en MySQL)
 datos/catalogo.php    catálogo maestro original (solo semilla de arranque)
