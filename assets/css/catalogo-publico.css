@@ -649,7 +649,9 @@ body.cp-con-carrito .cp-pie {
 }
 .cp-ficha-escena.sin-foto::after { display: none; }
 .cp-ficha-logo { position: absolute; top: 14px; left: 18px; z-index: 2; width: 52px; height: auto; }
-.cp-ficha-imagen { position: absolute; inset: 46px 20px 48px; z-index: 1; }
+/* Sin z-index a propósito: un z-index crearía un grupo aparte y el multiply de la foto ya no
+   se mezclaría con el fondo de la escena (se vería el recuadro blanco de la foto). */
+.cp-ficha-imagen { position: absolute; inset: 46px 20px 48px; }
 .cp-ficha-imagen .cp-foto {
   display: block; width: 100%; height: 100%;
   object-fit: contain; mix-blend-mode: multiply;
