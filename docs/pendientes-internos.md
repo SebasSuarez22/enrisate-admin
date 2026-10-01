@@ -2,6 +2,16 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 1 de octubre, 2026 (catálogo público: el logo de la marca ya no tapa el producto)
+
+Antes `.cp-marca-logo` era una cajita blanca (`rgba(255,255,255,.92)`) puesta con `position:absolute` encima de la foto: tapaba parte del producto en las 16 tarjetas con logo (Etniker, Femme, La Poción). Ahora (opción A elegida por Sebastián tras ver capturas reales):
+- `catalogo-publico.php`: las tarjetas con foto **y** logo llevan la clase `cp-con-logo` (en vez de `:has()`, que no existe en celulares viejos).
+- CSS: `.cp-img-foto.cp-con-logo { padding-bottom: 26px }` reserva una franja; el logo (16 px de alto, sin caja ni fondo) va en `right:10px; bottom:6px` dentro de esa franja, así que nunca toca la foto. Su contenedor tiene ancho definido (48 %) y la imagen `max-width/max-height:100%` + `object-fit:contain`: con un porcentaje cíclico el SVG de La Poción (sin width/height propios) se colapsaba a 12 px de ancho.
+- `.cp-img-foto .cp-foto { filter: brightness(1.015) }`: las fotos de Femme, La Poción y Kaba traen el blanco en 254 (no 255) y sobre la tarjeta blanca se notaba un recuadro gris tenue; con 1,5 % de brillo queda blanco puro. Afecta a todas las fotos de la rejilla (cambio máx. de 12 niveles en píxeles claros, imperceptible). **No** se aplica a la ficha (ahí ya se funde con `multiply`).
+- El producto se ve ~17 % más pequeño solo en las 16 tarjetas con logo (foto de 93 px de alto en 390 px de ancho en lugar de ~112 px); la altura de las tarjetas no cambia.
+- **Verificación:** 14 tamaños (celulares de pie y acostados, tablets, escritorio hasta 2560 px) × 16 tarjetas: el logo nunca toca la foto, mide 56–64 × 16 px, no tiene caja y está dentro del recuadro; posición, ancho y alto de las 184 tarjetas (92 × 2 anchos) idénticos al código anterior; tarjetas sin logo ≤12 niveles de diferencia; 14/14 pruebas PHP, flujo de pedido igual, ficha sin cambios.
+- **Si se agrega un logo muy ancho** (p. ej. Lisso Keratin, 9,7:1) se limita a 48 % del ancho de la tarjeta y se achica de alto; revisar cómo queda cuando esa marca tenga fotos.
+
 ## 1 de octubre, 2026 (auditoría: fuentes propias también en el panel)
 
 El panel (`index.php` login, `includes/cabecera.php` para todas las pantallas internas, `factura.php`) pedía Fraunces, Manrope y JetBrains Mono a Google Fonts (2 preconnect + 1 hoja de estilos que bloquea el pintado). Ahora los `@font-face` están al inicio de `assets/css/enrisate.css` y los archivos en `assets/fonts/` (se añadió `jetbrains-mono-latin.woff2`, 31 KB, la misma que servía Google); se quitaron los 3 `<link>` de Google de los 3 archivos. En el login solo cambió ese `<link>`. Ya no queda ninguna referencia a googleapis/gstatic en el código.
