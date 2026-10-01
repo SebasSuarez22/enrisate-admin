@@ -362,8 +362,14 @@ const productoFondo       = document.getElementById('productoFondo');
 const hojaProducto        = document.getElementById('hojaProducto');
 const cerrarProductoBtn   = document.getElementById('cerrarProducto');
 const hojaProductoTitulo  = document.getElementById('hojaProductoTitulo');
+const productoCuerpo      = document.getElementById('productoCuerpo');
+const productoDetalle     = document.getElementById('productoDetalle');
+const productoEscena      = document.getElementById('productoEscena');
 const productoFoto        = document.getElementById('productoFoto');
+const productoChips       = document.getElementById('productoChips');
 const productoDescripcion = document.getElementById('productoDescripcion');
+const productoMas         = document.getElementById('productoMas');
+const productoPrecio      = document.getElementById('productoPrecio');
 const productoAgregarBtn  = document.getElementById('productoAgregarBtn');
 
 let ultimoFocoProducto = null;
@@ -372,17 +378,103 @@ let ultimoFocoProducto = null;
 let productoActualSku    = null;
 let productoActualNombre = '';
 let productoActualPrecio = 0;
+let productoDescExpandida = false;
+
+/* Degradado al pie del área que se desliza: aparece solo si queda texto por ver.
+   Según el tamaño de pantalla, el que se desliza es el cuerpo entero (celular de pie,
+   panel lateral) o solo el detalle (celular acostado, dos columnas): se revisan los dos. */
+function pistaFicha() {
+  [productoCuerpo, productoDetalle].forEach(el => {
+    el.classList.toggle('mas', el.scrollHeight - el.scrollTop - el.clientHeight > 8);
+  });
+}
+
+/* "Leer más": el botón solo hace falta si el texto recortado de verdad se queda corto.
+   Depende del tamaño de pantalla (en el panel lateral el texto va completo), por eso se
+   vuelve a revisar al girar o cambiar el tamaño de la ventana. */
+function revisarLeerMas() {
+  const recortada = !productoDescExpandida;
+  productoDescripcion.classList.toggle('recortada', recortada);
+  const desborda = productoDescripcion.scrollHeight > productoDescripcion.clientHeight + 2;
+  productoMas.hidden = !(productoDescExpandida || desborda);
+  pistaFicha();
+}
+
+function pintarDescripcion(texto, nombre) {
+  productoDescripcion.replaceChildren();
+  if (!texto) {
+    const caja = document.createElement('div');
+    caja.className = 'cp-ficha-sin';
+    const t = document.createElement('strong');
+    t.textContent = 'Esta descripción está en camino.';
+    const p = document.createElement('span');
+    p.append('¿Quieres saber más de este producto? ');
+    const a = document.createElement('a');
+    a.href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent('Hola, quiero saber más de ' + nombre);
+    a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = 'Pregúntanos por WhatsApp';
+    p.append(a);
+    caja.append(t, p);
+    productoDescripcion.append(caja);
+    return;
+  }
+  // Un párrafo por cada bloque separado por una línea en blanco; los saltos de línea sueltos se respetan.
+  texto.split(/\n\s*\n/).map(x => x.trim()).filter(Boolean).forEach(parrafo => {
+    const p = document.createElement('p');
+    p.textContent = parrafo;
+    productoDescripcion.append(p);
+  });
+}
+
+function pintarFotoFicha(tarjeta) {
+  productoFoto.replaceChildren();
+  const fotoTarjeta = tarjeta.querySelector('.cp-foto');
+  if (fotoTarjeta) {
+    const img = document.createElement('img');
+    img.className = 'cp-foto';
+    img.alt = fotoTarjeta.alt;
+    img.decoding = 'async';
+    img.src = fotoTarjeta.currentSrc || fotoTarjeta.src;
+    productoFoto.append(img);
+    productoEscena.classList.remove('sin-foto');
+  } else {
+    const envoltura = tarjeta.querySelector('.cp-img-wrap');
+    if (envoltura) productoFoto.append(envoltura.cloneNode(true));
+    productoEscena.classList.add('sin-foto');
+  }
+}
+
+function pintarChips(tarjeta) {
+  productoChips.replaceChildren();
+  const marca = tarjeta.dataset.marca;
+  if (marca) {
+    const c = document.createElement('span');
+    c.className = 'cp-ficha-chip cp-ficha-chip--marca';
+    c.textContent = marca;
+    productoChips.append(c);
+  }
+  const categoria = tarjeta.dataset.categoria;
+  if (categoria) {
+    const c = document.createElement('span');
+    c.className = 'cp-ficha-chip';
+    c.style.setProperty('--chip-fondo', tarjeta.dataset.catFondo);
+    c.style.setProperty('--chip-tinta', tarjeta.dataset.catTinta);
+    c.textContent = categoria;
+    productoChips.append(c);
+  }
+}
 
 function abrirProducto(tarjeta) {
-  const imgWrap = tarjeta.querySelector('.cp-img-wrap');
   const descripcion = (tarjeta.dataset.descripcion || '').trim();
 
   hojaProductoTitulo.textContent = tarjeta.dataset.nombre;
-  productoFoto.innerHTML = '';
-  if (imgWrap) productoFoto.appendChild(imgWrap.cloneNode(true));
-
-  productoDescripcion.textContent = descripcion || 'Todavía no tiene descripción.';
-  productoDescripcion.classList.toggle('cp-sin-descripcion', !descripcion);
+  productoPrecio.textContent = cop(+tarjeta.dataset.precio);
+  pintarChips(tarjeta);
+  pintarFotoFicha(tarjeta);
+  pintarDescripcion(descripcion, tarjeta.dataset.nombre);
+  productoDescExpandida = false;
+  productoMas.textContent = 'Leer más';
+  productoMas.setAttribute('aria-expanded', 'false');
 
   productoActualSku    = tarjeta.dataset.sku;
   productoActualNombre = tarjeta.dataset.nombre;
@@ -393,12 +485,29 @@ function abrirProducto(tarjeta) {
   productoFondo.hidden = false;
   hojaProducto.hidden = false;
   document.body.classList.add('cp-bloqueo-scroll');
+  // Con la hoja oculta el navegador no suelta el desplazamiento anterior: se reinicia ya visible.
+  productoCuerpo.scrollTop = 0;
+  productoDetalle.scrollTop = 0;
+  revisarLeerMas();
   requestAnimationFrame(() => {
     productoFondo.classList.add('visible');
     hojaProducto.classList.add('abierta');
   });
-  cerrarProductoBtn.focus();
+  // El foco va a la hoja (sin aro visible), no al botón de cerrar: con el botón enfocado
+  // aparecía un aro grueso alrededor de la X cada vez que se abría una ficha.
+  hojaProducto.focus({ preventScroll: true });
 }
+
+productoMas.addEventListener('click', () => {
+  productoDescExpandida = !productoDescExpandida;
+  productoMas.textContent = productoDescExpandida ? 'Leer menos' : 'Leer más';
+  productoMas.setAttribute('aria-expanded', String(productoDescExpandida));
+  revisarLeerMas();
+});
+productoCuerpo.addEventListener('scroll', pistaFicha, { passive: true });
+productoDetalle.addEventListener('scroll', pistaFicha, { passive: true });
+window.addEventListener('resize', () => { if (!hojaProducto.hidden) revisarLeerMas(); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!hojaProducto.hidden) revisarLeerMas(); });
 
 function cerrarProducto() {
   if (hojaProducto.hidden) return;

@@ -2,6 +2,16 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 1 de octubre, 2026 (catálogo público: nueva ficha de producto, opción B "foto protagonista")
+
+La ficha que se abre al tocar un producto se rehízo (`catalogo-publico.php`, `assets/css/catalogo-publico.css`, `assets/js/catalogo-publico.js`). Sin cambios en base de datos ni en el flujo del pedido.
+- **Estructura:** escena con la foto grande sobre fondo cálido (`--escena`, foto con `mix-blend-mode: multiply` porque son webp con fondo blanco) + hoja blanca con nombre (Fraunces), chips marca/categoría, descripción (16–17 px, interlineado 1,7) y barra fija abajo con precio y botón. Las tarjetas ahora llevan `data-marca`, `data-categoria` (solo categoría real), `data-cat-fondo`, `data-cat-tinta` para pintar chips y la tarjeta "sin foto".
+- **Modos por tamaño:** hoja desde abajo (<720 px de pie), panel lateral (≥720 px: 460 px; ≥1100 px: 520 px) y diálogo de dos columnas en horizontal bajo (`orientation: landscape` y `max-height: 500px`, usa `display: contents` en el cuerpo). "Leer más" solo en hoja y en dos columnas; el panel muestra el texto completo.
+- **Scroll oculto pero funcional** (`scrollbar-width: none`) con degradado (`.mas`) que solo aparece si queda texto por ver (`pistaFicha()`).
+- **Trampas encontradas probando:** (1) con la hoja `hidden` el navegador conserva el scroll anterior → el reinicio se hace después de mostrarla; (2) la regla de dos columnas ponía `display:grid` y anulaba `[hidden]`: la ficha cerrada bloqueaba los toques en celular acostado → regla `[hidden]{display:none}` propia; (3) con precio de 7 cifras en 320 px el precio se montaba sobre el botón → barra en flex con precio `flex:none` y botón `flex:1 1 150px` (máx. 240 px).
+- **Verificación:** matriz Playwright de 34 tamaños (celulares de pie/acostados, tablets, escritorio, ventanas bajas) × 8 productos extremos (descripción de 3 351 caracteres, nombre sin espacios, precio $1.250.000, sin foto, sin descripción) = 340 comprobaciones, 0 problemas: sin desborde horizontal, hoja dentro de pantalla, botón ≥110 px, cerrar ≥44 px, texto sin recortes, último párrafo alcanzable, foto ≥110 px, degradado correcto. Más: abrir/cerrar (X, Escape, tocar fuera), "ya en el pedido", girar con la ficha abierta, 14/14 pruebas PHP y el flujo de pedido igual que antes.
+- **Visto, no tocado:** con letra del sistema al 200 % la página del catálogo (fuera de la ficha) ya ensancha el ancho de diseño por la fila de chips; no es de la ficha.
+
 ## 1 de octubre, 2026 (auditoría · paso 7: limpieza — segunda parte, decisiones de Sebastián)
 
 Sebastián decidió: **borrar** `assets/img/productos/_referencia_no_usar/` (17 fotos de referencia, 9,1 MB) y `_respaldo_original_2026-08-29/` (25 originales, 1 MB), y **la herramienta de teléfonos ya se corrió** (borrada).
