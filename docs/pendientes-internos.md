@@ -2,6 +2,24 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 1 de octubre, 2026 (auditoría · paso 4, parte 3: catálogo guardado por fila)
+
+**Qué cambió en `includes/facturas.php`** (misma lógica de negocio, mismos mensajes):
+- `guardar_producto($p, $esNuevo)`: `INSERT` (falla si el SKU existiera, no pisa) o `UPDATE ... WHERE sku` de UNA fila, con las columnas que existan (`productos_columnas()` respeta que `categoria`/`descripcion` puedan faltar). `guardar_catalogo()` masivo queda solo para sembrar la tabla vacía desde `datos/catalogo.php`.
+- `leer_producto($sku)`: lee una fila directo de la base (no de la caché), con comparación exacta en PHP (la collation confunde `ACC-04`, `acc-04` y `ACC-04 `). Lo usan los que escriben, dentro del candado.
+- `agregar_producto`, `actualizar_precio_costo`, `actualizar_descripcion`, `actualizar_producto`: leen solo ese producto y escriben solo su fila. `eliminar_productos`: borra solo los SKU que coinciden exacto, todos juntos o ninguno (`en_transaccion`).
+- **Caché en memoria:** `catalogo_memoria()` guarda la copia; `catalogo_olvidar()` la marca como vieja después de cada escritura y la próxima lectura vuelve a la base. Antes se reemplazaba a mano con el arreglo armado en PHP (el producto recién agregado quedaba en memoria sin la clave `descripcion` — única diferencia que mostró la prueba, y es una mejora). `catalogo_cache(true)` sigue existiendo.
+- **Siembra:** antes cualquier escritura con la tabla vacía sembraba los 92 productos porque leía todo el catálogo. Ahora los que escriben llaman `catalogo_sembrar_si_vacio()` (un `SELECT 1 ... LIMIT 1`) para conservar ese comportamiento. Ojo, comportamiento heredado sin cambiar: si alguien borra TODOS los productos, la siguiente lectura vuelve a sembrar los 92.
+- Candado `con_bloqueo('catalogo')` igual (misma razón que pedidos/clientas). Comentario de `con_bloqueo()` en `db.php` actualizado: ya solo las facturas reescriben todo.
+- Efecto secundario bueno: `creado_en` de los productos ya no se resetea en cada cambio (antes el DELETE+INSERT ponía la fecha de hoy a todos).
+
+**Prueba diferencial nueva `tests/catalogo_por_fila_test.php`:** mismo guion con la implementación anterior (copiada en la prueba) y la nueva, empezando con la tabla vacía (siembra): agregar (SKU en minúsculas, repetido, inválido, vacío, sin marca, precio negativo, categoría inexistente, con espacios/Ñ/emoji, nombre demasiado largo, categoría deducida), precio/costo (negativos, SKU en minúsculas, con espacio, inexistente), descripción, marca/nombre/categoría (vacíos, categoría inválida o vacía, demasiado largo, inexistente), eliminar (repetidos, vacíos, inexistente, `acc-05`, `ACC-05 `) y lo que ve la misma petición justo después de cada guardado. Resultado: **43 respuestas y el catálogo final (93 productos, todos los campos y el orden) idénticos**, salvo la diferencia de `descripcion` ya explicada. Con la tabla vacía, editar o eliminar siembra igual que antes. Disparadores: cambiar un precio edita 1 fila (antes: 92 borradas y 92 reinsertadas); agregar inserta 1; eliminar dos borra 2.
+- Mutaciones detectadas: no olvidar la caché (la petición vería el precio viejo), leer sin comparación exacta, eliminar sin filtro exacto (habría borrado `ACC-05` al pedir `acc-05`), sin siembra, UPDATE que toca otras filas, precio que no se aplica, eliminar sin contar, error de largo sin capturar.
+- De extremo a extremo con el servidor local: login → Productos → agregar (`e2e-01` queda `E2E-01`, categoría deducida), repetido (mensaje correcto), editar nombre y precio, descripción (recortada), editar `e2e-01` en minúsculas (rechazado), eliminar `E2E-01,ACC-01,acc-02` → "Se eliminó 2 productos" y `ACC-02` intacto; el catálogo público muestra el nombre y la descripción nuevos.
+- 13 pruebas pasan (concurrencia del catálogo incluida).
+
+**Falta del paso 4:** facturas (`guardar_facturas` = DELETE de todas + reinsertar, con cascada en líneas, cuotas y abonos; los ids de cuotas se regeneran). Es la más delicada; hacerla en sesión aparte con Opus.
+
 ## 30 de septiembre, 2026 (auditoría · paso 4, parte 2: clientas guardadas por fila)
 
 **Qué cambió en `includes/clientes.php`** (misma lógica de negocio):
