@@ -196,34 +196,6 @@ function guardar_pedido(array $p, bool $esNuevo): void
     });
 }
 
-/**
- * Reemplaza la lista COMPLETA de pedidos. La app ya no lo usa (guarda de a un pedido
- * con guardar_pedido()); queda para herramientas que reescriben todo a propósito
- * (tools/normalizar_telefonos_existentes.php).
- */
-function guardar_pedidos(array $pedidos): void
-{
-    en_transaccion(function () use ($pedidos): void {
-        $pdo = db();
-        // pedido_lineas NO tiene borrado en cascada: se borran a mano primero.
-        $pdo->exec('DELETE FROM pedido_lineas');
-        $pdo->exec('DELETE FROM pedidos');
-
-        $stPed = $pdo->prepare(
-            'INSERT INTO pedidos
-                (numero, cliente, telefono, subtotal, total, plan, num_cuotas_preferido,
-                 estado, factura_numero, creado, confirmado_el, descartado_el, motivo_descartado)
-             VALUES
-                (:numero, :cliente, :telefono, :subtotal, :total, :plan, :num_cuotas_preferido,
-                 :estado, :factura_numero, :creado, :confirmado_el, :descartado_el, :motivo_descartado)'
-        );
-        foreach ($pedidos as $p) {
-            $stPed->execute(pedido_a_parametros($p));
-            insertar_lineas_pedido($pdo, (string) $p['numero'], $p['lineas'] ?? []);
-        }
-    });
-}
-
 /** Numeración propia (P-2026-0001...), separada de las facturas para no confundirlas. */
 function siguiente_numero_pedido(): string
 {

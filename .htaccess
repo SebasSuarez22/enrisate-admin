@@ -13,6 +13,12 @@ Options -Indexes
 # Archivos y carpetas ocultos: .git, .env, .gitignore, .archify...
 RedirectMatch 404 /\.
 
+# Respaldos y archivos de referencia dentro de las fotos (carpetas que empiezan con _,
+# como _referencia_no_usar). En Railway las fotos viven en un Volume que conserva lo que
+# ya tenía, así que aunque se saquen del proyecto pueden seguir ahí: esto las deja sin
+# servirse. Las fotos de los productos (assets/img/productos/<SKU>.webp) no se tocan.
+RedirectMatch 404 /assets/img/productos/_
+
 # Carpetas internas
 RedirectMatch 404 /(includes|storage|tools|vendor|docs|tests|datos|docker)(/|$)
 

@@ -2,6 +2,16 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 1 de octubre, 2026 (auditoría · paso 7: limpieza — segunda parte, decisiones de Sebastián)
+
+Sebastián decidió: **borrar** `assets/img/productos/_referencia_no_usar/` (17 fotos de referencia, 9,1 MB) y `_respaldo_original_2026-08-29/` (25 originales, 1 MB), y **la herramienta de teléfonos ya se corrió** (borrada).
+- `assets/img/productos/` pasó de 11 MB a 764 KB en el repositorio y en la imagen (esas carpetas entraban por `productos-semilla`).
+- **`tools/normalizar_telefonos_existentes.php` borrada.** Los tres guardados masivos que solo ella usaba (`guardar_clientes`, `guardar_pedidos`, `guardar_facturas`) **no se borraron: se movieron, iguales, a `tests/ayudas_guardado_masivo.php`**, porque las tres pruebas diferenciales (`*_por_fila_test`) las usan como "la implementación anterior" y para sembrar. Los includes quedaron solo con borrados (−67 líneas); el comentario de `leer_facturas_raw` se ajustó. Las 14 pruebas pasan.
+- **El Volume de Railway conserva su copia** de esas dos carpetas (`cp -rn` nunca borra), así que seguían públicas por URL. En vez de borrar datos de producción desde el arranque, se agregó una regla al `.htaccess`: `RedirectMatch 404 /assets/img/productos/_`. Probada con Apache local: `_referencia_no_usar/x.webp` → 404, `ACC-04.webp` → 200, el listado de la carpeta → 403. Las fotos de productos (`<SKU>.webp`) no se tocan. **Si Sebastián quiere borrarlas también del Volume** hay que hacerlo a mano (Railway no da shell por el MCP); mientras tanto no se sirven.
+- Comentarios de `catalogo-publico.php` actualizados (las dos carpetas y los PNG de marcas ya no existen).
+
+**Pendiente del paso 7 y de la auditoría:** poner las fuentes propias también en el panel (`includes/cabecera.php`, `factura.php`, `index.php` siguen con Google Fonts; el login se tocaría solo en ese `<link>`, decidir con Sebastián); paso 8, mantener el grafo al día (`graphify update .`). Fuera de alcance por decisión suya: el login.
+
 ## 1 de octubre, 2026 (auditoría · paso 7: limpieza — primera parte, lo seguro)
 
 **Se borró** (todo sigue en el historial de git; `git show <commit>:ruta` lo recupera):

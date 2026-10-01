@@ -89,8 +89,8 @@ $logosPorMarca = [
 // y aparece aquí de inmediato, sin tocar código.
 //
 // Las ~16 fotos de referencia que hubo antes (no eran fotografía propia
-// del producto) se archivaron en assets/img/productos/_referencia_no_usar/
-// el 2026-09-05, para que no reaparecieran solas al activar esto.
+// del producto) se sacaron del proyecto el 2026-10-01 (siguen en el historial
+// de git), para que no reaparezcan solas ni queden públicas por dirección.
 ?>
 <!DOCTYPE html>
 <html lang="es">
