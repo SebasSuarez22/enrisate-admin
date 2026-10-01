@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/formato.php'; // e()
 /* =========================================================
    Cabecera compartida: <head> + barra superior.
    Antes de incluir este parcial, define:

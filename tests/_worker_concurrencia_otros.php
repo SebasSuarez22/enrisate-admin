@@ -18,6 +18,7 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { exit; }
 require_once __DIR__ . '/../includes/pedidos.php';
 require_once __DIR__ . '/../includes/clientes.php';
+require_once __DIR__ . '/../includes/catalogo.php';
 if (!str_ends_with(DB_NOMBRE, '_test')) { fwrite(STDERR, "solo en bases _test\n"); exit(2); }
 
 [, $rol, $cantidad, $inicio, $dato] = $argv + [4 => ''];

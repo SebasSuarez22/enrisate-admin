@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/includes/facturas.php';
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/formato.php';
+require_once __DIR__ . '/includes/catalogo.php';
+require_once __DIR__ . '/includes/imagenes.php';
 
 requerir_sesion();
 
