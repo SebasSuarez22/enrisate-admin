@@ -56,11 +56,11 @@ function db(): PDO
 /**
  * Ejecuta $fn con el recurso $recurso ("facturas", "clientes", "pedidos",
  * "catalogo") reservado: mientras corre, ninguna otra petición puede escribir
- * ese mismo recurso. Cada uno de esos almacenes se guarda leyendo TODO, cambiando
- * una cosa y reescribiendo TODO, así que si dos peticiones corren a la vez la
- * segunda guarda una copia vieja y borra lo que hizo la primera, sin ningún aviso
- * (abonos, pedidos, clientas o productos perdidos, saldos a favor mal descontados).
- * Esperar turno lo evita.
+ * ese mismo recurso. Toda escritura lee primero (¿ya existe ese SKU?, ¿cuánto saldo
+ * le queda?, ¿qué número de pedido sigue?) y luego escribe; si dos peticiones corren
+ * a la vez, la segunda decide con un dato viejo y pisa lo que hizo la primera, sin
+ * ningún aviso (abonos perdidos, saldos a favor mal descontados, números repetidos).
+ * Las facturas además se guardan reescribiendo TODO. Esperar turno lo evita.
  *
  * Usa el candado de MySQL (GET_LOCK): se libera solo si la petición termina o
  * se cae. Se puede anidar con el mismo recurso (registrar_abono llama a

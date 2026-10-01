@@ -11,9 +11,10 @@ require_once __DIR__ . '/imagenes.php';
    =========================================================
    Toda la lógica de negocio de este archivo es la misma que tenía la
    versión en JSON. Lo único que cambió son las funciones que leen y
-   escriben el almacenamiento (catalogo_cache/guardar_catalogo y
-   leer_facturas_raw/guardar_facturas): antes tocaban storage/*.json,
-   ahora hablan con MySQL a través de includes/db.php.
+   escriben el almacenamiento (catalogo_cache/leer_producto/guardar_producto
+   y leer_facturas_raw/guardar_facturas): antes tocaban storage/*.json,
+   ahora hablan con MySQL a través de includes/db.php. Los productos se
+   guardan de a uno (solo la fila que cambia).
    ========================================================= */
 
 /**
@@ -61,40 +62,89 @@ function productos_tiene_descripcion(): bool
     return $tiene;
 }
 
+/** Columnas de productos que existen en esta base, en el orden en que se leen y escriben. */
+function productos_columnas(): array
+{
+    $columnas = ['sku', 'marca', 'nombre'];
+    if (productos_tiene_categoria()) {
+        $columnas[] = 'categoria';
+    }
+    if (productos_tiene_descripcion()) {
+        $columnas[] = 'descripcion';
+    }
+    array_push($columnas, 'precio', 'costo', 'stock');
+    return $columnas;
+}
+
+/** Una fila de la tabla productos, con la forma que usa el resto de la app. */
+function producto_desde_fila(array $p): array
+{
+    return [
+        'sku'    => (string) $p['sku'],
+        'marca'  => (string) $p['marca'],
+        'nombre' => (string) $p['nombre'],
+        'categoria'   => (string) ($p['categoria'] ?? ''),
+        'descripcion' => (string) ($p['descripcion'] ?? ''),
+        'precio' => (int) $p['precio'],
+        'costo'  => (int) $p['costo'],
+        'stock'  => (int) $p['stock'],
+    ];
+}
+
+/** Los valores de un producto listos para el INSERT o UPDATE, solo de las columnas dadas. */
+function producto_a_parametros(array $p, array $columnas): array
+{
+    $valores = [
+        'sku'         => (string) $p['sku'],
+        'marca'       => (string) $p['marca'],
+        'nombre'      => (string) $p['nombre'],
+        'categoria'   => (string) ($p['categoria'] ?? ''),
+        'descripcion' => (string) ($p['descripcion'] ?? ''),
+        'precio'      => (int) $p['precio'],
+        'costo'       => (int) $p['costo'],
+        'stock'       => (int) ($p['stock'] ?? 0),
+    ];
+    $parametros = [];
+    foreach ($columnas as $c) {
+        $parametros[':' . $c] = $valores[$c];
+    }
+    return $parametros;
+}
+
+/** La caché en memoria del catálogo (null = hay que volver a leerlo de la base). */
+function &catalogo_memoria(): ?array
+{
+    static $cat = null;
+    return $cat;
+}
+
+/** Marca la copia en memoria como vieja: la próxima lectura vuelve a la base. */
+function catalogo_olvidar(): void
+{
+    $cat = &catalogo_memoria();
+    $cat = null;
+}
+
 /**
  * Devuelve una referencia a la caché en memoria del catálogo, para que
- * catalogo() y guardar_catalogo() siempre vean el mismo estado dentro
- * de una misma petición.
+ * todas las lecturas de una misma petición vean el mismo estado sin volver
+ * a consultar la base. Las escrituras la marcan como vieja (catalogo_olvidar).
  */
 function &catalogo_cache(bool $recargar = false): array
 {
-    static $cat = null;
+    $cat = &catalogo_memoria();
 
-    // Dentro de con_bloqueo('catalogo') se pide $recargar = true: la copia que esta
-    // petición ya tenía en memoria puede ser vieja si otra guardó mientras esperaba turno.
     if ($recargar) {
         $cat = null;
     }
 
     if ($cat === null) {
-        $columnaCategoria   = productos_tiene_categoria()   ? 'categoria, '   : '';
-        $columnaDescripcion = productos_tiene_descripcion() ? 'descripcion, ' : '';
         $filas = db()->query(
-            'SELECT sku, marca, nombre, ' . $columnaCategoria . $columnaDescripcion . 'precio, costo, stock
-             FROM productos ORDER BY marca, nombre'
+            'SELECT ' . implode(', ', productos_columnas()) . ' FROM productos ORDER BY marca, nombre'
         )->fetchAll();
 
         if ($filas) {
-            $cat = array_map(static fn(array $p): array => [
-                'sku'    => (string) $p['sku'],
-                'marca'  => (string) $p['marca'],
-                'nombre' => (string) $p['nombre'],
-                'categoria'   => (string) ($p['categoria'] ?? ''),
-                'descripcion' => (string) ($p['descripcion'] ?? ''),
-                'precio' => (int) $p['precio'],
-                'costo'  => (int) $p['costo'],
-                'stock'  => (int) $p['stock'],
-            ], $filas);
+            $cat = array_map('producto_desde_fila', $filas);
         } else {
             // Primera vez (tabla vacía): siembra el catálogo editable desde el archivo base.
             $semilla = require BASE_DIR . '/datos/catalogo.php';
@@ -117,60 +167,80 @@ function catalogo(): array
     return catalogo_cache();
 }
 
-/** Reemplaza el catálogo completo en la base de datos (igual que antes reemplazaba el archivo entero). */
+/**
+ * Reemplaza el catálogo COMPLETO en la base de datos. La app ya no lo usa para
+ * los cambios del día a día (se guarda de a un producto con guardar_producto());
+ * queda solo para sembrar la tabla vacía desde datos/catalogo.php.
+ */
 function guardar_catalogo(array $productos): void
 {
     $productos = array_values($productos);
-    $pdo       = db();
+    $columnas  = productos_columnas();
 
-    $propia = !$pdo->inTransaction(); // dentro de en_transaccion() se une a la de afuera
-    if ($propia) {
-        $pdo->beginTransaction();
-    }
-    try {
-        $conCategoria   = productos_tiene_categoria();
-        $conDescripcion = productos_tiene_descripcion();
-
+    en_transaccion(function () use ($productos, $columnas): void {
+        $pdo = db();
         $pdo->exec('DELETE FROM productos');
-
-        $columnas = ['sku', 'marca', 'nombre'];
-        if ($conCategoria)   $columnas[] = 'categoria';
-        if ($conDescripcion) $columnas[] = 'descripcion';
-        array_push($columnas, 'precio', 'costo', 'stock');
-
         $st = $pdo->prepare(
             'INSERT INTO productos (' . implode(', ', $columnas) . ')
              VALUES (' . implode(', ', array_map(fn($c) => ':' . $c, $columnas)) . ')'
         );
         foreach ($productos as $p) {
-            $fila = [
-                ':sku'    => (string) $p['sku'],
-                ':marca'  => (string) $p['marca'],
-                ':nombre' => (string) $p['nombre'],
-                ':precio' => (int) $p['precio'],
-                ':costo'  => (int) $p['costo'],
-                ':stock'  => (int) ($p['stock'] ?? 0),
-            ];
-            if ($conCategoria) {
-                $fila[':categoria'] = (string) ($p['categoria'] ?? '');
-            }
-            if ($conDescripcion) {
-                $fila[':descripcion'] = (string) ($p['descripcion'] ?? '');
-            }
-            $st->execute($fila);
+            $st->execute(producto_a_parametros($p, $columnas));
         }
-        if ($propia) {
-            $pdo->commit();
-        }
-    } catch (Throwable $e) {
-        if ($propia && $pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        throw $e;
-    }
+    });
 
-    $cache = &catalogo_cache();
+    $cache = &catalogo_memoria();
     $cache = $productos;
+}
+
+/**
+ * Guarda UN producto: si es nuevo lo inserta (y falla si el SKU ya existiera, en
+ * vez de pisar a otro); si ya existe, actualiza solo su fila. Los demás productos
+ * no se tocan.
+ */
+function guardar_producto(array $p, bool $esNuevo): void
+{
+    $columnas = productos_columnas();
+    if ($esNuevo) {
+        $sql = 'INSERT INTO productos (' . implode(', ', $columnas) . ')
+                VALUES (' . implode(', ', array_map(fn($c) => ':' . $c, $columnas)) . ')';
+    } else {
+        $cambios = array_map(fn($c) => $c . ' = :' . $c, array_diff($columnas, ['sku']));
+        $sql = 'UPDATE productos SET ' . implode(', ', $cambios) . ' WHERE sku = :sku';
+    }
+    db()->prepare($sql)->execute(producto_a_parametros($p, $columnas));
+    catalogo_olvidar();
+}
+
+/**
+ * Lee UN producto directo de la base (no de la caché): lo usan las funciones que
+ * escriben, dentro del candado, para partir siempre del dato más reciente.
+ */
+function leer_producto(string $sku): ?array
+{
+    $st = db()->prepare('SELECT ' . implode(', ', productos_columnas()) . ' FROM productos WHERE sku = ?');
+    $st->execute([$sku]);
+    foreach ($st->fetchAll() as $fila) {
+        // MySQL compara sin distinguir mayúsculas ni espacios al final; aquí,
+        // igual que producto_por_sku(), solo vale el SKU exacto.
+        if ((string) $fila['sku'] === $sku) {
+            return producto_desde_fila($fila);
+        }
+    }
+    return null;
+}
+
+/**
+ * La primera vez (tabla vacía) el catálogo se siembra desde datos/catalogo.php al
+ * leerlo. Las funciones que escriben ya no leen el catálogo completo, así que lo
+ * piden aquí: sin esto, agregar un producto a una tabla vacía la dejaría con ese
+ * único producto y la siembra no ocurriría nunca.
+ */
+function catalogo_sembrar_si_vacio(): void
+{
+    if (db()->query('SELECT 1 FROM productos LIMIT 1')->fetchColumn() === false) {
+        catalogo_cache(true);
+    }
 }
 
 function producto_por_sku(string $sku): ?array
@@ -193,7 +263,7 @@ function sku_orden(string $sku): int
 function agregar_producto(string $sku, string $marca, string $nombre, int $precio, int $costo, string $categoria = ''): string
 {
     return con_bloqueo('catalogo', function () use ($sku, $marca, $nombre, $precio, $costo, $categoria) {
-        catalogo_cache(true);
+        catalogo_sembrar_si_vacio();
         $sku    = strtoupper(trim($sku));
         $marca  = trim($marca);
         $nombre = trim($nombre);
@@ -207,7 +277,7 @@ function agregar_producto(string $sku, string $marca, string $nombre, int $preci
         if ($precio < 0 || $costo < 0) {
             return 'Precio y costo no pueden ser negativos.';
         }
-        if (producto_por_sku($sku)) {
+        if (leer_producto($sku)) {
             return 'Ya existe un producto con el SKU ' . $sku . '.';
         }
         $categoria = trim($categoria);
@@ -218,8 +288,7 @@ function agregar_producto(string $sku, string $marca, string $nombre, int $preci
             $categoria = categoria_deducida($nombre);
         }
 
-        $productos   = catalogo();
-        $productos[] = [
+        $nuevo = [
             'sku'       => $sku,
             'marca'     => $marca,
             'nombre'    => $nombre,
@@ -229,13 +298,12 @@ function agregar_producto(string $sku, string $marca, string $nombre, int $preci
             'stock'     => 0,
         ];
         // El SKU, la marca y el nombre no tienen límite de largo validado
-        // arriba (el esquema real vive fuera del repo, en storage/esquema.sql,
-        // que no se versiona). Si algo llega más largo de lo que la columna
-        // acepta, MySQL rechaza el INSERT con una excepción — sin este catch
-        // eso tumbaba la página entera con la traza de PHP a la vista, en vez
-        // de un aviso normal.
+        // arriba. Si algo llega más largo de lo que la columna acepta (o el
+        // SKU choca con otro que MySQL considera igual, p. ej. con otra
+        // mayúscula), MySQL rechaza el INSERT con una excepción — sin este
+        // catch eso tumbaba la página entera, en vez de un aviso normal.
         try {
-            guardar_catalogo($productos);
+            guardar_producto($nuevo, true);
         } catch (PDOException $e) {
             return 'No se pudo guardar: revisa que el SKU, la marca y el nombre no sean demasiado largos.';
         }
@@ -248,22 +316,15 @@ function agregar_producto(string $sku, string $marca, string $nombre, int $preci
 function actualizar_precio_costo(string $sku, int $precio, int $costo): bool
 {
     return con_bloqueo('catalogo', function () use ($sku, $precio, $costo) {
-        catalogo_cache(true);
-        $productos = catalogo();
-        $hallado   = false;
-        foreach ($productos as &$p) {
-            if ($p['sku'] === $sku) {
-                $p['precio'] = max(0, $precio);
-                $p['costo']  = max(0, $costo);
-                $hallado     = true;
-                break;
-            }
+        catalogo_sembrar_si_vacio();
+        $p = leer_producto($sku);
+        if ($p === null) {
+            return false;
         }
-        unset($p);
-        if ($hallado) {
-            guardar_catalogo($productos);
-        }
-        return $hallado;
+        $p['precio'] = max(0, $precio);
+        $p['costo']  = max(0, $costo);
+        guardar_producto($p, false);
+        return true;
     });
 }
 
@@ -271,23 +332,14 @@ function actualizar_precio_costo(string $sku, int $precio, int $costo): bool
 function actualizar_descripcion(string $sku, string $descripcion): bool
 {
     return con_bloqueo('catalogo', function () use ($sku, $descripcion) {
-        catalogo_cache(true);
-        $descripcion = trim($descripcion);
-
-        $productos = catalogo();
-        $hallado   = false;
-        foreach ($productos as &$p) {
-            if ($p['sku'] === $sku) {
-                $p['descripcion'] = $descripcion;
-                $hallado          = true;
-                break;
-            }
+        catalogo_sembrar_si_vacio();
+        $p = leer_producto($sku);
+        if ($p === null) {
+            return false;
         }
-        unset($p);
-        if ($hallado) {
-            guardar_catalogo($productos);
-        }
-        return $hallado;
+        $p['descripcion'] = trim($descripcion);
+        guardar_producto($p, false);
+        return true;
     });
 }
 
@@ -295,7 +347,7 @@ function actualizar_descripcion(string $sku, string $descripcion): bool
 function actualizar_producto(string $sku, string $marca, string $nombre, ?string $categoria = null): bool
 {
     return con_bloqueo('catalogo', function () use ($sku, $marca, $nombre, $categoria) {
-        catalogo_cache(true);
+        catalogo_sembrar_si_vacio();
         $marca  = trim($marca);
         $nombre = trim($nombre);
         if ($marca === '' || $nombre === '') {
@@ -308,34 +360,27 @@ function actualizar_producto(string $sku, string $marca, string $nombre, ?string
             }
         }
 
-        $productos = catalogo();
-        $hallado   = false;
-        foreach ($productos as &$p) {
-            if ($p['sku'] === $sku) {
-                $p['marca']  = $marca;
-                $p['nombre'] = $nombre;
-                if ($categoria !== null) {
-                    $p['categoria'] = $categoria;
-                }
-                $hallado     = true;
-                break;
-            }
+        $p = leer_producto($sku);
+        if ($p === null) {
+            return false;
         }
-        unset($p);
-        if ($hallado) {
-            // Mismo caso que en agregar_producto(): un nombre o marca más
-            // largo de lo que la columna acepta tumbaba la página con la
-            // traza de PHP en vez de un aviso. Al editar no hay un mensaje
-            // específico que devolver (la función solo entrega bool), así
-            // que se trata igual que "no se pudo": el llamador ya muestra un
-            // aviso genérico para ese caso.
-            try {
-                guardar_catalogo($productos);
-            } catch (PDOException $e) {
-                return false;
-            }
+        $p['marca']  = $marca;
+        $p['nombre'] = $nombre;
+        if ($categoria !== null) {
+            $p['categoria'] = $categoria;
         }
-        return $hallado;
+        // Mismo caso que en agregar_producto(): un nombre o marca más
+        // largo de lo que la columna acepta tumbaba la página con la
+        // traza de PHP en vez de un aviso. Al editar no hay un mensaje
+        // específico que devolver (la función solo entrega bool), así
+        // que se trata igual que "no se pudo": el llamador ya muestra un
+        // aviso genérico para ese caso.
+        try {
+            guardar_producto($p, false);
+        } catch (PDOException $e) {
+            return false;
+        }
+        return true;
     });
 }
 
@@ -343,17 +388,28 @@ function actualizar_producto(string $sku, string $marca, string $nombre, ?string
 function eliminar_productos(array $skus): int
 {
     return con_bloqueo('catalogo', function () use ($skus) {
-        catalogo_cache(true);
+        catalogo_sembrar_si_vacio();
         $skus = array_values(array_unique(array_filter($skus, fn($sku) => $sku !== '')));
         if (!$skus) {
             return 0;
         }
 
-        $productos = catalogo();
-        $filtrados = array_values(array_filter($productos, fn($p) => !in_array($p['sku'], $skus, true)));
-        $borrados  = count($productos) - count($filtrados);
+        // Solo se borran los SKU que coinciden exacto (leer_producto); MySQL solo
+        // con "WHERE sku = ?" borraría también "mil-03" o "MIL-03 " al pedir "MIL-03".
+        $borrados = en_transaccion(function () use ($skus): int {
+            $st       = db()->prepare('DELETE FROM productos WHERE sku = ?');
+            $borrados = 0;
+            foreach ($skus as $sku) {
+                $p = is_string($sku) ? leer_producto($sku) : null;
+                if ($p !== null) {
+                    $st->execute([$p['sku']]);
+                    $borrados++;
+                }
+            }
+            return $borrados;
+        });
         if ($borrados > 0) {
-            guardar_catalogo($filtrados);
+            catalogo_olvidar();
         }
         return $borrados;
     });
