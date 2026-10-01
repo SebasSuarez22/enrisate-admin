@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/ayudas_guardado_masivo.php';
 
 /* Facturas: guardar por fila da EXACTAMENTE lo mismo que reescribir todo.
 

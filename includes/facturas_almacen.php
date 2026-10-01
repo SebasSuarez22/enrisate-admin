@@ -17,7 +17,7 @@ require_once __DIR__ . '/cuotas.php';
 /**
  * Lee las facturas tal cual están guardadas, SIN migrar el formato viejo.
  * Las funciones que escriben usan leer_factura_raw() (solo la factura que tocan);
- * esta queda para herramientas que reescriben todo (guardar_facturas).
+ * esta trae todas y la usan leer_facturas() y las pruebas.
  */
 function leer_facturas_raw(): array
 {
@@ -300,25 +300,6 @@ function guardar_factura(array $factura, bool $esNueva): void
             }
         }
         insertar_detalle_factura($pdo, $factura);
-    });
-}
-
-/**
- * Reemplaza TODAS las facturas en la base de datos. La app ya no lo usa (guarda de a
- * una con guardar_factura()); queda para herramientas que reescriben todo a propósito
- * (tools/normalizar_telefonos_existentes.php).
- */
-function guardar_facturas(array $f): void
-{
-    en_transaccion(function () use ($f): void {
-        $pdo = db();
-        // Los ON DELETE CASCADE de factura_lineas/factura_cuotas/factura_abonos
-        // se encargan de limpiar lo dependiente.
-        $pdo->exec('DELETE FROM facturas');
-        foreach ($f as $factura) {
-            insertar_fila_factura($pdo, $factura);
-            insertar_detalle_factura($pdo, $factura);
-        }
     });
 }
 

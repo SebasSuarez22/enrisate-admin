@@ -56,26 +56,6 @@ function guardar_cliente(array $c, bool $esNueva): void
     db()->prepare($sql)->execute(cliente_a_parametros($c));
 }
 
-/**
- * Reemplaza la lista COMPLETA de clientas. La app ya no lo usa (guarda de a una
- * con guardar_cliente()); queda para herramientas que reescriben todo a propósito
- * (tools/normalizar_telefonos_existentes.php).
- */
-function guardar_clientes(array $clientes): void
-{
-    en_transaccion(function () use ($clientes): void {
-        $pdo = db();
-        $pdo->exec('DELETE FROM clientes');
-        $st = $pdo->prepare(
-            'INSERT INTO clientes (id, nombre, telefono, notas, saldo_favor, creado)
-             VALUES (:id, :nombre, :telefono, :notas, :saldo_favor, :creado)'
-        );
-        foreach ($clientes as $c) {
-            $st->execute(cliente_a_parametros($c));
-        }
-    });
-}
-
 /** Agrega una clienta nueva a la lista. Devuelve '' si quedó bien, o un mensaje de error. */
 function agregar_cliente(string $nombre, string $telefono, string $notas): string
 {
