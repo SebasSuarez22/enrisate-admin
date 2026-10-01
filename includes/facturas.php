@@ -417,9 +417,8 @@ function eliminar_productos(array $skus): int
 
 /**
  * Lee las facturas tal cual están guardadas, SIN migrar el formato viejo.
- * Uso interno de las funciones que escriben (crear_factura, actualizar_factura),
- * para que nunca se reescriba con datos migrados el registro de una factura
- * que no se está tocando.
+ * Las funciones que escriben usan leer_factura_raw() (solo la factura que tocan);
+ * esta queda para herramientas que reescriben todo (guardar_facturas).
  */
 function leer_facturas_raw(): array
 {
@@ -561,10 +560,11 @@ function leer_facturas(): array
 
 /**
  * Ejecuta $fn con las facturas "reservadas": mientras corre, ninguna otra
- * petición puede escribir facturas. Cada escritura lee TODAS las facturas,
- * cambia una y las guarda TODAS (guardar_facturas), así que si dos corren a la
- * vez la segunda guardaría una copia vieja y borraría lo que hizo la primera
- * (abonos y facturas nuevas perdidas sin ningún aviso). Esperar turno lo evita.
+ * petición puede escribir facturas. Cada escritura lee la factura, decide con
+ * ella (¿cuánto falta de esta cuota?, ¿qué número sigue?) y la guarda con
+ * guardar_factura(); si dos corren a la vez, la segunda decidiría con una copia
+ * vieja y borraría lo que hizo la primera (un abono perdido, dos facturas con el
+ * mismo número). Esperar turno lo evita.
  *
  * Usa el candado de MySQL (GET_LOCK): se libera solo si la petición termina o
  * se cae. Se puede anidar (registrar_abono llama a actualizar_factura), y solo
@@ -579,120 +579,157 @@ function con_bloqueo_facturas(callable $fn): mixed
     return con_bloqueo('facturas', $fn);
 }
 
-/** Reemplaza todas las facturas en la base de datos (igual que antes reemplazaba el archivo entero). */
+/** Los valores de la fila de facturas, listos para el INSERT o el UPDATE. */
+function factura_a_parametros(array $factura): array
+{
+    return [
+        ':numero'           => (string) $factura['numero'],
+        ':cliente'          => (string) ($factura['cliente'] ?? ''),
+        ':telefono'         => (string) ($factura['telefono'] ?? ''),
+        ':nota'             => (string) ($factura['nota'] ?? ''),
+        ':subtotal'         => (int) ($factura['subtotal'] ?? 0),
+        ':descuento'        => (int) ($factura['descuento'] ?? 0),
+        ':total'            => (int) ($factura['total'] ?? 0),
+        ':costo'            => (int) ($factura['costo'] ?? 0),
+        ':margen'           => (int) ($factura['margen'] ?? 0),
+        ':plan'             => ($factura['plan'] ?? 'contado') === 'cuotas' ? 'cuotas' : 'contado',
+        ':abono'            => (int) ($factura['abono'] ?? 0),
+        ':saldo_aplicado'   => (int) ($factura['saldo_aplicado'] ?? 0),
+        ':pagado'           => (int) ($factura['pagado'] ?? 0),
+        ':fecha_pago'       => !empty($factura['fecha_pago']) ? substr((string) $factura['fecha_pago'], 0, 10) : null,
+        ':creada'           => (string) ($factura['creada'] ?? date('c')),
+        ':anulada'          => !empty($factura['anulada']) ? 1 : 0,
+        ':anulada_el'       => $factura['anulada_el'] ?? null,
+        ':motivo_anulacion' => (string) ($factura['motivo_anulacion'] ?? ''),
+    ];
+}
+
+/** Inserta la fila de UNA factura (falla si el número ya existe, en vez de pisar a otra). */
+function insertar_fila_factura(PDO $pdo, array $factura): void
+{
+    $pdo->prepare(
+        'INSERT INTO facturas
+            (numero, cliente, telefono, nota, subtotal, descuento, total, costo, margen,
+             plan, abono, saldo_aplicado, pagado, fecha_pago, creada,
+             anulada, anulada_el, motivo_anulacion)
+         VALUES
+            (:numero, :cliente, :telefono, :nota, :subtotal, :descuento, :total, :costo, :margen,
+             :plan, :abono, :saldo_aplicado, :pagado, :fecha_pago, :creada,
+             :anulada, :anulada_el, :motivo_anulacion)'
+    )->execute(factura_a_parametros($factura));
+}
+
+/**
+ * Inserta las líneas, cuotas y abonos de UNA factura. Quien llama se asegura de
+ * que no tenga ninguno guardado todavía (factura nueva, o los acaba de borrar).
+ */
+function insertar_detalle_factura(PDO $pdo, array $factura): void
+{
+    $numero  = (string) $factura['numero'];
+    $stLinea = $pdo->prepare(
+        'INSERT INTO factura_lineas (factura_numero, orden, sku, nombre, marca, precio, costo, cant)
+         VALUES (:factura_numero, :orden, :sku, :nombre, :marca, :precio, :costo, :cant)'
+    );
+    $stCuota = $pdo->prepare(
+        'INSERT INTO factura_cuotas (factura_numero, orden, monto, vence)
+         VALUES (:factura_numero, :orden, :monto, :vence)'
+    );
+    $stAbono = $pdo->prepare(
+        'INSERT INTO factura_abonos (cuota_id, orden, monto, fecha, tipo, motivo)
+         VALUES (:cuota_id, :orden, :monto, :fecha, :tipo, :motivo)'
+    );
+
+    foreach (($factura['lineas'] ?? []) as $i => $l) {
+        $stLinea->execute([
+            ':factura_numero' => $numero,
+            ':orden'          => $i,
+            ':sku'            => (string) ($l['sku'] ?? ''),
+            ':nombre'         => (string) ($l['nombre'] ?? ''),
+            ':marca'          => (string) ($l['marca'] ?? ''),
+            ':precio'         => (int) ($l['precio'] ?? 0),
+            ':costo'          => (int) ($l['costo'] ?? 0),
+            ':cant'           => (int) ($l['cant'] ?? 1),
+        ]);
+    }
+
+    foreach (($factura['cuotas'] ?? []) as $i => $c) {
+        $stCuota->execute([
+            ':factura_numero' => $numero,
+            ':orden'          => $i,
+            ':monto'          => (int) ($c['monto'] ?? 0),
+            ':vence'          => substr((string) ($c['vence'] ?? date('Y-m-d')), 0, 10),
+        ]);
+        $cuotaId = (int) $pdo->lastInsertId();
+
+        foreach (($c['abonos'] ?? []) as $j => $a) {
+            $stAbono->execute([
+                ':cuota_id' => $cuotaId,
+                ':orden'    => $j,
+                ':monto'    => (int) ($a['monto'] ?? 0),
+                ':fecha'    => (string) ($a['fecha'] ?? date('c')),
+                ':tipo'     => ($a['tipo'] ?? 'abono') === 'descuento' ? 'descuento' : 'abono',
+                ':motivo'   => (string) ($a['motivo'] ?? ''),
+            ]);
+        }
+    }
+}
+
+/**
+ * Guarda UNA factura con sus líneas, cuotas y abonos, todo o nada. Si es nueva la
+ * inserta (y falla si el número ya existiera); si ya existe, actualiza su fila y
+ * reescribe solo SU detalle (sus cuotas se borran y sus abonos caen con ellas por
+ * ON DELETE CASCADE). Las demás facturas no se tocan.
+ */
+function guardar_factura(array $factura, bool $esNueva): void
+{
+    en_transaccion(function () use ($factura, $esNueva): void {
+        $pdo = db();
+        if ($esNueva) {
+            insertar_fila_factura($pdo, $factura);
+        } else {
+            $pdo->prepare(
+                'UPDATE facturas SET
+                    cliente = :cliente, telefono = :telefono, nota = :nota, subtotal = :subtotal,
+                    descuento = :descuento, total = :total, costo = :costo, margen = :margen,
+                    plan = :plan, abono = :abono, saldo_aplicado = :saldo_aplicado, pagado = :pagado,
+                    fecha_pago = :fecha_pago, creada = :creada, anulada = :anulada,
+                    anulada_el = :anulada_el, motivo_anulacion = :motivo_anulacion
+                 WHERE numero = :numero'
+            )->execute(factura_a_parametros($factura));
+            foreach (['factura_lineas', 'factura_cuotas'] as $tabla) {
+                $pdo->prepare("DELETE FROM $tabla WHERE factura_numero = ?")->execute([(string) $factura['numero']]);
+            }
+        }
+        insertar_detalle_factura($pdo, $factura);
+    });
+}
+
+/**
+ * Reemplaza TODAS las facturas en la base de datos. La app ya no lo usa (guarda de a
+ * una con guardar_factura()); queda para herramientas que reescriben todo a propósito
+ * (tools/normalizar_telefonos_existentes.php).
+ */
 function guardar_facturas(array $f): void
 {
-    $pdo = db();
-
-    $propia = !$pdo->inTransaction(); // dentro de en_transaccion() se une a la de afuera
-    if ($propia) {
-        $pdo->beginTransaction();
-    }
-    try {
-        // Igual que antes con el archivo completo: se reconstruye todo desde cero
-        // a partir del array en memoria. Los ON DELETE CASCADE de factura_lineas/
-        // factura_cuotas/factura_abonos se encargan de limpiar lo dependiente.
+    en_transaccion(function () use ($f): void {
+        $pdo = db();
+        // Los ON DELETE CASCADE de factura_lineas/factura_cuotas/factura_abonos
+        // se encargan de limpiar lo dependiente.
         $pdo->exec('DELETE FROM facturas');
-
-        $stFac = $pdo->prepare(
-            'INSERT INTO facturas
-                (numero, cliente, telefono, nota, subtotal, descuento, total, costo, margen,
-                 plan, abono, saldo_aplicado, pagado, fecha_pago, creada,
-                 anulada, anulada_el, motivo_anulacion)
-             VALUES
-                (:numero, :cliente, :telefono, :nota, :subtotal, :descuento, :total, :costo, :margen,
-                 :plan, :abono, :saldo_aplicado, :pagado, :fecha_pago, :creada,
-                 :anulada, :anulada_el, :motivo_anulacion)'
-        );
-        $stLinea = $pdo->prepare(
-            'INSERT INTO factura_lineas (factura_numero, orden, sku, nombre, marca, precio, costo, cant)
-             VALUES (:factura_numero, :orden, :sku, :nombre, :marca, :precio, :costo, :cant)'
-        );
-        $stCuota = $pdo->prepare(
-            'INSERT INTO factura_cuotas (factura_numero, orden, monto, vence)
-             VALUES (:factura_numero, :orden, :monto, :vence)'
-        );
-        $stAbono = $pdo->prepare(
-            'INSERT INTO factura_abonos (cuota_id, orden, monto, fecha, tipo, motivo)
-             VALUES (:cuota_id, :orden, :monto, :fecha, :tipo, :motivo)'
-        );
-
         foreach ($f as $factura) {
-            $numero = (string) $factura['numero'];
-
-            $stFac->execute([
-                ':numero'           => $numero,
-                ':cliente'          => (string) ($factura['cliente'] ?? ''),
-                ':telefono'         => (string) ($factura['telefono'] ?? ''),
-                ':nota'             => (string) ($factura['nota'] ?? ''),
-                ':subtotal'         => (int) ($factura['subtotal'] ?? 0),
-                ':descuento'        => (int) ($factura['descuento'] ?? 0),
-                ':total'            => (int) ($factura['total'] ?? 0),
-                ':costo'            => (int) ($factura['costo'] ?? 0),
-                ':margen'           => (int) ($factura['margen'] ?? 0),
-                ':plan'             => ($factura['plan'] ?? 'contado') === 'cuotas' ? 'cuotas' : 'contado',
-                ':abono'            => (int) ($factura['abono'] ?? 0),
-                ':saldo_aplicado'   => (int) ($factura['saldo_aplicado'] ?? 0),
-                ':pagado'           => (int) ($factura['pagado'] ?? 0),
-                ':fecha_pago'       => !empty($factura['fecha_pago']) ? substr((string) $factura['fecha_pago'], 0, 10) : null,
-                ':creada'           => (string) ($factura['creada'] ?? date('c')),
-                ':anulada'          => !empty($factura['anulada']) ? 1 : 0,
-                ':anulada_el'       => $factura['anulada_el'] ?? null,
-                ':motivo_anulacion' => (string) ($factura['motivo_anulacion'] ?? ''),
-            ]);
-
-            foreach (($factura['lineas'] ?? []) as $i => $l) {
-                $stLinea->execute([
-                    ':factura_numero' => $numero,
-                    ':orden'          => $i,
-                    ':sku'            => (string) ($l['sku'] ?? ''),
-                    ':nombre'         => (string) ($l['nombre'] ?? ''),
-                    ':marca'          => (string) ($l['marca'] ?? ''),
-                    ':precio'         => (int) ($l['precio'] ?? 0),
-                    ':costo'          => (int) ($l['costo'] ?? 0),
-                    ':cant'           => (int) ($l['cant'] ?? 1),
-                ]);
-            }
-
-            foreach (($factura['cuotas'] ?? []) as $i => $c) {
-                $stCuota->execute([
-                    ':factura_numero' => $numero,
-                    ':orden'          => $i,
-                    ':monto'          => (int) ($c['monto'] ?? 0),
-                    ':vence'          => substr((string) ($c['vence'] ?? date('Y-m-d')), 0, 10),
-                ]);
-                $cuotaId = (int) $pdo->lastInsertId();
-
-                foreach (($c['abonos'] ?? []) as $j => $a) {
-                    $stAbono->execute([
-                        ':cuota_id' => $cuotaId,
-                        ':orden'    => $j,
-                        ':monto'    => (int) ($a['monto'] ?? 0),
-                        ':fecha'    => (string) ($a['fecha'] ?? date('c')),
-                        ':tipo'     => ($a['tipo'] ?? 'abono') === 'descuento' ? 'descuento' : 'abono',
-                        ':motivo'   => (string) ($a['motivo'] ?? ''),
-                    ]);
-                }
-            }
+            insertar_fila_factura($pdo, $factura);
+            insertar_detalle_factura($pdo, $factura);
         }
-
-        if ($propia) {
-            $pdo->commit();
-        }
-    } catch (Throwable $e) {
-        if ($propia && $pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        throw $e;
-    }
+    });
 }
 
 function siguiente_numero(): string
 {
-    $f   = leer_facturas();
+    // Solo los números, no las facturas completas con sus líneas, cuotas y abonos.
+    // La regla es la de siempre: los 4 últimos caracteres, leídos por PHP.
     $max = 0;
-    foreach ($f as $fac) {
-        $n = (int) substr((string) $fac['numero'], -4);
+    foreach (db()->query('SELECT numero FROM facturas')->fetchAll(PDO::FETCH_COLUMN) as $numero) {
+        $n = (int) substr((string) $numero, -4);
         if ($n > $max) {
             $max = $n;
         }
@@ -789,14 +826,12 @@ function normalizar_cuotas_factura(array $f): array
 function crear_factura(array $datos): string
 {
     return con_bloqueo_facturas(function () use ($datos) {
-        $facturas = leer_facturas_raw();
-        $numero   = siguiente_numero();
+        $numero = siguiente_numero();
 
         $datos['numero'] = $numero;
         $datos['creada'] = date('c');
 
-        $facturas[] = $datos;
-        guardar_facturas($facturas);
+        guardar_factura($datos, true);
 
         return $numero;
     });
@@ -806,20 +841,17 @@ function crear_factura(array $datos): string
 function actualizar_factura(string $numero, array $cambios): bool
 {
     return con_bloqueo_facturas(function () use ($numero, $cambios) {
-        $facturas = leer_facturas_raw();
-        $hallada  = false;
-        foreach ($facturas as &$f) {
-            if ($f['numero'] === $numero) {
-                $f       = array_merge($f, $cambios);
-                $hallada = true;
-                break;
-            }
+        // Solo esta factura, tal cual está guardada (sin migrar), con el número exacto.
+        $f = leer_factura_raw($numero);
+        if ($f === null) {
+            return false;
         }
-        unset($f);
-        if ($hallada) {
-            guardar_facturas($facturas);
-        }
-        return $hallada;
+        $f = array_merge($f, $cambios);
+        // La fila a actualizar es la de $numero: un cambio no puede renombrar la
+        // factura (ningún llamador lo intenta).
+        $f['numero'] = $numero;
+        guardar_factura($f, false);
+        return true;
     });
 }
 

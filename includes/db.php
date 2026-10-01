@@ -60,7 +60,7 @@ function db(): PDO
  * le queda?, ¿qué número de pedido sigue?) y luego escribe; si dos peticiones corren
  * a la vez, la segunda decide con un dato viejo y pisa lo que hizo la primera, sin
  * ningún aviso (abonos perdidos, saldos a favor mal descontados, números repetidos).
- * Las facturas además se guardan reescribiendo TODO. Esperar turno lo evita.
+ * Esperar turno lo evita.
  *
  * Usa el candado de MySQL (GET_LOCK): se libera solo si la petición termina o
  * se cae. Se puede anidar con el mismo recurso (registrar_abono llama a

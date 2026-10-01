@@ -2,6 +2,24 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 1 de octubre, 2026 (auditoría · paso 4, parte 4: facturas guardadas por fila — paso 4 terminado)
+
+**Qué cambió en `includes/facturas.php`** (misma lógica de negocio, mismos mensajes):
+- `guardar_factura($f, $esNueva)`: todo o nada (`en_transaccion`). Nueva → `INSERT` de la fila (falla si el número existiera, no pisa) + sus líneas, cuotas y abonos. Existente → `UPDATE ... WHERE numero` de su fila, borra SOLO sus líneas y sus cuotas (los abonos caen por la cascada de `factura_cuotas`) y las reinserta. Las demás facturas no se tocan: sus ids de líneas/cuotas/abonos ya no cambian en cada abono.
+- `crear_factura()` ya no carga todas las facturas; `siguiente_numero()` lee solo la columna `numero` y aplica la misma regla en PHP (`(int) substr(-4)`), a propósito no en SQL: `CAST` de MySQL no lee igual que PHP algunos textos raros.
+- `actualizar_factura()` lee solo esa factura (`leer_factura_raw`, número exacto) y la guarda. Fija `numero` después del `array_merge`: un cambio no puede renombrar la factura (ningún llamador lo hace; antes la habría renombrado).
+- Piezas compartidas: `factura_a_parametros()`, `insertar_fila_factura()`, `insertar_detalle_factura()`. `guardar_facturas()` masivo queda solo para `tools/normalizar_telefonos_existentes.php`.
+- Candado `con_bloqueo('facturas')` igual (abonos, numeración y facturar dependen de él). Comentarios de `con_bloqueo()`/`con_bloqueo_facturas()` actualizados: ya ningún almacén reescribe todo.
+
+**Pruebas:**
+- Nueva `tests/facturas_por_fila_test.php`: diferencial con la implementación anterior copiada en la prueba. Guion con importadas de números raros (`RARO`, `P-0099`, `2025-0042`, `2024-1234`), contado con emoji/descuento/saldo, cuotas con abono inicial y vence con hora, factura casi vacía, abono, descuento con motivo, contado→cuotas agregando productos, anular/reactivar, número inexistente / `raro` / `RARO ` / vacío, vaciar líneas y cuotas. **22 respuestas (incluido el siguiente número en cada paso) y todas las facturas campo por campo idénticas, sin ninguna diferencia** (foto a mitad con 5 abonos y foto final). Además: un abono edita 1 fila de `facturas` (antes: todas borradas y reinsertadas) y no cambia ningún id de las filas ajenas; lo mismo descuento, agregar productos, anular y reactivar; crear inserta 1; número repetido falla sin pisar; **falla simulada a mitad de guardar un abono → la factura queda intacta** (no pierde líneas ni cuotas); un `numero` en los cambios no renombra.
+- Diferencial de la app completa contra el código de `master` (no queda en el repo): mismo guion con `registrar_abono` (válido, excesivo, cuota inexistente, 0, contado, importada, `raro`), `aplicar_descuento_cuota` (con/sin motivo, excesivo), `agregar_lineas_factura` (contado→cuotas, cant 150, SKU inexistente), anular dos veces, abono a anulada, reactivar dos veces, inexistente → respuestas, facturas, `metricas_panel()` y `factura_totalmente_pagada` **idénticos** (257 líneas de JSON).
+- Mutaciones detectadas (8): no borrar el detalle viejo, borrar el detalle de todas, sin transacción, sin comparación exacta, numeración distinta (solo se notó con un consecutivo ≥ 1000: por eso se agregó `2024-1234`), UPDATE que pisa otras, renombrar, crear que actualiza si existe.
+- 14 pruebas pasan; `concurrencia_test` (50 abonos simultáneos, 24 facturas simultáneas) y `cuentas_test` (facturar todo o nada) repetidas 3 veces.
+- De extremo a extremo con el servidor local: facturar contado y a cuotas (con abono inicial y cuotas a mano), abono en Cartera, abono excesivo (mensaje correcto), descuento con motivo, agregar producto desde la factura (contado→cuotas), anular, reactivar, anular inexistente (mensaje), y el PDF del enlace de WhatsApp: abre y muestra "Abonado $35.000 · Pendiente $35.000".
+
+**Paso 4 terminado.** Siguen en la auditoría: paso 6 (catálogo público más rápido), paso 5 (dividir `includes/facturas.php`), paso 7 (limpieza de herramientas viejas; decidir `_referencia_no_usar/`).
+
 ## 1 de octubre, 2026 (auditoría · paso 4, parte 3: catálogo guardado por fila)
 
 **Qué cambió en `includes/facturas.php`** (misma lógica de negocio, mismos mensajes):
@@ -18,7 +36,7 @@ _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad
 - De extremo a extremo con el servidor local: login → Productos → agregar (`e2e-01` queda `E2E-01`, categoría deducida), repetido (mensaje correcto), editar nombre y precio, descripción (recortada), editar `e2e-01` en minúsculas (rechazado), eliminar `E2E-01,ACC-01,acc-02` → "Se eliminó 2 productos" y `ACC-02` intacto; el catálogo público muestra el nombre y la descripción nuevos.
 - 13 pruebas pasan (concurrencia del catálogo incluida).
 
-**Falta del paso 4:** facturas (`guardar_facturas` = DELETE de todas + reinsertar, con cascada en líneas, cuotas y abonos; los ids de cuotas se regeneran). Es la más delicada; hacerla en sesión aparte con Opus.
+**Falta del paso 4:** facturas — hecho, ver la entrada de arriba.
 
 ## 30 de septiembre, 2026 (auditoría · paso 4, parte 2: clientas guardadas por fila)
 
