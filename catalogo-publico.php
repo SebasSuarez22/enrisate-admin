@@ -107,10 +107,6 @@ $logosPorMarca = [
 <meta name="theme-color" content="#6B4013">
 
 <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml">
-<!-- Fuentes propias (assets/fonts): se precargan para que el texto salga ya con su
-     letra, sin esperar a que el CSS las descubra. -->
-<link rel="preload" href="assets/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="assets/fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/catalogo-publico.css?v=<?= filemtime(__DIR__ . '/assets/css/catalogo-publico.css') ?>">
 </head>
 <body>
