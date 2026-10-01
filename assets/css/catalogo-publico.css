@@ -320,6 +320,9 @@ body {
 }
 .cp-img-foto { padding: var(--sp-2); background: var(--papel); }
 .cp-foto { width: 100%; height: 100%; object-fit: contain; }
+/* Las fotos de producto traen el blanco en 254 o 253 (no 255): sobre la tarjeta blanca se notaba
+   un recuadro apenas gris. Un 1,5 % de brillo las lleva a blanco puro sin cambiar el producto. */
+.cp-img-foto .cp-foto { filter: brightness(1.015); }
 .cp-logo-fondo {
   max-width: 68%; max-height: 46%; width: auto; height: auto;
   object-fit: contain; opacity: .9;
@@ -343,14 +346,22 @@ body {
   background: rgba(255,255,255,.88);
   border-radius: 999px;
 }
+/* Logo de la marca: vive en su propia franja al pie de la foto, sin caja, directo sobre el
+   blanco de la tarjeta. La foto deja ese espacio libre (padding-bottom), así que el logo
+   nunca tapa el producto. El ancho es definido (48 %) para que un SVG sin tamaño propio
+   (La Poción) no se encoja a un cuadrito. */
+.cp-img-foto.cp-con-logo { padding-bottom: 26px; }
 .cp-marca-logo {
-  position: absolute; bottom: 8px; right: 8px;
-  display: flex; align-items: center; justify-content: center;
-  height: 22px; max-width: 62px; padding: 3px 6px;
-  background: rgba(255,255,255,.92);
-  border-radius: 6px;
+  position: absolute; right: 10px; bottom: 6px;
+  display: flex; align-items: flex-end; justify-content: flex-end;
+  width: 48%; height: 16px;
+  pointer-events: none;
 }
-.cp-marca-logo img { display: block; height: 100%; width: auto; max-width: 100%; object-fit: contain; }
+.cp-marca-logo img {
+  display: block; width: auto; height: auto;
+  max-width: 100%; max-height: 100%;
+  object-fit: contain; object-position: right bottom;
+}
 
 .cp-info { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-4); flex: 1; }
 .cp-nombre {

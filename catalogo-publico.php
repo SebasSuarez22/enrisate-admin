@@ -188,7 +188,7 @@ $logosPorMarca = [
                    data-cat-fondo="<?= e($tipoFondo) ?>"
                    data-cat-tinta="<?= e($tipoTinta) ?>"
                    data-busca="<?= e($busca) ?>">
-            <div class="cp-img-wrap <?= $tieneFoto ? 'cp-img-foto' : '' ?>" style="--tipo-fondo: <?= $tipoFondo ?>; --tipo-tinta: <?= $tipoTinta ?>">
+            <div class="cp-img-wrap <?= $tieneFoto ? 'cp-img-foto' : '' ?><?= $tieneFoto && $tieneLogo ? ' cp-con-logo' : '' ?>" style="--tipo-fondo: <?= $tipoFondo ?>; --tipo-tinta: <?= $tipoTinta ?>">
               <?php if ($tieneFoto): ?>
                 <img class="cp-foto" src="<?= e(cp_img_v($rutaFoto)) ?>" alt="<?= e($p['nombre']) ?> · <?= e($marcaVisible) ?>" <?= cp_img_attrs($rutaFoto) ?> loading="<?= $cpCarga ?>" <?= $cpPrioridadAttr ?> decoding="async">
                 <?php if ($tieneLogo): ?>
