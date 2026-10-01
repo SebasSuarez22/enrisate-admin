@@ -1,3 +1,35 @@
+/* --- Fotos que no llegan: se vuelven a pedir solas --------------------------
+   Una foto puede fallar por un corte momentáneo de la red del celular (sobre
+   todo justo al abrir la página, cuando se piden muchas cosas a la vez). El
+   navegador no reintenta y deja el cuadrito roto con el nombre del producto
+   hasta que la clienta recarga. Aquí se reintenta hasta 3 veces, con una
+   espera creciente, pidiendo la foto con un parámetro nuevo (?r=1, ?r=2...)
+   para saltarse cualquier copia dañada que haya quedado guardada.
+   Las que fallaron ANTES de que corriera este script se revisan al arrancar;
+   las que fallen después, con el evento "error" (no sube por el árbol, por eso
+   se escucha en la fase de captura). */
+const REINTENTOS_FOTO = [800, 2500, 6000];
+
+function reintentarFoto(img) {
+  if (img.dataset.rendida === '1') return;
+  const intento = parseInt(img.dataset.intentos || '0', 10);
+  if (intento >= REINTENTOS_FOTO.length) { img.dataset.rendida = '1'; return; }
+  img.dataset.intentos = String(intento + 1);
+  if (!img.dataset.srcOriginal) img.dataset.srcOriginal = img.getAttribute('src');
+  setTimeout(() => {
+    const base = img.dataset.srcOriginal;
+    img.src = base + (base.includes('?') ? '&' : '?') + 'r=' + (intento + 1);
+  }, REINTENTOS_FOTO[intento]);
+}
+
+document.addEventListener('error', e => {
+  if (e.target instanceof HTMLImageElement) reintentarFoto(e.target);
+}, true);
+
+document.querySelectorAll('img').forEach(img => {
+  if (img.complete && img.naturalWidth === 0 && img.getAttribute('src')) reintentarFoto(img);
+});
+
 const TEXTO_ENVIAR = 'Confirmar y enviar por WhatsApp';
 const cop = n => '$' + Math.round(n).toLocaleString('es-CO');
 

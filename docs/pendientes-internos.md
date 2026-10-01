@@ -2,6 +2,19 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 1 de octubre, 2026 (catálogo público: fotos rotas en un celular tras el paso 6)
+
+**Qué pasó:** Sebastián abrió el catálogo en producción (Android, Chrome 154) justo después de publicar el paso 6 y vio rotas (cuadrito + texto alternativo) las 4 primeras fotos (Anti-Friction, Carotone 135 y 300, Cepillo aguacate).
+
+**Lo que mostraron los registros de Railway (12:42 UTC):** la visita pidió HTML, `manrope-latin.woff2`, CSS y JS (todo 200) y luego las fotos de más abajo (200, tamaño correcto); **nunca llegaron a Apache** las peticiones de las 4 fotos de arriba (ACC-02/03/04/09), del logo `logo-enrisate-header.webp` ni de `fraunces-latin.woff2` (esa la pidió solo "Google-Read-Aloud", otro agente). `http-requests` de Railway: 0 respuestas 4xx/5xx en la última hora. Los tamaños de las respuestas son los de siempre más ~312 bytes de las cabeceras nuevas (el formato del registro usa `%O`, bytes con cabeceras). Conclusión: el servidor y los archivos están bien; lo que falló fue el tramo celular ↔ borde de Railway durante la ráfaga inicial de peticiones (10 a la vez: 2 fuentes precargadas, CSS, JS, logo y 4 fotos con `fetchpriority=high`) o una copia dañada en el caché del celular. **No se pudo reproducir** (la producción no es accesible desde el entorno, y en Chromium local con red lenta todo carga). Es una hipótesis razonable, no una causa confirmada.
+
+**Qué se hizo para que no vuelva a pasar, pase lo que pase:**
+- `assets/js/catalogo-publico.js`: las fotos que fallan se vuelven a pedir solas hasta 3 veces (800 ms, 2,5 s y 6 s después), con `?r=1`, `?r=2`... para saltarse una copia dañada guardada. Cubre las que ya fallaron antes de que corra el script (revisión al arrancar) y las que fallen después (evento `error` en fase de captura, porque no sube por el árbol). Se rinde tras 3 intentos (sin bucle).
+- Se quitaron las 2 precargas de fuentes: no ganaban nada medido (FCP igual con y sin ellas, 3 corridas por variante) y agrandaban justo la ráfaga inicial.
+- Probado en local con Playwright: carga normal sin ningún reintento; fallo simulado de la primera petición del logo y de 4 fotos → las 5 se recuperan solas; una foto que siempre falla → 3 reintentos y se detiene. Flujo de pedido 17/17 y capturas ≤ 0,05 % de píxeles distintos, igual que antes.
+
+**Pendiente de confirmar por Sebastián en producción:** recargar el catálogo en ese celular (o borrar los datos del sitio) y ver si las fotos vuelven. Si en otro celular también salen rotas sin recuperarse, el siguiente paso sería quitar `fetchpriority="high"` de las primeras fotos y bajar el caché de las fotos de 30 a 7 días.
+
 ## 1 de octubre, 2026 (auditoría · paso 6: catálogo público más rápido)
 
 **Medición primero** (celular simulado, 4G lenta: 200 KB/s, 150 ms, CPU 4x; Chromium con Playwright; Apache real delante de `php -S`, con los mismos módulos que la imagen). El servidor NO era el problema: la página tarda ~5 ms en PHP y hace 3 consultas (el `SHOW COLUMNS` del plan original no vale la pena tocarlo: no se midió ganancia; tampoco el manifiesto de fotos, el `is_file`/`getimagesize` por tarjeta cuesta microsegundos). Lo caro estaba en lo que baja el celular:
