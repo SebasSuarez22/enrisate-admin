@@ -42,6 +42,7 @@
   --papel:      #FFFFFF;
   --crema:      #FBF6F0;
   --arena:      #ECDFD1;
+  --escena:     #F6EBDD;   /* fondo cálido detrás de la foto en la ficha */
   --cacao:      #6B4013;   /* el color del logo */
   --tinta:      #33200F;
   --gris:       #6E5A4A;
@@ -573,15 +574,6 @@ body.cp-con-carrito .cp-pie {
 .cp-hoja-cerrar svg { width: 16px; height: 16px; }
 .cp-hoja-cerrar:hover { background: var(--arena); }
 
-/* Logo de Enrísate en la ficha de producto: mismo tamaño que el
-   círculo de cerrar, en la esquina opuesta, pero sin fondo ni borde
-   propio — el logo va directo sobre el blanco de la ficha. */
-.cp-hoja-logo {
-  width: 44px; height: 44px; flex: none;
-  display: flex; align-items: center; justify-content: center;
-}
-.cp-hoja-logo img { width: 100%; height: 100%; object-fit: contain; }
-
 .cp-hoja-cuerpo { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--sp-2) var(--sp-5) var(--sp-5); }
 
 .cp-hoja-total {
@@ -600,51 +592,222 @@ body.cp-con-carrito .cp-pie {
 }
 .cp-hoja-subtitulo { margin: var(--sp-5) 0 var(--sp-4); }
 
-/* --- Ficha de producto: foto + descripción al tocar una tarjeta --- */
-.cp-hoja-producto { max-height: 92vh; }
-.cp-producto-cuerpo { display: flex; flex-direction: column; gap: var(--sp-4); }
-/* flex: none — la foto es un ítem de una columna flex; con overflow:hidden
-   su alto mínimo pasa a ser 0, así que una descripción larga la encogía y
-   recortaba el producto (en celular acostado llegaba a desaparecer). Así
-   conserva su alto y es la ficha la que se desliza. Cuadrada porque las
-   fotos de producto son cuadradas; el tope de alto evita que en pantallas
-   bajas empuje la descripción y el botón fuera de la vista. */
-.cp-producto-foto {
-  flex: none;
-  border-radius: var(--radio);
+/* =========================================================
+   Ficha de producto (se abre al tocar una tarjeta)
+   ---------------------------------------------------------
+   Tres distribuciones, todas con la misma pieza HTML:
+     · hasta 719 px (celular de pie): hoja que sube desde abajo.
+     · desde 720 px: panel lateral (460 px; 520 px desde 1100 px).
+     · celular acostado o ventana muy baja (alto <= 500 px): dos
+       columnas, foto a la izquierda y texto a la derecha.
+   La barra de desplazamiento no se ve: un degradado al pie avisa
+   cuando hay más texto. El precio y el botón quedan siempre fijos.
+   ========================================================= */
+.cp-hoja-carrito.cp-hoja-producto {
+  max-height: 92vh;
+  max-height: 92dvh;
   overflow: hidden;
 }
-.cp-producto-foto .cp-img-wrap {
-  aspect-ratio: 1 / 1;
-  max-height: min(58vh, 460px);
-  width: 100%;
-  border-bottom: 0;
+/* Foco programático al abrir: sin aro alrededor de toda la hoja. */
+.cp-hoja-carrito.cp-hoja-producto:focus,
+.cp-hoja-carrito.cp-hoja-producto:focus-visible { outline: none; border-radius: 22px 22px 0 0; }
+
+.cp-hoja-producto .cp-ficha-cerrar {
+  position: absolute; top: 12px; right: 12px; z-index: 4;
+  background: #fff; border-color: var(--arena);
+  box-shadow: 0 1px 4px rgba(51,32,15,.14);
 }
-.cp-producto-texto { display: flex; flex-direction: column; gap: var(--sp-2); }
-.cp-producto-etiqueta {
-  margin: 0;
-  font-size: var(--t-xs);
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--cacao);
+
+/* Área que se desliza: foto + detalle. flex: none en los hijos evita que la foto se encoja. */
+.cp-ficha-cuerpo {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; -ms-overflow-style: none;
 }
-.cp-producto-descripcion {
+.cp-ficha-cuerpo::-webkit-scrollbar,
+.cp-ficha-detalle::-webkit-scrollbar { display: none; }
+.cp-ficha-cuerpo.mas,
+.cp-ficha-detalle.mas {
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 44px), transparent);
+          mask-image: linear-gradient(#000 calc(100% - 44px), transparent);
+}
+
+/* Foto sobre un fondo cálido. mix-blend-mode: multiply hace que el blanco de la
+   foto se funda con el fondo (las fotos de producto no son transparentes). */
+.cp-ficha-escena {
+  position: relative; isolation: isolate; flex: none;
+  height: clamp(230px, 40vh, 340px);
+  height: clamp(230px, 40dvh, 340px);
+  background: var(--escena);
+  overflow: hidden;
+}
+.cp-ficha-escena::after {
+  content: ""; position: absolute; left: 50%; bottom: 40px; translate: -50% 0;
+  width: 52%; height: 16px; border-radius: 50%; z-index: 0; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(107,64,19,.26), transparent);
+}
+.cp-ficha-escena.sin-foto::after { display: none; }
+.cp-ficha-logo { position: absolute; top: 14px; left: 18px; z-index: 2; width: 52px; height: auto; }
+.cp-ficha-imagen { position: absolute; inset: 46px 20px 48px; z-index: 1; }
+.cp-ficha-imagen .cp-foto {
+  display: block; width: 100%; height: 100%;
+  object-fit: contain; mix-blend-mode: multiply;
+}
+/* Producto sin foto: la misma tarjeta de color y ícono de la rejilla, a pantalla completa de la escena. */
+.cp-ficha-escena.sin-foto .cp-ficha-imagen { inset: 0; }
+.cp-ficha-imagen .cp-img-wrap { position: absolute; inset: 0; aspect-ratio: auto; border-bottom: 0; padding: 48px 20px 20px; }
+.cp-ficha-imagen .cp-tipo-icono { width: 72px; height: 72px; }
+.cp-ficha-imagen .cp-tipo-nombre { font-size: var(--t-sm); }
+.cp-ficha-imagen .cp-proximamente { top: auto; right: auto; bottom: 36px; left: 50%; translate: -50% 0; white-space: nowrap; }
+
+/* Hoja blanca que sube sobre la foto */
+.cp-ficha-detalle {
+  position: relative; z-index: 2; flex: none;
+  margin-top: -26px;
+  padding: 24px 20px 28px;
+  display: flex; flex-direction: column; gap: 14px;
+  background: var(--papel);
+  border-radius: 26px 26px 0 0;
+  min-width: 0;
+}
+.cp-ficha-nombre {
   margin: 0;
-  text-align: justify;
-  text-justify: inter-word;
   font-family: Fraunces, Georgia, serif;
-  font-size: var(--t-sm);
-  font-weight: 400;
-  line-height: 1.65;
+  font-size: 1.75rem; font-weight: 600; line-height: 1.15;
   color: var(--tinta);
-  white-space: pre-line;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
 }
-.cp-producto-descripcion.cp-sin-descripcion {
-  font-family: Manrope, sans-serif;
-  font-size: var(--t-base);
-  color: var(--gris);
-  font-style: italic;
+.cp-ficha-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.cp-ficha-chips:empty { display: none; }
+.cp-ficha-chip {
+  display: inline-flex; align-items: center;
+  min-height: 28px; max-width: 100%; padding: 2px 12px;
+  border-radius: 999px;
+  font-size: .8125rem; font-weight: 700; line-height: 1.25;
+  background: var(--chip-fondo, #F1EAE2); color: var(--chip-tinta, var(--cacao));
+  overflow-wrap: anywhere;
+}
+.cp-ficha-chip--marca { background: transparent; color: var(--gris); border: 1px solid var(--arena); }
+
+.cp-ficha-descripcion {
+  display: flex; flex-direction: column; gap: 14px;
+  font-size: 1rem; line-height: 1.7; color: var(--tinta);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.cp-ficha-descripcion p { margin: 0; white-space: pre-line; }
+.cp-ficha-sin {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 16px; border-radius: 16px;
+  background: var(--crema); border: 1px solid var(--arena);
+  line-height: 1.55; color: var(--gris);
+}
+.cp-ficha-sin strong { color: var(--tinta); font-weight: 700; }
+.cp-ficha-sin a { width: fit-content; color: var(--verde); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+/* "Leer más": solo donde el espacio es poco (celular de pie y celular acostado). */
+.cp-ficha-mas {
+  display: none;
+  align-self: flex-start; align-items: center;
+  min-height: 44px; margin-top: -6px; padding: 0 2px;
+  border: 0; background: none;
+  font: inherit; font-size: 1rem; font-weight: 700;
+  color: var(--rosa); text-decoration: underline; text-underline-offset: 3px;
+  cursor: pointer;
+}
+.cp-ficha-mas[hidden] { display: none !important; }
+
+/* Barra fija: precio a la izquierda, botón a la derecha */
+.cp-ficha-pie {
+  flex: none;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-2) var(--sp-4);
+  padding: var(--sp-3) var(--sp-5) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+  background: var(--papel);
+  border-top: 1px solid var(--arena);
+}
+.cp-ficha-precio {
+  margin: 0;
+  font-family: Fraunces, Georgia, serif;
+  font-size: clamp(1.125rem, 5.2vw, 1.625rem); font-weight: 600; line-height: 1.1;
+  color: var(--rosa); font-variant-numeric: tabular-nums;
+  white-space: nowrap; flex: 0 0 auto;
+}
+.cp-ficha-pie .cp-boton-agregar { flex: 1 1 150px; min-width: 0; max-width: 240px; }
+.cp-hoja-producto .cp-boton-agregar {
+  width: 100%; min-height: 52px; padding: 0 var(--sp-4);
+  font-size: 1.0625rem; white-space: nowrap;
+}
+.cp-hoja-producto .cp-boton-agregar svg { width: 20px; height: 20px; }
+
+/* Texto recortado con degradado: solo en celular de pie y celular acostado. */
+@media (max-width: 719.98px), (orientation: landscape) and (max-height: 500px) {
+  .cp-ficha-mas { display: inline-flex; }
+  .cp-ficha-descripcion.recortada {
+    max-height: var(--recorte, 9.4em); overflow: hidden;
+    -webkit-mask-image: linear-gradient(#000 70%, transparent);
+            mask-image: linear-gradient(#000 70%, transparent);
+  }
+}
+
+/* Tablet y escritorio: panel lateral */
+@media (min-width: 720px) {
+  .cp-hoja-carrito.cp-hoja-producto { width: min(460px, 92vw); max-height: none; border-radius: 22px 0 0 22px; }
+  .cp-hoja-carrito.cp-hoja-producto:focus,
+  .cp-hoja-carrito.cp-hoja-producto:focus-visible { border-radius: 22px 0 0 22px; }
+  .cp-ficha-escena { height: clamp(240px, 42vh, 360px); height: clamp(240px, 42dvh, 360px); }
+  .cp-ficha-descripcion { font-size: 1.0625rem; }
+  .cp-ficha-detalle { padding: 26px 24px 32px; }
+  .cp-ficha-pie { padding-inline: var(--sp-6); }
+}
+@media (min-width: 1100px) {
+  .cp-hoja-carrito.cp-hoja-producto { width: min(520px, 92vw); }
+  .cp-ficha-escena { height: clamp(260px, 44vh, 400px); height: clamp(260px, 44dvh, 400px); }
+  .cp-ficha-nombre { font-size: 2rem; }
+  .cp-ficha-precio { font-size: 1.875rem; }
+}
+
+/* Celular acostado o ventana muy baja: ventana con dos columnas.
+   display: contents deja la foto y el detalle como hijos directos de la rejilla, para que
+   la foto ocupe toda la columna izquierda y solo el texto se deslice. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .cp-hoja-carrito.cp-hoja-producto,
+  .cp-hoja-carrito.cp-hoja-producto:focus,
+  .cp-hoja-carrito.cp-hoja-producto:focus-visible { border-radius: 22px; }
+  .cp-hoja-carrito.cp-hoja-producto {
+    left: max(10px, env(safe-area-inset-left, 0px)); right: max(10px, env(safe-area-inset-right, 0px));
+    top: 10px; bottom: 10px;
+    width: auto; height: auto; max-height: none;
+    display: grid;
+    grid-template-columns: minmax(0, 42%) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    box-shadow: 0 24px 60px rgba(51,32,15,.38);
+    transform: translateY(28px); opacity: 0;
+    transition: transform .32s cubic-bezier(.32,.72,0,1), opacity .24s ease;
+  }
+  .cp-hoja-carrito.cp-hoja-producto[hidden] { display: none; }
+  .cp-hoja-carrito.cp-hoja-producto.abierta { transform: none; opacity: 1; }
+  .cp-ficha-cuerpo { display: contents; }
+  .cp-ficha-escena { grid-column: 1; grid-row: 1 / span 2; height: auto; }
+  .cp-ficha-logo { top: 10px; left: 14px; width: 38px; }
+  .cp-ficha-imagen { inset: 44px 16px 26px; }
+  .cp-ficha-escena.sin-foto .cp-ficha-imagen { inset: 0; }
+  .cp-ficha-escena::after { bottom: 14%; }
+  .cp-ficha-detalle {
+    grid-column: 2; grid-row: 1; min-height: 0;
+    margin-top: 0; border-radius: 0;
+    padding: 20px 24px 14px; gap: 12px;
+    overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: none; -ms-overflow-style: none;
+  }
+  .cp-ficha-nombre { font-size: 1.625rem; padding-right: 52px; }
+  .cp-ficha-descripcion { font-size: 1rem; line-height: 1.6; --recorte: 6.6em; }
+  .cp-ficha-pie { grid-column: 2; grid-row: 2; padding: 10px 24px 14px; }
+  .cp-ficha-precio { font-size: 1.5rem; }
+  .cp-hoja-producto .cp-boton-agregar { min-height: 48px; }
+  .cp-hoja-producto .cp-ficha-cerrar { top: 8px; right: 8px; }
 }
 
 .cp-hoja-pie {

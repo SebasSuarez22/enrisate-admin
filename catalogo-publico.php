@@ -169,6 +169,10 @@ $logosPorMarca = [
             $tieneLogo = isset($logosPorMarca[$marca]);
             [$tipoEtq, $tipoFondo, $tipoTinta, $tipoIcono] = categoria_estilo($p, $marcaVisible);
             $busca = mb_strtolower($p['nombre'] . ' ' . $marcaVisible . ' ' . $tipoEtq, 'UTF-8');
+            // Categoría "de verdad" para la etiqueta de la ficha: si el producto no tiene una
+            // conocida, categoria_estilo() devuelve la marca en su lugar y no se repite.
+            $catFicha = categoria_de($p);
+            $catFicha = isset(categorias()[$catFicha]) ? $catFicha : '';
             $cpIndiceGlobal++;
             $cpPrioritaria = $cpIndiceGlobal <= $cpPrimerasVisibles;
             $cpCarga = $cpPrioritaria ? 'eager' : 'lazy';
@@ -179,6 +183,10 @@ $logosPorMarca = [
                    data-nombre="<?= e($p['nombre']) ?>"
                    data-precio="<?= (int) $p['precio'] ?>"
                    data-descripcion="<?= e($p['descripcion'] ?? '') ?>"
+                   data-marca="<?= e($marcaVisible) ?>"
+                   data-categoria="<?= e($catFicha) ?>"
+                   data-cat-fondo="<?= e($tipoFondo) ?>"
+                   data-cat-tinta="<?= e($tipoTinta) ?>"
                    data-busca="<?= e($busca) ?>">
             <div class="cp-img-wrap <?= $tieneFoto ? 'cp-img-foto' : '' ?>" style="--tipo-fondo: <?= $tipoFondo ?>; --tipo-tinta: <?= $tipoTinta ?>">
               <?php if ($tieneFoto): ?>
@@ -340,32 +348,33 @@ $logosPorMarca = [
 <!-- Fondo oscurecido detrás de la ficha de producto -->
 <div class="cp-carrito-fondo" id="productoFondo" hidden></div>
 
-<!-- Ficha de producto: foto, nombre y descripción al tocar una tarjeta
-     (la descripción es la misma que se edita en Productos). -->
-<div class="cp-hoja-carrito cp-hoja-producto" id="hojaProducto" role="dialog" aria-modal="true" aria-labelledby="hojaProductoTitulo" hidden>
-  <div class="cp-hoja-agarradera" aria-hidden="true"></div>
+<!-- Ficha de producto (se abre al tocar una tarjeta): la foto arriba sobre un fondo cálido,
+     el nombre, la marca, la categoría y la descripción en una hoja que sube sobre la foto, y una
+     barra fija abajo con el precio y el botón de agregar. En celular sale desde abajo; desde 720 px
+     es un panel lateral; en celular acostado (poco alto) pasa a dos columnas. -->
+<div class="cp-carrito-fondo" id="productoFondo" hidden></div>
 
-  <div class="cp-hoja-cabecera">
-    <div class="cp-hoja-logo">
-      <img src="<?= e(cp_img_v('assets/img/logo-enrisate-marca.webp')) ?>" alt="" <?= cp_img_attrs('assets/img/logo-enrisate-marca.webp') ?> loading="lazy">
+<div class="cp-hoja-carrito cp-hoja-producto" id="hojaProducto" role="dialog" aria-modal="true" aria-labelledby="hojaProductoTitulo" tabindex="-1" hidden>
+  <button type="button" class="cp-hoja-cerrar cp-ficha-cerrar" id="cerrarProducto" aria-label="Cerrar">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+  </button>
+
+  <div class="cp-ficha-cuerpo" id="productoCuerpo">
+    <div class="cp-ficha-escena" id="productoEscena">
+      <img class="cp-ficha-logo" src="<?= e(cp_img_v('assets/img/logo-enrisate-marca.webp')) ?>" alt="" <?= cp_img_attrs('assets/img/logo-enrisate-marca.webp') ?>>
+      <div class="cp-ficha-imagen" id="productoFoto"></div>
     </div>
-    <h2 class="cp-hoja-titulo" id="hojaProductoTitulo">&nbsp;</h2>
-    <div class="cp-hoja-acciones">
-      <button type="button" class="cp-hoja-cerrar" id="cerrarProducto" aria-label="Cerrar">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-      </button>
+
+    <div class="cp-ficha-detalle" id="productoDetalle">
+      <h2 class="cp-ficha-nombre" id="hojaProductoTitulo">&nbsp;</h2>
+      <div class="cp-ficha-chips" id="productoChips"></div>
+      <div class="cp-ficha-descripcion" id="productoDescripcion"></div>
+      <button type="button" class="cp-ficha-mas" id="productoMas" aria-expanded="false" hidden>Leer más</button>
     </div>
   </div>
 
-  <div class="cp-hoja-cuerpo cp-producto-cuerpo">
-    <div class="cp-producto-foto" id="productoFoto"></div>
-    <div class="cp-producto-texto">
-      <p class="cp-producto-etiqueta">Descripción</p>
-      <p class="cp-producto-descripcion" id="productoDescripcion"></p>
-    </div>
-  </div>
-
-  <div class="cp-hoja-pie">
+  <div class="cp-ficha-pie">
+    <p class="cp-ficha-precio" id="productoPrecio"></p>
     <button type="button" class="cp-boton-agregar" id="productoAgregarBtn" aria-label="Agregar al pedido">
       <svg class="cp-icono-mas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
       <svg class="cp-icono-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l4.5 4.5L20 6"/></svg>
