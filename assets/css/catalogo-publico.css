@@ -15,6 +15,28 @@
    · Contenedor de 1180 px (antes 880 px dejaba media pantalla vacía).
    ========================================================= */
 
+/* --- Fuentes propias (antes se pedían a Google Fonts) ---------------------
+   Pedirlas a Google obligaba al celular a abrir dos conexiones más (fonts.
+   googleapis.com y fonts.gstatic.com) y a esperar su hoja de estilos ANTES de
+   pintar nada. Ahora salen de este mismo servidor, quedan guardadas un año y
+   el HTML las precarga. Son los mismos archivos que servía Google (subconjunto
+   "latin": cubre ñ, tildes, ¿ ¡ y los signos del español), con los mismos
+   pesos. Licencia: SIL Open Font License (ver assets/fonts/LEEME.txt). */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: swap;
+  src: url("../fonts/fraunces-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("../fonts/manrope-latin.woff2") format("woff2");
+}
+
 :root {
   /* --- Color --- */
   --papel:      #FFFFFF;
