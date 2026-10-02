@@ -638,18 +638,20 @@ body.cp-con-carrito .cp-pie {
 }
 .cp-ficha-cuerpo::-webkit-scrollbar,
 .cp-ficha-detalle::-webkit-scrollbar { display: none; }
+/* El degradado solo aparece si de verdad queda texto por ver, y su alto (--sombra) se ajusta a
+   cuánto queda: con poco texto oculto es una sombra corta, no una franja que apaga la última línea. */
 .cp-ficha-cuerpo.mas,
 .cp-ficha-detalle.mas {
-  -webkit-mask-image: linear-gradient(#000 calc(100% - 44px), transparent);
-          mask-image: linear-gradient(#000 calc(100% - 44px), transparent);
+  -webkit-mask-image: linear-gradient(#000 calc(100% - var(--sombra, 44px)), transparent);
+          mask-image: linear-gradient(#000 calc(100% - var(--sombra, 44px)), transparent);
 }
 
 /* Foto sobre un fondo cálido. mix-blend-mode: multiply hace que el blanco de la
    foto se funda con el fondo (las fotos de producto no son transparentes). */
 .cp-ficha-escena {
   position: relative; isolation: isolate; flex: none;
-  height: clamp(230px, 40vh, 340px);
-  height: clamp(230px, 40dvh, 340px);
+  height: calc(clamp(230px, 40vh, 340px) - var(--quita, 0px));
+  height: calc(clamp(230px, 40dvh, 340px) - var(--quita, 0px));
   background: var(--escena);
   overflow: hidden;
 }
@@ -770,14 +772,14 @@ body.cp-con-carrito .cp-pie {
   .cp-hoja-carrito.cp-hoja-producto { width: min(460px, 92vw); max-height: none; border-radius: 22px 0 0 22px; }
   .cp-hoja-carrito.cp-hoja-producto:focus,
   .cp-hoja-carrito.cp-hoja-producto:focus-visible { border-radius: 22px 0 0 22px; }
-  .cp-ficha-escena { height: clamp(240px, 42vh, 360px); height: clamp(240px, 42dvh, 360px); }
+  .cp-ficha-escena { height: calc(clamp(240px, 42vh, 360px) - var(--quita, 0px)); height: calc(clamp(240px, 42dvh, 360px) - var(--quita, 0px)); }
   .cp-ficha-descripcion { font-size: 1.0625rem; }
   .cp-ficha-detalle { padding: 26px 24px 32px; }
   .cp-ficha-pie { padding-inline: var(--sp-6); }
 }
 @media (min-width: 1100px) {
   .cp-hoja-carrito.cp-hoja-producto { width: min(520px, 92vw); }
-  .cp-ficha-escena { height: clamp(260px, 44vh, 400px); height: clamp(260px, 44dvh, 400px); }
+  .cp-ficha-escena { height: calc(clamp(260px, 44vh, 400px) - var(--quita, 0px)); height: calc(clamp(260px, 44dvh, 400px) - var(--quita, 0px)); }
   .cp-ficha-nombre { font-size: 2rem; }
   .cp-ficha-precio { font-size: 1.875rem; }
 }
@@ -815,6 +817,7 @@ body.cp-con-carrito .cp-pie {
     overflow-y: auto; overscroll-behavior: contain;
     scrollbar-width: none; -ms-overflow-style: none;
   }
+  .cp-ficha-detalle.apretada { padding-top: 12px; padding-bottom: 10px; gap: 7px; }
   .cp-ficha-nombre { font-size: 1.625rem; padding-right: 52px; }
   .cp-ficha-descripcion { font-size: 1rem; line-height: 1.6; --recorte: 6.6em; }
   .cp-ficha-pie { grid-column: 2; grid-row: 2; padding: 10px 24px 14px; }
