@@ -282,7 +282,71 @@ function estadisticas_compra_cliente(array $cliente, array $facturas): ?array
         'compras'         => $n,
         'frecuencia_dias' => $frecuenciaDias,
         'favorito'        => $favorito,
+        'ultima_compra'   => date('Y-m-d', $fechas[$n - 1]),
     ];
+}
+
+/**
+ * Mensaje de WhatsApp con un ofrecimiento para una clienta, según el dato de
+ * compras que se tocó en Clientes:
+ *   'frecuencia'  → cada cuánto compra (y, con la fecha de su última compra,
+ *                   si ya le toca reponer o todavía le falta)
+ *   'favorito'    → su producto más comprado
+ *   'primera'     → solo tiene una compra hasta ahora
+ * No promete descuentos ni precios: solo ofrece apartar/enviar. Los textos
+ * viven aquí para que se puedan cambiar en un solo lugar.
+ * $hoy (Y-m-d) existe para poder probarlo con fechas fijas.
+ */
+function mensaje_oferta_cliente(array $cliente, array $stats, string $tipo, ?string $hoy = null): string
+{
+    $nombreCompleto = trim((string) ($cliente['nombre'] ?? ''));
+    $primerNombre   = $nombreCompleto === '' ? '' : (string) strtok($nombreCompleto, ' ');
+    $saludo   = 'Hola' . ($primerNombre !== '' ? ' ' . $primerNombre : '') . ' 💛';
+    $favorito = (string) ($stats['favorito'] ?? '');
+    $producto = $favorito !== '' ? $favorito : 'tus productos';
+
+    if ($tipo === 'primera') {
+        $msg  = $saludo . "\n";
+        $msg .= 'Gracias por tu primera compra en Enrísate. ¿Cómo te fue'
+              . ($favorito !== '' ? ' con tu ' . $favorito : '') . "?\n";
+        $msg .= 'Cuando quieras repetirlo o probar algo nuevo, aquí estamos para ayudarte. ✨';
+        return $msg;
+    }
+
+    if ($tipo === 'favorito') {
+        $msg  = $saludo . "\n";
+        $msg .= 'Sabemos que ' . $favorito . ' es de tus favoritos. ¿Quieres que te aparte uno?' . "\n";
+        $msg .= 'Dime y te lo enviamos. ✨';
+        return $msg;
+    }
+
+    // 'frecuencia'
+    $frecuencia = $stats['frecuencia_dias'] ?? null;
+    if ($frecuencia === null) {
+        return mensaje_oferta_cliente($cliente, $stats, 'favorito', $hoy);
+    }
+    if ($frecuencia < 1) {
+        $msg  = $saludo . "\n";
+        $msg .= 'Gracias por ser de las clientas que más nos compran. ¿Qué te enviamos esta semana'
+              . ($favorito !== '' ? '? ¿Repetimos tu ' . $favorito : '') . "?\n";
+        $msg .= 'Escríbeme y te lo organizo. ✨';
+        return $msg;
+    }
+
+    $hoyTs  = strtotime($hoy ?? date('Y-m-d'));
+    $ultima = (string) ($stats['ultima_compra'] ?? '');
+    $dias   = $ultima !== '' ? (int) floor(($hoyTs - strtotime($ultima)) / 86400) : null;
+
+    $msg = $saludo . "\n";
+    if ($dias !== null && $dias >= $frecuencia) {
+        $msg .= 'Ya han pasado ' . $dias . ' días desde tu última compra y sueles reponer cada ~' . $frecuencia . ' días. ';
+        $msg .= '¿Te preparo tu pedido de ' . $producto . "?\n";
+    } else {
+        $msg .= 'Sueles reponer cada ~' . $frecuencia . ' días, así que pronto te toca. ';
+        $msg .= '¿Te aparto ' . $producto . ' para que no se agote?' . "\n";
+    }
+    $msg .= 'Escríbeme y te lo enviamos. ✨';
+    return $msg;
 }
 
 /** Mete a Clientes las clientas de facturas viejas que todavía no estén ahí. Devuelve cuántas agregó. */

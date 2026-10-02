@@ -2,6 +2,16 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 2 de octubre, 2026 (Clientes en escritorio: los datos de compra son botones de WhatsApp con un ofrecimiento)
+
+Sebastián no estaba contento con cómo se veían las notas en Clientes (texto monoespaciado de 10 px). Se probaron 3 mockups; eligió la **A** (chips en la misma celda) y pidió que los chips fueran botones que abren el WhatsApp de la clienta con un ofrecimiento según el dato de compras. **Solo desde 960px**; debajo, la página queda igual (comparación píxel a píxel: diferencias ≤7/765, ruido del fondo animado).
+- **Qué cambió:** `clientes.php` (en la celda de notas de la tabla: `.notas-clasicas` —lo de siempre— y `.notas-chips` —lo nuevo—, cada uno visible en su rango; la tarjeta de celular no se tocó), `assets/css/enrisate.css` (bloque "CLIENTES · notas en escritorio" al final) e `includes/clientes.php` (`estadisticas_compra_cliente()` devuelve además `ultima_compra`; nueva `mensaje_oferta_cliente()`).
+- **Mensajes (todos en `mensaje_oferta_cliente()`, un solo lugar para cambiar el texto):** "Compra cada ~N días" → si ya pasaron N días desde la última compra, dice cuántos días van y ofrece preparar su pedido del favorito; si no, "pronto te toca" y ofrece apartarlo; "Muy seguido" → agradece y ofrece repetir. "Favorito" → ofrece apartar uno. "1 compra hasta ahora" → agradece la primera compra y pregunta por el producto. **No prometen descuentos ni precios** (una prueba lo vigila).
+- **Sin teléfono:** la etiqueta se ve igual pero atenuada y sin enlace (`.sin-telefono`, con el aviso "Agrega un teléfono…").
+- **Enlace:** `enlace_whatsapp()` (el de siempre, quita el 57 repetido), `target="_blank"` con `rel="noopener noreferrer"`, `aria-label` con el nombre y qué ofrece.
+- **Verificación (Playwright/Chromium, página real):** 960–2560 px sin scroll horizontal; mensajes revisados uno por uno por cada tipo de chip; clic abre pestaña nueva a wa.me; clienta sin teléfono sin enlaces; "Editar" sigue funcionando; 15/15 archivos de pruebas PHP (nuevo: `tests/clientes_ofertas_test.php`).
+- **Pendiente a propósito:** en tablet (640–959px) y celular los datos de compra siguen como texto, sin botón de WhatsApp; se puede extender si Sebastián lo quiere. Si la "favorita" se llama igual en dos marcas (p. ej. "Shampoo"), el mensaje usa solo el nombre.
+
 ## 2 de octubre, 2026 (Pedidos en escritorio: cada pedido como ficha con sus productos en tarjetas)
 
 Sebastián pidió mejorar la fila de "Por revisar" en Pedidos (botón "Confirmar y facturar" partido en 2 líneas, fecha partida, productos en columna angosta). Se probaron 5 mockups (A–E); eligió la **E**. **Solo desde 960px**; debajo, la página queda igual (tabla en tablet, tarjetas desplegables en celular; comparación píxel a píxel: diferencias ≤4/765 por ruido del fondo animado, sin cambios de diseño).
