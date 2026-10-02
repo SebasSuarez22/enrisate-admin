@@ -379,24 +379,63 @@ let productoActualSku    = null;
 let productoActualNombre = '';
 let productoActualPrecio = 0;
 let productoDescExpandida = false;
+let productoCierre = 0;   // cuenta los cierres: un cierre viejo no puede esconder una ficha recién abierta
 
-/* Degradado al pie del área que se desliza: aparece solo si queda texto por ver.
-   Según el tamaño de pantalla, el que se desliza es el cuerpo entero (celular de pie,
-   panel lateral) o solo el detalle (celular acostado, dos columnas): se revisan los dos. */
+/* Degradado al pie del área que se desliza: aparece solo si queda texto POR VER. Se mide hasta
+   donde termina el texto (sin el margen de abajo): antes se contaba también ese margen y el
+   degradado oscurecía la última línea aunque ya se viera todo. Según el tamaño de pantalla,
+   el que se desliza es el cuerpo entero (celular de pie, panel lateral) o solo el detalle
+   (celular acostado, dos columnas): se revisan los dos. */
+function restanteFicha(el) {
+  const pie = parseFloat(getComputedStyle(productoDetalle).paddingBottom) || 0;
+  return (el.scrollHeight - pie) - el.scrollTop - el.clientHeight;
+}
 function pistaFicha() {
+  const linea = parseFloat(getComputedStyle(productoDescripcion).lineHeight) || 27;
   [productoCuerpo, productoDetalle].forEach(el => {
-    el.classList.toggle('mas', el.scrollHeight - el.scrollTop - el.clientHeight > 8);
+    const restante = restanteFicha(el);
+    const activo = el.scrollHeight > el.clientHeight && restante >= linea * 0.9;
+    el.classList.toggle('mas', activo);
+    // sombra proporcional: con poco texto oculto, una sombra corta
+    if (activo) el.style.setProperty('--sombra', Math.min(44, Math.max(20, restante * 0.7)) + 'px');
   });
 }
 
-/* "Leer más": el botón solo hace falta si el texto recortado de verdad se queda corto.
-   Depende del tamaño de pantalla (en el panel lateral el texto va completo), por eso se
-   vuelve a revisar al girar o cambiar el tamaño de la ventana. */
+/* Si falta muy poco para que todo el texto quepa (hasta ~2 líneas), se gana ese espacio en vez
+   de dejar texto a medias bajo una sombra: la foto baja un poco (hoja y panel) o el detalle
+   aprieta sus márgenes (dos columnas). Si no alcanza, queda el degradado normal. */
+function ajustarFicha() {
+  productoEscena.style.removeProperty('--quita');
+  productoDetalle.classList.remove('apretada');
+  const dos = getComputedStyle(productoCuerpo).display === 'contents';
+  const el = dos ? productoDetalle : productoCuerpo;
+  const falta = restanteFicha(el) + el.scrollTop;
+  if (falta <= 0 || falta > 64) return;
+  if (dos) {
+    productoDetalle.classList.add('apretada');
+  } else if (productoEscena.offsetHeight - falta - 2 >= 170) {
+    productoEscena.style.setProperty('--quita', Math.ceil(falta + 2) + 'px');
+  }
+}
+
+/* "Leer más": el botón y el recorte solo existen si el recorte esconde de verdad más de una
+   línea y media. Antes el degradado del recorte se aplicaba siempre, aunque el texto cupiera
+   entero, y apagaba la última línea de las descripciones cortas. Depende del tamaño de pantalla
+   (en el panel lateral el texto va completo), por eso se vuelve a revisar al girar o cambiar
+   el tamaño de la ventana. */
 function revisarLeerMas() {
-  const recortada = !productoDescExpandida;
-  productoDescripcion.classList.toggle('recortada', recortada);
-  const desborda = productoDescripcion.scrollHeight > productoDescripcion.clientHeight + 2;
-  productoMas.hidden = !(productoDescExpandida || desborda);
+  productoDescripcion.classList.add('recortada');            // se mide con el recorte puesto
+  const linea = parseFloat(getComputedStyle(productoDescripcion).lineHeight) || 27;
+  const oculto = productoDescripcion.scrollHeight - productoDescripcion.clientHeight;
+  const haceFalta = oculto > linea * 1.5;
+  if (!haceFalta && productoDescExpandida) {                // ya no hace falta (p. ej. giró el celular)
+    productoDescExpandida = false;
+    productoMas.textContent = 'Leer más';
+    productoMas.setAttribute('aria-expanded', 'false');
+  }
+  productoMas.hidden = !haceFalta;
+  productoDescripcion.classList.toggle('recortada', haceFalta && !productoDescExpandida);
+  ajustarFicha();
   pistaFicha();
 }
 
@@ -481,6 +520,7 @@ function abrirProducto(tarjeta) {
   productoActualPrecio = +tarjeta.dataset.precio;
   sincronizarBotonAgregar(productoAgregarBtn, pedido.some(i => i.sku === productoActualSku));
 
+  productoCierre++;
   ultimoFocoProducto = document.activeElement;
   productoFondo.hidden = false;
   hojaProducto.hidden = false;
@@ -515,9 +555,10 @@ function cerrarProducto() {
   hojaProducto.classList.remove('abierta');
   if (hoja.hidden) document.body.classList.remove('cp-bloqueo-scroll');
 
+  const idCierre = ++productoCierre;
   let hecho = false;
   const finalizar = () => {
-    if (hecho) return;
+    if (hecho || idCierre !== productoCierre) return;
     hecho = true;
     productoFondo.hidden = true;
     hojaProducto.hidden = true;
