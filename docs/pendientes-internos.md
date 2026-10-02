@@ -2,6 +2,14 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 2 de octubre, 2026 (Fotos de producto: el fondo liso que no es blanco se quita al subir)
+
+Sebastián preguntó si una foto subida desde Productos se vería con el mismo fondo cálido de la ficha del catálogo público. Se probó con el flujo real (formulario del admin → card en el catálogo): **las 26 fotos que ya existen se funden** (todas tienen fondo blanco; `mix-blend-mode: multiply` solo borra el blanco), pero una foto nueva con fondo gris, de color o negro se veía con recuadro (5 de 7 casos de prueba fallaban; solo funcionaban blanco y transparente).
+- **Qué cambió:** `includes/imagenes.php`: nueva `quitar_fondo_uniforme()` que `guardar_imagen_producto()` llama antes de guardar el WebP. Mide el color del borde; si es parejo y **no** casi blanco (≥244 en todos los canales), "inunda" desde el borde mientras el color cambie suave (≤12 de un píxel al vecino; cubre degradados y ruido de JPG) y lo deja transparente. Lo más oscuro que el fondo (sombra de apoyo) queda como sombra negra semitransparente; el contorno se suaviza 2 px sin halo.
+- **No se toca la foto si:** el borde es casi blanco (comportamiento de siempre), ya trae transparencia, el borde no es parejo (foto de ambiente), o lo que se quitaría es <15 % o >92 % de la imagen (mala detección). No cambia ninguna foto ya subida.
+- **Límite conocido:** partes del producto del mismo color que el fondo y conectadas con él (p. ej. una tapa negra sobre fondo negro) se recortan un poco. Se resuelve volviendo a subir la foto con otro fondo.
+- **Verificación:** flujo real con Playwright (subida por el formulario de Productos de 7 fotos de 1000 px: blanco, gris 235 y 200, rosado, negro, degradado, PNG transparente; cards abiertas en celular 390 px y escritorio 1280 px): **14 de 14 se funden** (antes 4 de 14); prueba nueva `tests/imagenes_fondo_test.php` (17 comprobaciones, 640×640 en ~0,5 s); 16/16 archivos de pruebas PHP.
+
 ## 2 de octubre, 2026 (Clientes: las etiquetas de WhatsApp en todos los tamaños)
 
 Sebastián pidió llevar las etiquetas-botón de Clientes a tablet y celular **sin cambiar el desplegable** (mockup aprobado antes). Cambia solo cómo se ven los datos de compra; la tarjeta desplegable, la tabla, las casillas, "Editar" y "Eliminar" siguen igual.
