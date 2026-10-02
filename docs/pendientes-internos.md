@@ -2,6 +2,14 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 2 de octubre, 2026 (IP real del visitante: validada en producción)
+
+Sebastián comprobó en Railway (tabla `limite_pedidos`, columna `ip_clave`) que `includes/red.php` funciona:
+- 2 pedidos de prueba desde su celular con datos móviles → ambas filas guardaron la IP pública del celular (`191.156.x.x`), igual en las dos (antes, una IP interna `100.64.x.x` distinta en cada petición).
+- 1 pedido desde su PC por `curl` con la cabecera falsa `X-Real-IP: 9.9.9.9` → la fila guardó la IP pública real del PC (`181.63.x.x`), **no** `9.9.9.9`: el edge de Railway sobrescribe la cabecera y la falsificación no sirve para saltarse el límite de 8 pedidos por hora.
+- Los 3 pedidos de prueba ("PRUEBA IP") se descartan desde el panel (Pedidos → Descartar); las filas de `limite_pedidos` se borran solas pasada una hora.
+- Sigue pendiente (a propósito, el login quedó fuera): `ip_cliente()` en `includes/auth.php` aún usa `REMOTE_ADDR`.
+
 ## 2 de octubre, 2026 (ficha de producto: la descripción ya no se ve sombreada sin necesidad)
 
 Sebastián vio descripciones cortas con la última línea "sombreada" ("vitamina E." de Anti-Friction). Se midió antes de tocar: **610 de 1.728** combinaciones (32 tamaños de pantalla × 54 largos de descripción, de 30 a 2.400 caracteres) tenían sombra innecesaria. Causas, todas en `assets/js/catalogo-publico.js` y `assets/css/catalogo-publico.css`:
