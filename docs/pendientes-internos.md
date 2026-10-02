@@ -2,6 +2,17 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 2 de octubre, 2026 (ficha de producto: la descripción ya no se ve sombreada sin necesidad)
+
+Sebastián vio descripciones cortas con la última línea "sombreada" ("vitamina E." de Anti-Friction). Se midió antes de tocar: **610 de 1.728** combinaciones (32 tamaños de pantalla × 54 largos de descripción, de 30 a 2.400 caracteres) tenían sombra innecesaria. Causas, todas en `assets/js/catalogo-publico.js` y `assets/css/catalogo-publico.css`:
+- **D1 (la más común, celular y ventana baja):** `.cp-ficha-descripcion.recortada` aplicaba SIEMPRE su máscara (degradado 70 %→100 %) aunque el texto cupiera entero bajo el `max-height` del recorte. Ahora `revisarLeerMas()` mide con el recorte puesto y deja la clase solo si se esconde más de 1,5 líneas; si no, ni recorte ni botón "Leer más".
+- **D2:** recortes que ocultaban menos de una línea (13 px) con "Leer más": mismo umbral.
+- **D3/D4:** el degradado de deslizamiento (`.mas`) contaba el margen de abajo del detalle como "texto por ver" y duraba siempre 44 px. Ahora `restanteFicha()` mide hasta donde termina el texto, el degradado solo aparece si queda ≥ 0,9 líneas, y su alto (`--sombra`) es proporcional a lo que queda.
+- **`ajustarFicha()`:** si falta poco (≤ 64 px) para que todo quepa, gana ese espacio: baja la foto (`--quita` en `.cp-ficha-escena`, sin bajar de 200 px de alto) en hoja y panel, o aprieta el detalle (`.apretada`) en dos columnas.
+- **Aparte, un error real:** `cerrarProducto()` programaba `finalizar` a 350 ms que podía esconder una ficha recién abierta; ahora un contador (`productoCierre`) lo invalida.
+- **Verificación:** la misma auditoría (`scratchpad/sombra/auditar.js`: mide D1–D5 en cada combinación) da 0 de 1.728 después; matriz de la ficha 319/319; interacciones y pedido igual. **Las descripciones reales están solo en la base de Railway** (la local no las trae), por eso se barrieron todos los largos en vez de producto por producto.
+- Si se cambia el interlineado o el tamaño de letra de la descripción, volver a correr la auditoría.
+
 ## 1 de octubre, 2026 (catálogo público: el logo de la marca ya no tapa el producto)
 
 Antes `.cp-marca-logo` era una cajita blanca (`rgba(255,255,255,.92)`) puesta con `position:absolute` encima de la foto: tapaba parte del producto en las 16 tarjetas con logo (Etniker, Femme, La Poción). Ahora (opción A elegida por Sebastián tras ver capturas reales):
