@@ -23,6 +23,242 @@ define('PRODUCTOS_IMG_WEB', 'assets/img/productos');
 define('PRODUCTOS_IMG_MAX', 640);
 define('PRODUCTOS_IMG_EXTS', ['webp', 'jpg', 'jpeg', 'png']);
 
+/**
+ * Quita el fondo liso de una foto de producto para que se funda con el fondo
+ * de la ficha del catálogo (que usa mix-blend-mode: multiply: eso solo borra el
+ * BLANCO; un fondo gris, de color o negro se vería como un recuadro).
+ *
+ * Qué hace (solo si la foto trae un fondo liso que no es blanco):
+ *   1. Mide el color del borde. Si el borde es casi blanco, no toca nada
+ *      (multiply ya lo resuelve, igual que las fotos que ya están subidas),
+ *      si ya trae transparencia, tampoco, y si el borde no es parejo
+ *      (foto de ambiente, collage) tampoco.
+ *   2. Desde el borde "inunda" hacia adentro mientras el color cambie suave
+ *      (degradados de estudio, viñeta) y se detiene en el contorno del producto.
+ *   3. Lo inundado pasa a transparente; lo más oscuro que el fondo (la sombra
+ *      que el producto proyecta) queda como una sombra negra semitransparente,
+ *      que sobre cualquier fondo se ve como sombra.
+ *   4. Suaviza 2 px del contorno para que no quede un halo del color viejo.
+ * Si lo que se quitaría es casi todo o casi nada (mala detección), deja la
+ * foto como llegó. Devuelve true solo si la modificó.
+ */
+function quitar_fondo_uniforme(\GdImage $img): bool
+{
+    $w = imagesx($img);
+    $h = imagesy($img);
+    if ($w < 40 || $h < 40) {
+        return false;
+    }
+
+    // Todos los píxeles en un arreglo plano (idx = y * $w + x).
+    $px = [];
+    for ($y = 0; $y < $h; $y++) {
+        for ($x = 0; $x < $w; $x++) {
+            $px[] = imagecolorat($img, $x, $y);
+        }
+    }
+
+    // Anillo de 2 px del borde.
+    $anillo = [];
+    for ($y = 0; $y < $h; $y++) {
+        $borde = ($y < 2 || $y >= $h - 2);
+        for ($x = 0; $x < $w; $x++) {
+            if ($borde || $x < 2 || $x >= $w - 2) {
+                $anillo[] = $y * $w + $x;
+            }
+        }
+    }
+
+    // ¿Ya trae transparencia en el borde? Entonces no hay nada que quitar.
+    $transparentes = 0;
+    $hr = $hg = $hb = array_fill(0, 256, 0);
+    foreach ($anillo as $i) {
+        $c = $px[$i];
+        if ((($c >> 24) & 127) >= 16) {
+            $transparentes++;
+            continue;
+        }
+        $hr[($c >> 16) & 255]++;
+        $hg[($c >> 8) & 255]++;
+        $hb[$c & 255]++;
+    }
+    $n = count($anillo);
+    if ($transparentes > 0.05 * $n) {
+        return false;
+    }
+
+    // Color del fondo = mediana de cada canal en el borde.
+    $mediana = function (array $hist, int $total): int {
+        $acum = 0;
+        foreach ($hist as $valor => $cuantos) {
+            $acum += $cuantos;
+            if ($acum >= $total / 2) {
+                return $valor;
+            }
+        }
+        return 255;
+    };
+    $total = $n - $transparentes;
+    $br = $mediana($hr, $total);
+    $bg = $mediana($hg, $total);
+    $bb = $mediana($hb, $total);
+
+    // Casi blanco: multiply ya lo funde. No se toca (comportamiento de siempre).
+    if (min($br, $bg, $bb) >= 244) {
+        return false;
+    }
+
+    $dist = function (int $c) use ($br, $bg, $bb): int {
+        return max(abs((($c >> 16) & 255) - $br), abs((($c >> 8) & 255) - $bg), abs(($c & 255) - $bb));
+    };
+
+    // ¿El borde es parejo? (si no, es una foto de ambiente: no se toca).
+    $parejos = 0;
+    foreach ($anillo as $i) {
+        if ($dist($px[$i]) <= 45) {
+            $parejos++;
+        }
+    }
+    if ($parejos < 0.9 * $n) {
+        return false;
+    }
+
+    $lumB = ($br + $bg + $bb) / 3;
+
+    // ¿Este píxel puede ser fondo? Cerca del color del fondo, o una versión
+    // más oscura del mismo tono (la sombra del producto).
+    $esFondo = function (int $c) use ($br, $bg, $bb, $lumB, $dist): bool {
+        if ((($c >> 24) & 127) >= 16) {
+            return false;
+        }
+        if ($dist($c) <= 45) {
+            return true;
+        }
+        if ($lumB < 30) {
+            return false;
+        }
+        $r = (($c >> 16) & 255) / max(1, $br);
+        $g = (($c >> 8) & 255) / max(1, $bg);
+        $b = ($c & 255) / max(1, $bb);
+        $mayor = max($r, $g, $b);
+        $menor = min($r, $g, $b);
+        return $mayor <= 1.02 && $menor >= 0.35 && $mayor <= $menor * 1.12;
+    };
+
+    // Inundación desde el borde: sigue mientras el color cambie suave
+    // (≤ 12 de un píxel al vecino) y se detiene en el contorno del producto.
+    $fondo  = str_repeat("\0", $w * $h);
+    $pila   = [];
+    foreach ($anillo as $i) {
+        if ($fondo[$i] === "\0" && $esFondo($px[$i]) && $dist($px[$i]) <= 45) {
+            $fondo[$i] = "\1";
+            $pila[] = $i;
+        }
+    }
+    while ($pila) {
+        $i = array_pop($pila);
+        $c = $px[$i];
+        $x = $i % $w;
+        $vecinos = [];
+        if ($x > 0)          { $vecinos[] = $i - 1; }
+        if ($x < $w - 1)     { $vecinos[] = $i + 1; }
+        if ($i >= $w)        { $vecinos[] = $i - $w; }
+        if ($i < $w * ($h - 1)) { $vecinos[] = $i + $w; }
+        foreach ($vecinos as $j) {
+            if ($fondo[$j] !== "\0") {
+                continue;
+            }
+            $cj = $px[$j];
+            if (!$esFondo($cj)) {
+                continue;
+            }
+            $paso = max(abs((($cj >> 16) & 255) - (($c >> 16) & 255)),
+                        abs((($cj >> 8) & 255) - (($c >> 8) & 255)),
+                        abs(($cj & 255) - ($c & 255)));
+            if ($paso <= 12) {
+                $fondo[$j] = "\1";
+                $pila[] = $j;
+            }
+        }
+    }
+
+    $cantidad = substr_count($fondo, "\1");
+    $fraccion = $cantidad / ($w * $h);
+    if ($fraccion < 0.15 || $fraccion > 0.92) {
+        return false; // mala detección: mejor dejar la foto como llegó
+    }
+
+    imagealphablending($img, false);
+    imagesavealpha($img, true);
+
+    // Fondo → transparente; más oscuro que el fondo → sombra negra semitransparente.
+    for ($i = 0; $i < $w * $h; $i++) {
+        if ($fondo[$i] !== "\1") {
+            continue;
+        }
+        $c   = $px[$i];
+        $lum = ((($c >> 16) & 255) + (($c >> 8) & 255) + ($c & 255)) / 3;
+        $oscuro = $lumB > 0 ? max(0.0, 1 - $lum / $lumB) : 0.0;
+        // Menos de un 8 % más oscuro es la viñeta o el ruido del fondo, no una sombra.
+        $sombra = $oscuro < 0.08 ? 0.0 : min(1.0, ($oscuro - 0.08) / 0.92);
+        $alfa7  = (int) round((1 - $sombra) * 127);
+        imagesetpixel($img, $i % $w, intdiv($i, $w), ($alfa7 << 24));
+    }
+
+    // Contorno: 2 capas de píxeles pegados al fondo se vuelven semitransparentes
+    // y se les quita el color del fondo que traen mezclado (evita el halo).
+    $capa = $fondo;
+    for ($ronda = 0; $ronda < 2; $ronda++) {
+        $nuevos = [];
+        for ($y = 0; $y < $h; $y++) {
+            for ($x = 0; $x < $w; $x++) {
+                $i = $y * $w + $x;
+                if ($capa[$i] !== "\0") {
+                    continue;
+                }
+                $toca = false;
+                for ($dy = -1; $dy <= 1 && !$toca; $dy++) {
+                    for ($dx = -1; $dx <= 1; $dx++) {
+                        $xx = $x + $dx;
+                        $yy = $y + $dy;
+                        if ($xx >= 0 && $xx < $w && $yy >= 0 && $yy < $h && $capa[$yy * $w + $xx] === "\1") {
+                            $toca = true;
+                            break;
+                        }
+                    }
+                }
+                if ($toca) {
+                    $nuevos[] = $i;
+                }
+            }
+        }
+        foreach ($nuevos as $i) {
+            $c = $px[$i];
+            $t = max(0.0, min(1.0, ($dist($c) - 10) / 50));
+            if ($t >= 1.0) {
+                $capa[$i] = "\2";
+                continue;
+            }
+            $r = (($c >> 16) & 255);
+            $g = (($c >> 8) & 255);
+            $b = ($c & 255);
+            if ($t <= 0.02) {
+                imagesetpixel($img, $i % $w, intdiv($i, $w), (127 << 24));
+            } else {
+                $r = (int) max(0, min(255, round(($r - (1 - $t) * $br) / $t)));
+                $g = (int) max(0, min(255, round(($g - (1 - $t) * $bg) / $t)));
+                $b = (int) max(0, min(255, round(($b - (1 - $t) * $bb) / $t)));
+                imagesetpixel($img, $i % $w, intdiv($i, $w), ((int) round((1 - $t) * 127) << 24) | ($r << 16) | ($g << 8) | $b);
+            }
+            $capa[$i] = "\2";
+        }
+        // La segunda ronda parte de lo que acaba de ablandarse.
+        $capa = strtr($capa, "\2", "\1");
+    }
+
+    return true;
+}
+
 /** Ruta relativa (para <img src>) de la foto de un SKU, o null si no tiene. */
 function producto_ruta_foto(string $sku): ?string
 {
@@ -104,6 +340,10 @@ function guardar_imagen_producto(string $sku, array $archivo): string
         imagedestroy($origen);
         return 'No existe la carpeta de imágenes y no se pudo crear.';
     }
+
+    // Fondo gris, de color o negro → transparente, para que se funda con la
+    // ficha igual que las fotos con fondo blanco (ver quitar_fondo_uniforme()).
+    quitar_fondo_uniforme($origen);
 
     $ok = imagewebp($origen, PRODUCTOS_IMG_DIR . '/' . $sku . '.webp', 82);
     imagedestroy($origen);
