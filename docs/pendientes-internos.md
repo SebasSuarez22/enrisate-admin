@@ -2,6 +2,14 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 2 de octubre, 2026 (Pedidos en escritorio: cada pedido como ficha con sus productos en tarjetas)
+
+Sebastián pidió mejorar la fila de "Por revisar" en Pedidos (botón "Confirmar y facturar" partido en 2 líneas, fecha partida, productos en columna angosta). Se probaron 5 mockups (A–E); eligió la **E**. **Solo desde 960px**; debajo, la página queda igual (tabla en tablet, tarjetas desplegables en celular; comparación píxel a píxel: diferencias ≤4/765 por ruido del fondo animado, sin cambios de diseño).
+- **Qué cambió:** `pedidos.php` (bloque `.pedidos-fichas` junto a la tabla, que ahora lleva también `.tabla-pedidos-wrap`), `assets/css/enrisate.css` (bloque "PEDIDOS · escritorio" al final) y `includes/formato.php` (nueva `fecha_abreviada()`: "2 oct 2026").
+- **Acciones sin cambios:** la ficha reutiliza el mismo `$accionesPedido` (enlace `facturar.php?desde_pedido=` y formulario `descartar` con su `confirm()`); el servidor no se tocó.
+- **Fotos:** `producto_ruta_foto($sku)` de `includes/imagenes.php`; si el producto no tiene foto se muestra un cuadro con la inicial. Sin `loading="lazy"` (con pocos pedidos no hace falta y en capturas de página completa dejaba fotos en blanco).
+- **Verificación (Playwright/Chromium, página real):** 960–2560 px sin scroll horizontal, botones de 40 px en una línea, nombre de cliente larguísimo y producto sin foto/nombre largo bien contenidos; flujo real de "Confirmar y facturar", cancelar y aceptar "Descartar"; 14/14 pruebas PHP.
+
 ## 2 de octubre, 2026 (Cartera en escritorio: un solo botón "Cobrar" por cuota)
 
 Sebastián vio demasiados botones por fila en Cartera pendiente. Se probó con mockups (A/B/C y D/E/F) y un prototipo interactivo; eligió la opción D. **Solo desde 960px** (se había puesto 1100px y Chrome del celular en "sitio para computadoras" usa ~980px de ancho, así que no mostraba el cambio); debajo, la página es idéntica a antes (comparación píxel a píxel 0,0000 % a 959, 900, 820, 768, 640 y 390 px).
