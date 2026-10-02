@@ -68,6 +68,14 @@ function fecha_larga(string $iso): string
     return date('j', $t) . ' de ' . $meses[(int) date('n', $t)] . ' de ' . date('Y', $t);
 }
 
+/** "2026-10-02" → "2 oct 2026" (para filas donde la fecha larga no cabe) */
+function fecha_abreviada(string $iso): string
+{
+    $meses = ['', 'ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    $t = strtotime($iso);
+    return date('j', $t) . ' ' . $meses[(int) date('n', $t)] . ' ' . date('Y', $t);
+}
+
 /** "2026-07" → "julio de 2026" */
 function mes_largo(string $ym): string
 {

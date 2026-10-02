@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/formato.php';
 require_once __DIR__ . '/includes/pedidos.php';
+require_once __DIR__ . '/includes/imagenes.php';
 
 requerir_sesion();
 
@@ -70,7 +71,7 @@ require __DIR__ . '/includes/cabecera.php';
           return ob_get_clean();
       };
       ?>
-      <div class="tabla-scroll oculta-en-movil">
+      <div class="tabla-scroll oculta-en-movil tabla-pedidos-wrap">
       <table class="lineas tabla-pedidos-revisar">
         <thead>
           <tr>
@@ -109,6 +110,59 @@ require __DIR__ . '/includes/cabecera.php';
           <?php endforeach; ?>
         </tbody>
       </table>
+      </div>
+
+      <!-- Solo en escritorio (≥960px, ver "PEDIDOS · escritorio" al final de
+           enrisate.css): cada pedido es una ficha con sus productos en
+           mini‑tarjetas con foto. La tabla de arriba se esconde ahí y
+           queda tal cual en tablet; las acciones son las mismas. -->
+      <div class="pedidos-fichas">
+        <?php foreach ($pendientes as $p):
+            $unidades = 0;
+            foreach ($p['lineas'] ?? [] as $l) { $unidades += (int) $l['cant']; }
+            $cuotas = ($p['plan'] ?? 'contado') === 'cuotas';
+        ?>
+          <article class="ped-ficha">
+            <header class="ped-cabeza">
+              <div class="ped-quien">
+                <h3 class="ped-nombre"><?= e($p['cliente']) ?></h3>
+                <p class="ped-meta">
+                  <span class="ped-tel"><?= !empty($p['telefono']) ? e($p['telefono']) : 'Sin teléfono' ?></span>
+                  <span>Llegó <?= e(fecha_abreviada(substr((string) ($p['creado'] ?? ''), 0, 10))) ?> · <?= numero($unidades) ?> unidad<?= $unidades === 1 ? '' : 'es' ?></span>
+                </p>
+              </div>
+              <span class="ped-plan<?= $cuotas ? ' es-cuotas' : '' ?>">
+                <?= $cuotas ? 'Prefiere ' . numero((int) ($p['num_cuotas_preferido'] ?? 2)) . ' cuotas' : 'De contado' ?>
+              </span>
+              <span class="ped-total"><?= pesos((int) ($p['total'] ?? 0)) ?></span>
+              <div class="acciones-pedido ped-acciones"><?= $accionesPedido($p) ?></div>
+            </header>
+            <ul class="ped-items">
+              <?php foreach ($p['lineas'] ?? [] as $l):
+                  $foto = producto_ruta_foto((string) ($l['sku'] ?? ''));
+                  $cant = (int) $l['cant'];
+              ?>
+                <li class="ped-item">
+                  <span class="ped-foto">
+                    <?php if ($foto !== null): ?>
+                      <img src="<?= e($foto) ?>" alt="" width="46" height="46" decoding="async">
+                    <?php else: ?>
+                      <span class="ped-foto-vacia" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $l['nombre'], 0, 1))) ?></span>
+                    <?php endif; ?>
+                  </span>
+                  <span class="ped-item-texto">
+                    <span class="ped-item-nombre"><?= e($l['nombre']) ?></span>
+                    <?php if (($l['marca'] ?? '') !== ''): ?><span class="ped-item-marca"><?= e($l['marca']) ?></span><?php endif; ?>
+                  </span>
+                  <span class="ped-item-cifra">
+                    <strong>×<?= $cant ?></strong>
+                    <span><?= pesos((int) ($l['precio'] ?? 0) * $cant) ?></span>
+                  </span>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+          </article>
+        <?php endforeach; ?>
       </div>
 
       <!-- Solo en celular (ver .filas-esencial / .oculta-en-movil en
