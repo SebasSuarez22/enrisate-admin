@@ -222,7 +222,7 @@ $barraVolver  = true;
 require __DIR__ . '/includes/cabecera.php';
 ?>
 
-<main class="lienzo ancho">
+<main class="lienzo ancho cartera">
   <h1 class="saludo">Cartera y reportes</h1>
   <p class="subsaludo">Cuotas pendientes, historial de facturas y cómo va la ganancia y las ventas.</p>
 
@@ -277,7 +277,23 @@ require __DIR__ . '/includes/cabecera.php';
 
   <section class="panel">
     <div class="panel-header">
-      <h2 class="titulo-panel">Cartera pendiente</h2>
+      <div class="panel-titulo">
+        <h2 class="titulo-panel">Cartera pendiente</h2>
+        <?php if ($pendientes):
+          $resVencido = 0; $resTotal = 0;
+          foreach ($pendientes as $rp) {
+              $resTotal += $rp['pendiente'];
+              if (esta_vencida($rp['vence'])) { $resVencido += $rp['pendiente']; }
+          }
+        ?>
+          <!-- Solo en escritorio (≥1100px): el resumen de lo que hay por cobrar. -->
+          <p class="cartera-resumen">
+            <span><b><?= count($pendientes) ?></b> <?= count($pendientes) === 1 ? 'cuota' : 'cuotas' ?></span>
+            <span class="vencido"><b><?= pesos($resVencido) ?></b> vencido</span>
+            <span><b><?= pesos($resTotal) ?></b> por cobrar</span>
+          </p>
+        <?php endif; ?>
+      </div>
       <a class="accion-icono" href="cartera-excel.php" title="Descargar Excel: vencidas y pendientes">
         <span class="accion-icono-circulo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
@@ -299,15 +315,29 @@ require __DIR__ . '/includes/cabecera.php';
           $f = $p['factura'];
           $vencida = esta_vencida($p['vence']);
           $idDescuento = 'desc-' . $f['numero'] . '-' . $p['idx'] . $sufijo;
+
+          // WhatsApp: el de mora si la cuota ya venció, el recordatorio si aún no. El botón de la
+          // fila clásica (celular y tablet) usa solo el de mora; el panel de escritorio usa el que aplique.
+          $waMora = null;
+          $waPanel = null;
+          if ($f['telefono'] !== '') {
+              if ($vencida) {
+                  $msgMora = "Hola " . $f['cliente'] . " 💛\n"
+                      . "Notamos que tu " . lcfirst($p['rotulo']) . " de " . pesos($p['pendiente'])
+                      . " venció el " . fecha_larga($p['vence']) . " y sigue pendiente.\n"
+                      . "¿Nos ayudas poniéndote al día?";
+                  $waMora = $waPanel = enlace_whatsapp($f['telefono'], $msgMora);
+              } else {
+                  $msgRecordatorio = "Hola " . $f['cliente'] . " 💛\n"
+                      . "Te recordamos que tu " . lcfirst($p['rotulo']) . " de " . pesos($p['pendiente'])
+                      . " vence el " . fecha_larga($p['vence']) . ".\n"
+                      . "¡Cualquier cosa, aquí estamos!";
+                  $waPanel = enlace_whatsapp($f['telefono'], $msgRecordatorio);
+              }
+          }
           ob_start();
           ?>
-          <?php if ($vencida && $f['telefono'] !== ''):
-            $msgMora = "Hola " . $f['cliente'] . " 💛\n"
-                . "Notamos que tu " . lcfirst($p['rotulo']) . " de " . pesos($p['pendiente'])
-                . " venció el " . fecha_larga($p['vence']) . " y sigue pendiente.\n"
-                . "¿Nos ayudas poniéndote al día?";
-            $waMora = enlace_whatsapp($f['telefono'], $msgMora);
-          ?>
+          <?php if ($vencida && $f['telefono'] !== ''): ?>
             <a class="boton-icono fantasma peligro" href="<?= e($waMora) ?>" target="_blank" rel="noopener"
                title="Escribir por WhatsApp" aria-label="Escribir por WhatsApp a <?= e($f['cliente']) ?> por la mora">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.49 2 2 6.49 2 12c0 1.87.5 3.62 1.38 5.13L2 22l4.99-1.31A9.94 9.94 0 0 0 12 22c5.51 0 10-4.49 10-10S17.51 2 12 2Zm5.2 14.2c-.22.62-1.28 1.2-1.77 1.24-.45.05-.98.24-3.29-.7-2.77-1.13-4.53-3.92-4.66-4.1-.14-.18-1.1-1.47-1.1-2.8 0-1.34.7-1.99.95-2.26.24-.27.53-.34.7-.34h.5c.16 0 .38-.03.58.44.22.51.75 1.77.82 1.9.06.13.1.28.02.46-.08.18-.13.29-.25.44-.13.16-.27.35-.38.47-.13.13-.27.28-.11.55.16.27.7 1.16 1.51 1.87 1.04.93 1.92 1.22 2.19 1.36.27.14.43.12.6-.07.16-.19.68-.79.86-1.06.18-.27.36-.22.6-.13.24.09 1.55.73 1.82.86.27.13.45.2.51.31.07.12.07.68-.15 1.36Z"/></svg>
@@ -344,7 +374,7 @@ require __DIR__ . '/includes/cabecera.php';
             <button type="button" class="salir como-boton cerrar-descuento" data-id="<?= e($idDescuento) ?>">Cancelar</button>
           </form>
           <?php
-          return ['id' => $idDescuento, 'acciones' => $acciones, 'form_descuento' => ob_get_clean()];
+          return ['id' => $idDescuento, 'acciones' => $acciones, 'form_descuento' => ob_get_clean(), 'wa' => $waPanel, 'mora' => $vencida && $waMora !== null];
       };
       ?>
       <div class="tabla-scroll oculta-en-movil">
@@ -376,10 +406,94 @@ require __DIR__ . '/includes/cabecera.php';
                 <?= pesos($p['pendiente']) ?>
                 <?php if ($abonado > 0): ?><span class="sku">de <?= pesos($p['pactado']) ?></span><?php endif; ?>
               </td>
-              <td class="num"><div class="acciones-cartera"><?= $ac['acciones'] ?></div></td>
+              <td class="num celda-acciones">
+                <!-- Celular y tablet (<1100px): los controles de siempre. -->
+                <div class="acciones-cartera"><?= $ac['acciones'] ?></div>
+                <!-- Escritorio (≥1100px): un solo botón que abre el panel de abajo. -->
+                <button type="button" class="btn-cobrar" aria-expanded="false" aria-controls="cobro-<?= e($ac['id']) ?>" data-cobro="cobro-<?= e($ac['id']) ?>">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                  <span>Cobrar</span>
+                </button>
+              </td>
             </tr>
             <tr class="fila-descuento" id="fila-<?= e($ac['id']) ?>" hidden>
               <td colspan="6"><?= $ac['form_descuento'] ?></td>
+            </tr>
+            <?php
+              $pend = (int) $p['pendiente'];
+              $mitad = (int) round($pend / 2);
+              $idCobro = 'cobro-' . $ac['id'];
+            ?>
+            <tr class="fila-cobro" id="<?= e($idCobro) ?>" hidden>
+              <td colspan="6">
+                <div class="cobro" role="group" aria-label="Cobrar a <?= e($f['cliente']) ?>">
+                  <form method="post" action="cartera.php" class="cobro-form cobro-abono" data-pendiente="<?= $pend ?>">
+                    <input type="hidden" name="csrf" value="<?= e($token) ?>">
+                    <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
+                    <input type="hidden" name="cuota_idx" value="<?= (int) $p['idx'] ?>">
+                    <input type="hidden" name="monto" value="<?= $pend ?>">
+                    <div class="cobro-datos">
+                      <h4 class="cobro-titulo">Registrar abono <span>· <?= e($f['cliente']) ?> · <?= e($p['rotulo']) ?></span></h4>
+                      <div class="cobro-campos">
+                        <label class="cobro-monto">
+                          <span class="cobro-peso" aria-hidden="true">$</span>
+                          <input type="text" class="cobro-input" inputmode="numeric" autocomplete="off"
+                                 value="<?= e(number_format($pend, 0, ',', '.')) ?>" aria-label="Monto del abono"
+                                 aria-describedby="<?= e($idCobro) ?>-error">
+                        </label>
+                        <button type="button" class="cobro-chip" data-valor="<?= $pend ?>" aria-pressed="true">Total <?= pesos($pend) ?></button>
+                        <?php if ($pend >= 2): ?>
+                          <button type="button" class="cobro-chip" data-valor="<?= $mitad ?>" aria-pressed="false">Mitad <?= pesos($mitad) ?></button>
+                        <?php endif; ?>
+                      </div>
+                      <p class="cobro-error" id="<?= e($idCobro) ?>-error" role="alert"></p>
+                    </div>
+                    <button type="submit" class="cobro-confirmar">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l4.5 4.5L20 6"/></svg>
+                      Confirmar abono
+                    </button>
+                    <div class="cobro-sec">
+                      <?php if ($ac['wa']): ?>
+                        <a class="cobro-enlace" href="<?= e($ac['wa']) ?>" target="_blank" rel="noopener">
+                          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.49 2 2 6.49 2 12c0 1.87.5 3.62 1.38 5.13L2 22l4.99-1.31A9.94 9.94 0 0 0 12 22c5.51 0 10-4.49 10-10S17.51 2 12 2Zm5.2 14.2c-.22.62-1.28 1.2-1.77 1.24-.45.05-.98.24-3.29-.7-2.77-1.13-4.53-3.92-4.66-4.1-.14-.18-1.1-1.47-1.1-2.8 0-1.34.7-1.99.95-2.26.24-.27.53-.34.7-.34h.5c.16 0 .38-.03.58.44.22.51.75 1.77.82 1.9.06.13.1.28.02.46-.08.18-.13.29-.25.44-.13.16-.27.35-.38.47-.13.13-.27.28-.11.55.16.27.7 1.16 1.51 1.87 1.04.93 1.92 1.22 2.19 1.36.27.14.43.12.6-.07.16-.19.68-.79.86-1.06.18-.27.36-.22.6-.13.24.09 1.55.73 1.82.86.27.13.45.2.51.31.07.12.07.68-.15 1.36Z"/></svg>
+                          <?= $ac['mora'] ? 'Escribir por WhatsApp (mora)' : 'Recordar por WhatsApp' ?>
+                        </a>
+                      <?php endif; ?>
+                      <button type="button" class="cobro-enlace" data-cobro-descuento>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 19 19 5M7.5 8.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm9 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>
+                        Aplicar descuento
+                      </button>
+                    </div>
+                  </form>
+                  <form method="post" action="cartera.php" class="cobro-form cobro-descuento" data-pendiente="<?= $pend ?>" hidden>
+                    <input type="hidden" name="csrf" value="<?= e($token) ?>">
+                    <input type="hidden" name="accion" value="descuento">
+                    <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
+                    <input type="hidden" name="cuota_idx" value="<?= (int) $p['idx'] ?>">
+                    <input type="hidden" name="monto" value="<?= $pend ?>">
+                    <div class="cobro-datos">
+                      <h4 class="cobro-titulo">Aplicar descuento <span>· <?= e($f['cliente']) ?> · <?= e($p['rotulo']) ?></span></h4>
+                      <div class="cobro-campos">
+                        <label class="cobro-monto">
+                          <span class="cobro-peso" aria-hidden="true">$</span>
+                          <input type="text" class="cobro-input" inputmode="numeric" autocomplete="off"
+                                 value="<?= e(number_format($pend, 0, ',', '.')) ?>" aria-label="Monto del descuento"
+                                 aria-describedby="<?= e($idCobro) ?>-error-d">
+                        </label>
+                        <input type="text" class="cobro-motivo" name="motivo" maxlength="255" placeholder="Motivo del descuento" aria-label="Motivo del descuento" autocomplete="off">
+                      </div>
+                      <p class="cobro-error" id="<?= e($idCobro) ?>-error-d" role="alert"></p>
+                    </div>
+                    <button type="submit" class="cobro-confirmar">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l4.5 4.5L20 6"/></svg>
+                      Confirmar descuento
+                    </button>
+                    <div class="cobro-sec">
+                      <button type="button" class="cobro-enlace" data-cobro-volver>← Volver al abono</button>
+                    </div>
+                  </form>
+                </div>
+              </td>
             </tr>
           <?php endforeach; ?>
         </tbody>
@@ -710,6 +824,109 @@ document.querySelectorAll('.form-descuento').forEach(form => {
     }
   });
 });
+
+// Escritorio (≥1100px): cada cuota tiene un solo botón, "Cobrar", que abre debajo un panel con el
+// abono (monto, "Total"/"Mitad", confirmar) y, como enlaces, WhatsApp y descuento. En celular y
+// tablet el botón no se ve y siguen los controles de siempre. Una fila abierta a la vez.
+(function () {
+  const botones = document.querySelectorAll('.btn-cobrar');
+  if (!botones.length) return;
+  const soloNumeros = (t) => parseInt(String(t).replace(/\D/g, ''), 10) || 0;
+  const con_puntos = (n) => (n ? n.toLocaleString('es-CO') : '');
+  const pesos = (n) => '$' + n.toLocaleString('es-CO');
+  let abierto = null; // el botón de la fila abierta
+
+  function panelDe(btn) { return document.getElementById(btn.dataset.cobro); }
+
+  function mostrar(panel, cual) { // 'abono' | 'descuento'
+    panel.querySelector('.cobro-abono').hidden = cual !== 'abono';
+    panel.querySelector('.cobro-descuento').hidden = cual !== 'descuento';
+  }
+
+  function cerrar(btn, devolverFoco) {
+    const panel = panelDe(btn);
+    panel.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    btn.querySelector('span').textContent = 'Cobrar';
+    btn.closest('tr').classList.remove('abierta');
+    if (abierto === btn) abierto = null;
+    if (devolverFoco) btn.focus();
+  }
+
+  function abrir(btn) {
+    if (abierto && abierto !== btn) cerrar(abierto, false);
+    const panel = panelDe(btn);
+    mostrar(panel, 'abono');
+    panel.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    btn.querySelector('span').textContent = 'Cerrar';
+    btn.closest('tr').classList.add('abierta');
+    abierto = btn;
+    const campo = panel.querySelector('.cobro-abono .cobro-input');
+    campo.focus();
+    campo.select();
+  }
+
+  botones.forEach((btn) => {
+    btn.addEventListener('click', () => (abierto === btn ? cerrar(btn, true) : abrir(btn)));
+  });
+
+  document.querySelectorAll('.fila-cobro').forEach((panel) => {
+    panel.querySelectorAll('.cobro-form').forEach((form) => {
+      const pendiente = parseInt(form.dataset.pendiente, 10) || 0;
+      const campo = form.querySelector('.cobro-input');
+      const oculto = form.querySelector('input[name="monto"]');
+      const error = form.querySelector('.cobro-error');
+      const chips = form.querySelectorAll('.cobro-chip');
+      const decir = (t) => { error.textContent = t || ''; campo.setAttribute('aria-invalid', t ? 'true' : 'false'); };
+      const sincronizar = () => {
+        const n = soloNumeros(campo.value);
+        oculto.value = n;
+        chips.forEach((c) => c.setAttribute('aria-pressed', String(parseInt(c.dataset.valor, 10) === n)));
+      };
+
+      campo.addEventListener('input', () => {
+        campo.value = con_puntos(soloNumeros(campo.value));
+        sincronizar();
+        decir('');
+      });
+      chips.forEach((chip) => chip.addEventListener('click', () => {
+        campo.value = con_puntos(parseInt(chip.dataset.valor, 10));
+        sincronizar();
+        decir('');
+        campo.focus();
+      }));
+
+      form.addEventListener('submit', (ev) => {
+        sincronizar();
+        const monto = parseInt(oculto.value, 10) || 0;
+        const descuento = form.classList.contains('cobro-descuento');
+        if (monto < 1) { ev.preventDefault(); decir('Escribe un monto mayor a $0.'); campo.focus(); return; }
+        if (monto > pendiente) { ev.preventDefault(); decir('No puede pasar de ' + pesos(pendiente) + ', que es lo que falta de esta cuota.'); campo.focus(); return; }
+        if (descuento) {
+          const motivo = form.querySelector('.cobro-motivo');
+          if (motivo.value.trim() === '') { ev.preventDefault(); decir('Escribe el motivo del descuento.'); motivo.focus(); return; }
+          if (!confirm('¿Aplicar un descuento de ' + pesos(monto) + ' a esta cuota? No es un abono real: quedará marcado como descuento.')) {
+            ev.preventDefault();
+          }
+        }
+      });
+    });
+
+    panel.querySelector('[data-cobro-descuento]').addEventListener('click', () => {
+      mostrar(panel, 'descuento');
+      panel.querySelector('.cobro-descuento .cobro-input').focus();
+    });
+    panel.querySelector('[data-cobro-volver]').addEventListener('click', () => {
+      mostrar(panel, 'abono');
+      panel.querySelector('.cobro-abono .cobro-input').focus();
+    });
+  });
+
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && abierto) cerrar(abierto, true);
+  });
+})();
 
 // La búsqueda de facturas vive lejos del top de la página (después de
 // recordatorios y cartera pendiente). Sin esto, cada recarga del
