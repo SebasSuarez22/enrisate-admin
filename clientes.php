@@ -167,6 +167,51 @@ require __DIR__ . '/includes/cabecera.php';
           <?php
           return ob_get_clean();
       };
+      // Solo en escritorio (≥960px): las notas escritas se leen como texto
+      // normal y los datos de compra pasan a etiquetas que son botones:
+      // abren el WhatsApp de la clienta con un ofrecimiento según ese dato
+      // (ver mensaje_oferta_cliente() en includes/clientes.php). Sin
+      // teléfono la etiqueta se ve igual, pero no es un enlace.
+      $chipsCliente = function (array $c, ?array $stats): string {
+          $iconoRepetir = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>';
+          $iconoEstrella = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2.5 2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/></svg>';
+          $iconoBolsa = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>';
+          $iconoChat = '<svg class="chip-wa" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 20.5l1.7-5.4A8.4 8.4 0 1 1 21 11.5z"/></svg>';
+
+          $tieneTelefono = normalizar_telefono((string) $c['telefono']) !== '';
+          $boton = function (string $clase, string $icono, string $texto, string $tipo, string $queOfrece) use ($c, $stats, $tieneTelefono, $iconoChat): string {
+              $contenido = $icono . '<span class="chip-texto">' . $texto . '</span>';
+              if (!$tieneTelefono) {
+                  return '<span class="chip ' . $clase . ' sin-telefono" title="Agrega un teléfono para enviarle un WhatsApp">' . $contenido . '</span>';
+              }
+              $url = enlace_whatsapp((string) $c['telefono'], mensaje_oferta_cliente($c, $stats, $tipo));
+              return '<a class="chip ' . $clase . '" href="' . e($url) . '" target="_blank" rel="noopener noreferrer"'
+                   . ' title="Enviar por WhatsApp: ' . e($queOfrece) . '"'
+                   . ' aria-label="Enviar WhatsApp a ' . e($c['nombre']) . ': ' . e($queOfrece) . '">'
+                   . $contenido . $iconoChat . '</a>';
+          };
+
+          ob_start();
+          if ($c['notas'] !== ''): ?>
+            <p class="cn-nota"><?= e($c['notas']) ?></p>
+          <?php endif;
+          if ($stats): ?>
+            <div class="cn-chips">
+              <?php
+              if ($stats['frecuencia_dias'] !== null) {
+                  $texto = '<em>Compra cada</em> ' . ($stats['frecuencia_dias'] < 1 ? 'Muy seguido' : '~' . $stats['frecuencia_dias'] . ' días');
+                  echo $boton('f', $iconoRepetir, $texto, 'frecuencia', 'ofrecerle reponer según cada cuánto compra');
+              } elseif ($stats['compras'] === 1) {
+                  echo $boton('n', $iconoBolsa, '1 compra hasta ahora', 'primera', 'agradecer su primera compra y ofrecerle volver a pedir');
+              }
+              if ($stats['favorito']) {
+                  echo $boton('v', $iconoEstrella, e($stats['favorito']), 'favorito', 'ofrecerle apartar su producto favorito');
+              }
+              ?>
+            </div>
+          <?php endif;
+          return ob_get_clean();
+      };
       $formEditarCliente = function (array $c, int $saldo) use ($token): string {
           ob_start();
           ?>
@@ -213,7 +258,10 @@ require __DIR__ . '/includes/cabecera.php';
               <td><input type="checkbox" class="chk-cliente" value="<?= e($c['id']) ?>" aria-label="Seleccionar a <?= e($c['nombre']) ?>"></td>
               <td><?= e($c['nombre']) ?></td>
               <td><?= e($c['telefono']) ?></td>
-              <td class="col-notas"><?= $notasCliente($c, $stats) ?></td>
+              <td class="col-notas">
+                <div class="notas-clasicas"><?= $notasCliente($c, $stats) ?></div>
+                <div class="notas-chips"><?= $chipsCliente($c, $stats) ?></div>
+              </td>
             </tr>
             <tr id="edicion-<?= e($c['id']) ?>" hidden>
               <td colspan="4"><?= $formEditarCliente($c, $saldo) ?></td>
