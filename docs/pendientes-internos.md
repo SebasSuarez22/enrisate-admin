@@ -4,13 +4,15 @@ _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad
 
 ## 2 de octubre, 2026 (Cartera en escritorio: un solo botón "Cobrar" por cuota)
 
-Sebastián vio demasiados botones por fila en Cartera pendiente. Se probó con mockups (A/B/C y D/E/F) y un prototipo interactivo; eligió la opción D. **Solo desde 1100px**; debajo, la página es idéntica a antes (comparación píxel a píxel 0,0000 % a 1024, 820, 768, 640 y 390 px).
+Sebastián vio demasiados botones por fila en Cartera pendiente. Se probó con mockups (A/B/C y D/E/F) y un prototipo interactivo; eligió la opción D. **Solo desde 960px** (se había puesto 1100px y Chrome del celular en "sitio para computadoras" usa ~980px de ancho, así que no mostraba el cambio); debajo, la página es idéntica a antes (comparación píxel a píxel 0,0000 % a 959, 900, 820, 768, 640 y 390 px).
 - **Qué cambió:** `cartera.php` (cada fila trae un botón `.btn-cobrar` y una fila oculta `.fila-cobro` con dos formularios: abono y descuento; resumen "cuotas / vencido / por cobrar"; WhatsApp de mora si venció y recordatorio si no), `assets/css/enrisate.css` (bloque "CARTERA · escritorio" al final) y el `<script>` de `cartera.php`.
-- **Los controles de siempre siguen en el HTML** (`.acciones-cartera`) y se muestran por CSS debajo de 1100px; el botón y el panel se esconden ahí. Así celular y tablet no se tocaron.
+- **Los controles de siempre siguen en el HTML** (`.acciones-cartera`) y se muestran por CSS debajo de 960px; el botón y el panel se esconden ahí. Así celular y tablet no se tocaron.
 - **Servidor sin cambios:** los formularios mandan los mismos campos que antes (`numero`, `cuota_idx`, `monto`; el descuento con `accion=descuento` y `motivo`). El monto visible lleva puntos de miles ("1.250.000"); un `<input hidden name="monto">` lleva el entero limpio y se sincroniza en cada tecla. El descuento conserva su `confirm()`.
 - **Teclado y accesibilidad:** `aria-expanded`/`aria-controls` en el botón, el foco va al monto al abrir, `Esc` cierra y devuelve el foco, `Enter` confirma, errores con `role="alert"`. Una fila abierta a la vez.
-- **Verificación (Playwright/Chromium, página real):** 9 anchos de 1100 a 2560 px × 11 cuotas: sin scroll horizontal, filas de 71–73 px (antes hasta 144), panel dentro de la tabla; flujo real de abono parcial (monto=625000), descuento con confirmación, errores, "Volver al abono", cruce del punto de corte con el panel abierto; 14/14 pruebas PHP.
+- **Verificación (Playwright/Chromium, página real):** anchos de 960 a 2560 px × 11 cuotas: sin scroll horizontal, filas de 71–73 px (antes hasta 144), panel dentro de la tabla; flujo real de abono parcial (monto=625000), descuento con confirmación, errores, "Volver al abono", cruce del punto de corte con el panel abierto; 14/14 pruebas PHP.
 - **Pendiente a propósito:** "Recordatorios" (arriba) no se tocó; el panel de cobro abre con foco en el monto (seleccionado).
+
+- **Aprendizaje:** el punto de corte de "escritorio" debe ser ≤ 960px para cubrir el modo escritorio de los celulares; probar siempre a 960 y 980px además de los anchos grandes.
 
 ## 2 de octubre, 2026 (IP real del visitante: validada en producción)
 

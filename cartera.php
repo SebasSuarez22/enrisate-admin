@@ -286,7 +286,7 @@ require __DIR__ . '/includes/cabecera.php';
               if (esta_vencida($rp['vence'])) { $resVencido += $rp['pendiente']; }
           }
         ?>
-          <!-- Solo en escritorio (≥1100px): el resumen de lo que hay por cobrar. -->
+          <!-- Solo en escritorio (≥960px): el resumen de lo que hay por cobrar. -->
           <p class="cartera-resumen">
             <span><b><?= count($pendientes) ?></b> <?= count($pendientes) === 1 ? 'cuota' : 'cuotas' ?></span>
             <span class="vencido"><b><?= pesos($resVencido) ?></b> vencido</span>
@@ -407,9 +407,9 @@ require __DIR__ . '/includes/cabecera.php';
                 <?php if ($abonado > 0): ?><span class="sku">de <?= pesos($p['pactado']) ?></span><?php endif; ?>
               </td>
               <td class="num celda-acciones">
-                <!-- Celular y tablet (<1100px): los controles de siempre. -->
+                <!-- Celular y tablet (<960px): los controles de siempre. -->
                 <div class="acciones-cartera"><?= $ac['acciones'] ?></div>
-                <!-- Escritorio (≥1100px): un solo botón que abre el panel de abajo. -->
+                <!-- Escritorio (≥960px): un solo botón que abre el panel de abajo. -->
                 <button type="button" class="btn-cobrar" aria-expanded="false" aria-controls="cobro-<?= e($ac['id']) ?>" data-cobro="cobro-<?= e($ac['id']) ?>">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                   <span>Cobrar</span>
@@ -825,7 +825,7 @@ document.querySelectorAll('.form-descuento').forEach(form => {
   });
 });
 
-// Escritorio (≥1100px): cada cuota tiene un solo botón, "Cobrar", que abre debajo un panel con el
+// Escritorio (≥960px): cada cuota tiene un solo botón, "Cobrar", que abre debajo un panel con el
 // abono (monto, "Total"/"Mitad", confirmar) y, como enlaces, WhatsApp y descuento. En celular y
 // tablet el botón no se ve y siguen los controles de siempre. Una fila abierta a la vez.
 (function () {

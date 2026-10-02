@@ -1692,18 +1692,18 @@ a.boton-icono { text-decoration: none; }
 }
 
 /* =========================================================
-   CARTERA · escritorio (≥1100px)
+   CARTERA · escritorio (≥960px)
    ---------------------------------------------------------
    Cada cuota pendiente muestra UN botón, "Cobrar", que abre debajo un panel con el abono
    (monto, "Total"/"Mitad", confirmar) y, como enlaces, WhatsApp y descuento. Antes eran 4
-   controles apilados que estiraban cada fila a 144px. Debajo de 1100px no cambia nada: el botón
+   controles apilados que estiraban cada fila a 144px. Debajo de 960px no cambia nada: el botón
    y el panel no se ven y siguen los controles de siempre.
    ========================================================= */
 .cartera-resumen { display: none; }
 .btn-cobrar { display: none; }
 .fila-cobro { display: none !important; }
 
-@media (min-width: 1100px) {
+@media (min-width: 960px) {
   .lienzo.ancho.cartera { max-width: 1180px; }
 
   /* Resumen bajo el título */
