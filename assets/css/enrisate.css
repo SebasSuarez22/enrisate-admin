@@ -1690,3 +1690,114 @@ a.boton-icono { text-decoration: none; }
   .barra-fila { grid-template-columns: 110px 1fr auto; gap: 8px; }
   .barra-valor { min-width: 76px; font-size: 11px; }
 }
+
+/* =========================================================
+   CARTERA · escritorio (≥1100px)
+   ---------------------------------------------------------
+   Cada cuota pendiente muestra UN botón, "Cobrar", que abre debajo un panel con el abono
+   (monto, "Total"/"Mitad", confirmar) y, como enlaces, WhatsApp y descuento. Antes eran 4
+   controles apilados que estiraban cada fila a 144px. Debajo de 1100px no cambia nada: el botón
+   y el panel no se ven y siguen los controles de siempre.
+   ========================================================= */
+.cartera-resumen { display: none; }
+.btn-cobrar { display: none; }
+.fila-cobro { display: none !important; }
+
+@media (min-width: 1100px) {
+  .lienzo.ancho.cartera { max-width: 1180px; }
+
+  /* Resumen bajo el título */
+  .cartera .panel-header { align-items: flex-start; }
+  .cartera-resumen {
+    display: flex; flex-wrap: wrap; gap: 4px 22px;
+    margin: 8px 0 0;
+    font-size: 13px; color: var(--marfil-70);
+  }
+  .cartera-resumen b { color: var(--marfil); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .cartera-resumen .vencido b { color: var(--alerta); }
+
+  /* Excel: ícono y nombre en una sola línea, no uno sobre otro */
+  .cartera .panel-header .accion-icono { flex-direction: row; width: auto; gap: 8px; align-items: center; }
+  .cartera .panel-header .accion-icono-circulo { width: 40px; height: 40px; }
+  .cartera .panel-header .accion-icono-nombre { font-size: 13px; }
+
+  /* Columnas: la cuota y la fecha caben en una línea; el botón tiene su ancho */
+  .tabla-cartera-pendiente th:nth-child(1), .tabla-cartera-pendiente td:nth-child(1) { width: 24%; }
+  .tabla-cartera-pendiente th:nth-child(2), .tabla-cartera-pendiente td:nth-child(2) { width: 11%; }
+  .tabla-cartera-pendiente th:nth-child(3), .tabla-cartera-pendiente td:nth-child(3) { width: 14%; }
+  .tabla-cartera-pendiente th:nth-child(4), .tabla-cartera-pendiente td:nth-child(4) { width: 19%; }
+  .tabla-cartera-pendiente th:nth-child(5), .tabla-cartera-pendiente td:nth-child(5) { width: 14%; }
+  .tabla-cartera-pendiente th:nth-child(6), .tabla-cartera-pendiente td:nth-child(6) { width: 18%; }
+  .tabla-cartera-pendiente td { vertical-align: middle; }
+  .tabla-cartera-pendiente td > .salir { width: auto; min-height: 30px; padding: 0 10px; white-space: nowrap; font-size: 12px; }
+  .tabla-cartera-pendiente td .etiqueta { margin-left: 8px; white-space: nowrap; }
+  .tabla-cartera-pendiente tbody tr.abierta > td { background: rgba(224, 184, 126, 0.07); border-bottom-color: transparent; }
+
+  /* La columna de acciones: solo el botón */
+  .tabla-cartera-pendiente .acciones-cartera { display: none; }
+  .btn-cobrar {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; min-height: var(--alto-control); padding: 0 14px;
+    font: 700 14px/1 var(--texto); letter-spacing: 0.02em;
+    color: #2A1622; cursor: pointer;
+    background: linear-gradient(135deg, var(--brillo), var(--champana) 62%, #D3A167);
+    border: 0; border-radius: var(--r-campo);
+    transition: transform 0.14s ease, filter 0.18s ease;
+  }
+  .btn-cobrar:hover { filter: brightness(1.06); }
+  .btn-cobrar:active { transform: translateY(1px); }
+  .btn-cobrar svg { width: 16px; height: 16px; flex: none; transition: transform 0.2s ease; }
+  .btn-cobrar[aria-expanded="true"] { background: transparent; color: var(--champana); box-shadow: inset 0 0 0 1px var(--champana); }
+  .btn-cobrar[aria-expanded="true"] svg { transform: rotate(45deg); }
+  .btn-cobrar:focus-visible { outline: 2px solid var(--brillo); outline-offset: 2px; }
+
+  /* Panel de cobro, debajo de la fila */
+  .fila-cobro { display: table-row !important; }
+  .fila-cobro[hidden] { display: none !important; }
+  .fila-cobro > td { padding: 0; border-bottom: 1px solid var(--linea); }
+  .cobro { background: rgba(224, 184, 126, 0.07); border-left: 3px solid var(--champana); }
+  .cobro-form {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 24px; row-gap: 6px;
+    align-items: end; padding: 20px 24px 18px;
+  }
+  .cobro-form[hidden] { display: none; }
+  .cobro-datos { min-width: 0; }
+  .cobro-confirmar { align-self: start; margin-top: 34px; }
+  .cobro-sec { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 20px; }
+  .cobro-titulo {
+    margin: 0 0 12px;
+    font: 500 11px/1.4 var(--dato); letter-spacing: 0.14em; text-transform: uppercase; color: var(--champana);
+  }
+  .cobro-titulo span { color: var(--marfil-70); }
+  .cobro-campos { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .cobro-monto { position: relative; display: block; flex: none; }
+  .cobro-peso { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--marfil-40); pointer-events: none; }
+  .cobro-input { width: 190px; height: 46px; padding: 0 14px 0 30px; text-align: right; font: 600 16px var(--texto); font-variant-numeric: tabular-nums; color: var(--brillo); }
+  .cobro-input[aria-invalid="true"], .cobro-motivo[aria-invalid="true"] { border-color: var(--alerta); }
+  .cobro-motivo { width: 280px; height: 46px; padding: 0 14px; font: 500 14px var(--texto); }
+  .cobro-chip {
+    min-height: 38px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+    font: 600 13px var(--texto); font-variant-numeric: tabular-nums;
+    color: var(--marfil-70); background: none; border: 1px solid var(--linea);
+  }
+  .cobro-chip:hover { border-color: var(--champana); color: var(--brillo); }
+  .cobro-chip[aria-pressed="true"] { border-color: var(--champana); color: var(--brillo); background: rgba(224, 184, 126, 0.12); }
+  .cobro-error { margin: 8px 0 0; min-height: 18px; font-size: 12.5px; color: var(--alerta); }
+  .cobro-confirmar {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 24px; white-space: nowrap;
+    font: 700 14px var(--texto); letter-spacing: 0.02em; color: #2A1622; cursor: pointer;
+    background: linear-gradient(135deg, var(--brillo), var(--champana) 62%, #D3A167);
+    border: 0; border-radius: var(--r-campo);
+    transition: filter 0.18s ease;
+  }
+  .cobro-confirmar:hover { filter: brightness(1.06); }
+  .cobro-confirmar svg { width: 18px; height: 18px; }
+  .cobro-enlace {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0;
+    font: 500 13px var(--texto); color: var(--marfil-70); background: none; border: 0; cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .cobro-enlace:hover { color: var(--brillo); }
+  .cobro-enlace svg { width: 16px; height: 16px; flex: none; }
+  .cobro :is(button, a, input):focus-visible { outline: 2px solid var(--brillo); outline-offset: 2px; }
+}
