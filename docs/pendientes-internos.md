@@ -2,6 +2,13 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 2 de octubre, 2026 (Clientes: las etiquetas de WhatsApp en todos los tamaños)
+
+Sebastián pidió llevar las etiquetas-botón de Clientes a tablet y celular **sin cambiar el desplegable** (mockup aprobado antes). Cambia solo cómo se ven los datos de compra; la tarjeta desplegable, la tabla, las casillas, "Editar" y "Eliminar" siguen igual.
+- **Qué cambió:** `clientes.php` (la celda de notas de la tabla usa siempre `$chipsCliente`; la tarjeta de celular muestra, debajo de Teléfono, un bloque "Notas" con el mismo HTML más la línea de ayuda `.cn-pista`; se quitó el closure `$notasCliente` y las clases `.notas-clasicas`/`.notas-chips`) y `assets/css/enrisate.css` (las reglas de las etiquetas ya no están dentro de `@media (min-width: 960px)`; bloque "CLIENTES · notas y etiquetas de WhatsApp (todos los tamaños)"; se quitó `.cliente-insights`, que quedó sin uso).
+- **Celular (<640px):** etiquetas de 36 px de alto, línea "Toca una etiqueta para enviarle un WhatsApp con una oferta." (solo si hay etiquetas con enlace) y el texto **baja a otra línea en vez de cortarse** (a 320px "Compra cada ~42 días" se cortaba con "…"). La clienta sin nota ni compras no muestra el bloque Notas.
+- **Verificación (Playwright/Chromium, página real):** 320, 375, 414, 568, 600, 639, 640, 667, 768, 900, 959, 960, 1280 y 2560 px: sin scroll horizontal ni etiquetas fuera de pantalla; tarjetas **cerradas** y escritorio idénticos a antes (diferencias ≤20/765, ruido del fondo animado); toque/clic abre pestaña nueva a wa.me con el mensaje correcto en celular y tablet; clienta sin teléfono sin enlaces; "Editar" funciona en celular y tablet; 15/15 archivos de pruebas PHP.
+
 ## 2 de octubre, 2026 (Clientes en escritorio: los datos de compra son botones de WhatsApp con un ofrecimiento)
 
 Sebastián no estaba contento con cómo se veían las notas en Clientes (texto monoespaciado de 10 px). Se probaron 3 mockups; eligió la **A** (chips en la misma celda) y pidió que los chips fueran botones que abren el WhatsApp de la clienta con un ofrecimiento según el dato de compras. **Solo desde 960px**; debajo, la página queda igual (comparación píxel a píxel: diferencias ≤7/765, ruido del fondo animado).

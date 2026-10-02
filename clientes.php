@@ -144,31 +144,12 @@ require __DIR__ . '/includes/cabecera.php';
         </button>
       </form>
       <?php
-      // Notas + estadísticas de compra, y el formulario de editar, se ven
-      // igual en la fila de tabla (escritorio) y en la tarjeta de
-      // celular; se arman una sola vez por cliente para no repetir el
-      // cálculo ni el HTML a mano.
-      $notasCliente = function (array $c, ?array $stats): string {
-          ob_start();
-          ?>
-          <?= e($c['notas']) ?>
-          <?php if ($stats): ?>
-            <div class="cliente-insights">
-              <?php if ($stats['frecuencia_dias'] !== null): ?>
-                <span class="cliente-insight">Compra cada <strong><?= $stats['frecuencia_dias'] < 1 ? 'muy seguido' : '~' . $stats['frecuencia_dias'] . ' días' ?></strong></span>
-              <?php elseif ($stats['compras'] === 1): ?>
-                <span class="cliente-insight">1 compra hasta ahora</span>
-              <?php endif; ?>
-              <?php if ($stats['favorito']): ?>
-                <span class="cliente-insight">Favorito: <strong><?= e($stats['favorito']) ?></strong></span>
-              <?php endif; ?>
-            </div>
-          <?php endif; ?>
-          <?php
-          return ob_get_clean();
-      };
-      // Solo en escritorio (≥960px): las notas escritas se leen como texto
-      // normal y los datos de compra pasan a etiquetas que son botones:
+      // El formulario de editar se ve igual en la fila de tabla (escritorio,
+      // tablet) y en la tarjeta de celular; se arma una sola vez por
+      // cliente para no repetir el HTML a mano.
+      // Notas + datos de compra, igual en la fila de tabla (escritorio y
+      // tablet) y en la tarjeta desplegable de celular. Las notas escritas se
+      // leen como texto normal y los datos de compra son etiquetas que son botones:
       // abren el WhatsApp de la clienta con un ofrecimiento según ese dato
       // (ver mensaje_oferta_cliente() en includes/clientes.php). Sin
       // teléfono la etiqueta se ve igual, pero no es un enlace.
@@ -258,10 +239,7 @@ require __DIR__ . '/includes/cabecera.php';
               <td><input type="checkbox" class="chk-cliente" value="<?= e($c['id']) ?>" aria-label="Seleccionar a <?= e($c['nombre']) ?>"></td>
               <td><?= e($c['nombre']) ?></td>
               <td><?= e($c['telefono']) ?></td>
-              <td class="col-notas">
-                <div class="notas-clasicas"><?= $notasCliente($c, $stats) ?></div>
-                <div class="notas-chips"><?= $chipsCliente($c, $stats) ?></div>
-              </td>
+              <td class="col-notas"><?= $chipsCliente($c, $stats) ?></td>
             </tr>
             <tr id="edicion-<?= e($c['id']) ?>" hidden>
               <td colspan="4"><?= $formEditarCliente($c, $saldo) ?></td>
@@ -292,7 +270,15 @@ require __DIR__ . '/includes/cabecera.php';
             </summary>
             <div class="fila-lista-detalle">
               <div class="campo-detalle"><strong>Teléfono</strong><?= $c['telefono'] !== '' ? e($c['telefono']) : 'Sin teléfono' ?></div>
-              <?= $notasCliente($c, $stats) ?>
+              <?php $notasHtml = $chipsCliente($c, $stats); if (trim($notasHtml) !== ''): ?>
+                <div class="campo-detalle">
+                  <strong>Notas</strong>
+                  <?= $notasHtml ?>
+                  <?php if (str_contains($notasHtml, '<a class="chip')): ?>
+                    <p class="cn-pista">Toca una etiqueta para enviarle un WhatsApp con una oferta.</p>
+                  <?php endif; ?>
+                </div>
+              <?php endif; ?>
             </div>
           </details>
           <div id="edicion-movil-<?= e($c['id']) ?>" class="fila-lista-editar" hidden><?= $formEditarCliente($c, $saldo) ?></div>

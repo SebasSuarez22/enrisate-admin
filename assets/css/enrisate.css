@@ -826,32 +826,6 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
   letter-spacing: 0.06em;
   color: var(--marfil-40);
 }
-/* Debajo de las notas: cada cuánto compra la clienta y su producto
-   favorito, cruzando su nombre/teléfono con el historial de facturas
-   (ver estadisticas_compra_cliente() en includes/clientes.php). Solo
-   aparece cuando la clienta ya tiene facturas. */
-.cliente-insights {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 4px;
-}
-/* Si la clienta no tiene notas escritas, este bloque es lo primero que
-   hay en la celda: sin el margen no queda más abajo que el resto de
-   la fila (Nombre, Teléfono, Saldo a favor). */
-.cliente-insights:first-child {
-  margin-top: 0;
-}
-.cliente-insight {
-  font-family: var(--dato);
-  font-size: 10px;
-  letter-spacing: 0.03em;
-  color: var(--marfil-40);
-}
-.cliente-insight strong {
-  color: var(--rosa);
-  font-weight: 600;
-}
 
 /* =========================================================
    Pedidos por revisar en celular: tarjeta desplegable en vez de fila
@@ -1883,42 +1857,49 @@ a.boton-icono { text-decoration: none; }
 }
 
 /* ==========================================================================
-   CLIENTES · notas en escritorio (≥960px)
+   CLIENTES · notas y etiquetas de WhatsApp (todos los tamaños)
    La nota que escribe Sebastián se lee como texto normal y los datos de
    compra (cada cuánto compra, producto favorito) son etiquetas-botón que
-   abren el WhatsApp de la clienta con un ofrecimiento. Debajo de 960px se
-   ve lo de siempre (.notas-clasicas); aquí se esconde.
+   abren el WhatsApp de la clienta con un ofrecimiento. Van igual en la
+   tabla (escritorio y tablet) y dentro de la tarjeta desplegable del
+   celular, que conserva su forma.
    ========================================================================== */
-.notas-chips { display: none; }
+.cn-nota {
+  margin: 0 0 7px; max-width: 62ch;
+  font-size: 13.5px; line-height: 1.45; color: var(--marfil);
+}
+.cn-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.cn-pista { display: none; margin: 8px 0 0; font-size: 11.5px; line-height: 1.4; color: var(--marfil-40); }
 
-@media (min-width: 960px) {
-  .notas-clasicas { display: none; }
-  .notas-chips { display: block; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  padding: 4px 10px; border-radius: 999px;
+  font: 600 12px/1.3 var(--texto); text-decoration: none; white-space: nowrap;
+  color: var(--marfil); border: 1px solid var(--linea);
+  transition: filter 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+}
+.chip svg { flex: none; }
+.chip em { font-style: normal; font-weight: 500; color: var(--marfil-70); }
+.chip .chip-texto { overflow: hidden; text-overflow: ellipsis; }
+.chip .chip-wa { opacity: 0.55; margin-left: 2px; transition: opacity 0.16s ease; }
 
-  .cn-nota {
-    margin: 0 0 7px; max-width: 62ch;
-    font-size: 13.5px; line-height: 1.45; color: var(--marfil);
-  }
-  .cn-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip.f { color: var(--brillo); background: rgba(224, 184, 126, 0.1); border-color: rgba(224, 184, 126, 0.38); }
+.chip.v { color: #F0C4CC; background: rgba(201, 127, 142, 0.13); border-color: rgba(201, 127, 142, 0.42); }
+.chip.n { color: var(--marfil-70); border-style: dashed; }
 
-  .chip {
-    display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
-    padding: 4px 10px; border-radius: 999px;
-    font: 600 12px/1.3 var(--texto); text-decoration: none; white-space: nowrap;
-    color: var(--marfil); border: 1px solid var(--linea);
-    transition: filter 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
-  }
-  .chip svg { flex: none; }
-  .chip em { font-style: normal; font-weight: 500; color: var(--marfil-70); }
-  .chip .chip-texto { overflow: hidden; text-overflow: ellipsis; }
-  .chip .chip-wa { opacity: 0.55; margin-left: 2px; transition: opacity 0.16s ease; }
+a.chip:hover { filter: brightness(1.14); border-color: var(--champana); }
+a.chip:hover .chip-wa { opacity: 1; }
+a.chip:focus-visible { outline: 2px solid var(--brillo); outline-offset: 2px; }
+.chip.sin-telefono { cursor: default; opacity: 0.8; }
 
-  .chip.f { color: var(--brillo); background: rgba(224, 184, 126, 0.1); border-color: rgba(224, 184, 126, 0.38); }
-  .chip.v { color: #F0C4CC; background: rgba(201, 127, 142, 0.13); border-color: rgba(201, 127, 142, 0.42); }
-  .chip.n { color: var(--marfil-70); border-style: dashed; }
-
-  a.chip:hover { filter: brightness(1.14); border-color: var(--champana); }
-  a.chip:hover .chip-wa { opacity: 1; }
-  a.chip:focus-visible { outline: 2px solid var(--brillo); outline-offset: 2px; }
-  .chip.sin-telefono { cursor: default; opacity: 0.8; }
+/* Celular (tarjeta desplegable): etiquetas más altas para tocarlas con el
+   dedo y una línea que dice qué hacen (sin cursor, no hay "title" que lo diga). */
+@media (max-width: 639px) {
+  .cn-nota { margin-bottom: 8px; }
+  .cn-chips { gap: 8px; }
+  .chip { min-height: 36px; padding: 6px 12px; font-size: 12.5px; white-space: normal; border-radius: 18px; }
+  /* En celular el texto baja a una segunda línea en vez de cortarse con "…":
+     lo que dice la etiqueta (cada cuánto compra, el favorito) es el dato. */
+  .chip .chip-texto { min-width: 0; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+  .cn-pista { display: block; }
 }
