@@ -413,7 +413,7 @@ function ajustarFicha() {
   if (falta <= 0 || falta > 64) return;
   if (dos) {
     productoDetalle.classList.add('apretada');
-  } else if (productoEscena.offsetHeight - falta - 2 >= 170) {
+  } else if (productoEscena.offsetHeight - falta - 2 >= 200) {
     productoEscena.style.setProperty('--quita', Math.ceil(falta + 2) + 'px');
   }
 }
