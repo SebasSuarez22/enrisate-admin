@@ -1676,6 +1676,8 @@ a.boton-icono { text-decoration: none; }
 .cartera-resumen { display: none; }
 .btn-cobrar { display: none; }
 .fila-cobro { display: none !important; }
+.vence-nueva { display: none; }
+.th-estado { display: none; }
 
 @media (min-width: 960px) {
   .lienzo.ancho.cartera { max-width: 1180px; }
@@ -1695,17 +1697,31 @@ a.boton-icono { text-decoration: none; }
   .cartera .panel-header .accion-icono-circulo { width: 40px; height: 40px; }
   .cartera .panel-header .accion-icono-nombre { font-size: 13px; }
 
-  /* Columnas: la cuota y la fecha caben en una línea; el botón tiene su ancho */
-  .tabla-cartera-pendiente th:nth-child(1), .tabla-cartera-pendiente td:nth-child(1) { width: 24%; }
-  .tabla-cartera-pendiente th:nth-child(2), .tabla-cartera-pendiente td:nth-child(2) { width: 11%; }
-  .tabla-cartera-pendiente th:nth-child(3), .tabla-cartera-pendiente td:nth-child(3) { width: 14%; }
-  .tabla-cartera-pendiente th:nth-child(4), .tabla-cartera-pendiente td:nth-child(4) { width: 19%; }
-  .tabla-cartera-pendiente th:nth-child(5), .tabla-cartera-pendiente td:nth-child(5) { width: 14%; }
-  .tabla-cartera-pendiente th:nth-child(6), .tabla-cartera-pendiente td:nth-child(6) { width: 18%; }
+  /* Columnas: nada se parte en dos líneas. Vence y Estado comparten una columna (20 %): la
+     fecha corta en dos líneas fijas y el estado a su lado, siempre en el mismo sitio. Un nombre
+     o una cuota muy largos terminan en "…" (el nombre completo sale al pasar el cursor y en el
+     resumen del panel). */
+  .tabla-cartera-pendiente th:nth-child(1), .tabla-cartera-pendiente td:nth-child(1) { width: 22%; }
+  .tabla-cartera-pendiente th:nth-child(2), .tabla-cartera-pendiente td:nth-child(2) { width: 12%; }
+  .tabla-cartera-pendiente th:nth-child(3), .tabla-cartera-pendiente td:nth-child(3) { width: 13%; }
+  .tabla-cartera-pendiente th:nth-child(4), .tabla-cartera-pendiente td:nth-child(4) { width: 20%; }
+  .tabla-cartera-pendiente th:nth-child(5), .tabla-cartera-pendiente td:nth-child(5) { width: 12%; }
+  .tabla-cartera-pendiente th:nth-child(6), .tabla-cartera-pendiente td:nth-child(6) { width: 21%; }
   .tabla-cartera-pendiente td { vertical-align: middle; }
+  .tabla-cartera-pendiente td:nth-child(1),
+  .tabla-cartera-pendiente td:nth-child(3) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tabla-cartera-pendiente td > .salir { width: auto; min-height: 30px; padding: 0 10px; white-space: nowrap; font-size: 12px; }
-  .tabla-cartera-pendiente td .etiqueta { margin-left: 8px; white-space: nowrap; }
   .tabla-cartera-pendiente tbody tr.abierta > td { background: rgba(224, 184, 126, 0.07); border-bottom-color: transparent; }
+
+  .vence-clasica { display: none; }
+  .vence-nueva { display: flex; align-items: center; gap: 14px; white-space: nowrap; }
+  .vence-fecha { flex: none; width: 62px; line-height: 1.25; }
+  .vence-fecha b { display: block; font-size: 14px; font-weight: 600; color: var(--marfil); }
+  .vence-fecha small { font-size: 11.5px; color: var(--marfil-40); font-variant-numeric: tabular-nums; }
+  .vence-estado .etiqueta { margin: 0; white-space: nowrap; }
+  .th-fila { display: flex; gap: 14px; }
+  .th-vence { flex: none; width: 62px; }
+  .th-estado { display: inline; }
 
   /* La columna de acciones: solo el botón */
   .tabla-cartera-pendiente .acciones-cartera { display: none; }
@@ -1725,40 +1741,52 @@ a.boton-icono { text-decoration: none; }
   .btn-cobrar[aria-expanded="true"] svg { transform: rotate(45deg); }
   .btn-cobrar:focus-visible { outline: 2px solid var(--brillo); outline-offset: 2px; }
 
-  /* Panel de cobro, debajo de la fila */
+  /* Panel de cobro, debajo de la fila: una tarjeta con aire. A la izquierda el resumen de la
+     cuota; a la derecha el formulario. Todos los controles miden lo mismo (42 px) para que la
+     fila de abajo se vea pareja. */
   .fila-cobro { display: table-row !important; }
   .fila-cobro[hidden] { display: none !important; }
-  .fila-cobro > td { padding: 0; border-bottom: 1px solid var(--linea); }
-  .cobro { background: rgba(224, 184, 126, 0.07); border-left: 3px solid var(--champana); }
-  .cobro-form {
-    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 24px; row-gap: 6px;
-    align-items: end; padding: 20px 24px 18px;
+  .fila-cobro > td { padding: 4px 0 16px; border-bottom: 1px solid var(--linea); white-space: normal; }
+  .cobro {
+    display: grid; grid-template-columns: 230px minmax(0, 1fr); overflow: hidden;
+    border: 1px solid rgba(224, 184, 126, 0.38); border-radius: 16px;
+    background: rgba(224, 184, 126, 0.07);
   }
+  .cobro-resumen {
+    display: flex; flex-direction: column; gap: 14px; padding: 26px 28px;
+    border-right: 1px solid rgba(224, 184, 126, 0.2); background: rgba(15, 7, 12, 0.28);
+  }
+  .cobro-resumen-titulo { margin: 0; font: 500 11px var(--dato); letter-spacing: 0.14em; text-transform: uppercase; color: var(--champana); }
+  .cobro-resumen dl { margin: 0; display: grid; gap: 12px; }
+  .cobro-resumen dt { font: 500 10px var(--dato); letter-spacing: 0.1em; text-transform: uppercase; color: var(--marfil-40); }
+  .cobro-resumen dd { margin: 2px 0 0; font: 600 15px/1.3 var(--texto); color: var(--marfil); overflow-wrap: anywhere; }
+  .cobro-resumen dd.cobro-pend { font: 600 20px var(--display); color: var(--brillo); font-variant-numeric: tabular-nums; }
+  .cobro-formas { min-width: 0; }
+  .cobro-form { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 0; align-items: start; padding: 26px 30px 10px; }
   .cobro-form[hidden] { display: none; }
   .cobro-datos { min-width: 0; }
-  .cobro-confirmar { align-self: start; margin-top: 34px; }
-  .cobro-sec { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 20px; }
+  .cobro-confirmar { align-self: start; justify-self: start; margin-top: 6px; }
+  .cobro-sec { display: flex; flex-wrap: wrap; gap: 6px 28px; margin-top: 10px; padding: 6px 0 16px; }
   .cobro-titulo {
-    margin: 0 0 12px;
+    margin: 0 0 14px;
     font: 500 11px/1.4 var(--dato); letter-spacing: 0.14em; text-transform: uppercase; color: var(--champana);
   }
-  .cobro-titulo span { color: var(--marfil-70); }
   .cobro-campos { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
   .cobro-monto { position: relative; display: block; flex: none; }
-  .cobro-peso { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--marfil-40); pointer-events: none; }
-  .cobro-input { width: 190px; height: 46px; padding: 0 14px 0 30px; text-align: right; font: 600 16px var(--texto); font-variant-numeric: tabular-nums; color: var(--brillo); }
+  .cobro-peso { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--marfil-40); pointer-events: none; }
+  .cobro .cobro-input { width: 168px; height: 42px; min-height: 42px; padding: 0 12px 0 28px; text-align: right; font: 600 15px var(--texto); font-variant-numeric: tabular-nums; color: var(--brillo); }
   .cobro-input[aria-invalid="true"], .cobro-motivo[aria-invalid="true"] { border-color: var(--alerta); }
-  .cobro-motivo { width: 280px; height: 46px; padding: 0 14px; font: 500 14px var(--texto); }
+  .cobro .cobro-motivo { width: 280px; height: 42px; min-height: 42px; padding: 0 14px; font: 500 14px var(--texto); }
   .cobro-chip {
-    min-height: 38px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+    min-height: 42px; padding: 0 16px; border-radius: 999px; cursor: pointer;
     font: 600 13px var(--texto); font-variant-numeric: tabular-nums;
     color: var(--marfil-70); background: none; border: 1px solid var(--linea);
   }
   .cobro-chip:hover { border-color: var(--champana); color: var(--brillo); }
   .cobro-chip[aria-pressed="true"] { border-color: var(--champana); color: var(--brillo); background: rgba(224, 184, 126, 0.12); }
-  .cobro-error { margin: 8px 0 0; min-height: 18px; font-size: 12.5px; color: var(--alerta); }
+  .cobro-error { margin: 6px 0 0; min-height: 0; font-size: 12.5px; color: var(--alerta); }
   .cobro-confirmar {
-    display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 24px; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 24px; white-space: nowrap;
     font: 700 14px var(--texto); letter-spacing: 0.02em; color: #2A1622; cursor: pointer;
     background: linear-gradient(135deg, var(--brillo), var(--champana) 62%, #D3A167);
     border: 0; border-radius: var(--r-campo);

@@ -2,6 +2,16 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 3 de octubre, 2026 (Cartera en escritorio: fecha corta, columna Estado y panel de cobro con resumen)
+
+Sebastián vio en el celular ("sitio para computadoras", ~980px) que los meses largos ("10 de septiembre de 2026") bajaban a dos líneas y descuadraban la fila, y que el panel de Cobrar quedaba pegado a los bordes. Se probaron 3 mockups; eligió la **B** y pidió que el campo del abono no se viera tan grande. **Solo desde 960px**; debajo, la página queda igual (comparación píxel a píxel: diferencias ≤4/765, ruido del fondo animado).
+- **Qué cambió:** `cartera.php` (la celda Vence trae `.vence-clasica` —la fecha larga de siempre— y `.vence-nueva` —fecha corta en dos líneas "10 sep" / "2026" + estado Vencida/Pendiente—; encabezado "Vence" + "Estado" alineados con esa celda; el panel `.cobro` ahora tiene `<aside class="cobro-resumen">` con cliente, cuota, vence y pendiente, y los formularios dentro de `.cobro-formas`; los títulos del panel ya no repiten cliente y cuota; `title` con el nombre completo en la celda del cliente) y `assets/css/enrisate.css` (bloque "CARTERA · escritorio").
+- **Por qué el estado va dentro de la columna Vence y no como columna nueva:** una columna más habría movido todos los `nth-child` del CSS base (que aplican debajo de 960px) y obligado a cambiar el `colspan` de las filas del panel. Así no se toca nada de celular ni tablet.
+- **Tamaños parejos:** monto del abono, chips "Total/Mitad" y botón de confirmar miden **42 px** (antes 46/38/46); el monto pasó de 190 a 168 px de ancho y de 16 a 15 px de letra; el motivo del descuento también 42 px. Ojo: `input[type="text"]` global trae `min-height: 44px`, por eso `.cobro .cobro-input` lleva `min-height: 42px`.
+- **Columnas:** 22 / 12 / 13 / 20 (Vence + Estado) / 12 / 21 %. Nombre y cuota largos terminan en "…" (`white-space: nowrap`) para que todas las filas midan 71 px.
+- **Verificación (Playwright/Chromium, página real, 11 cuotas con meses de agosto a diciembre):** 960–2560 px: filas de 71 px, ninguna fecha en dos líneas, panel y fecha sin desborde, controles de 42 px; abono con error de monto mayor al pendiente, chip Mitad, abono real (baja el pendiente), descuento con confirmación, Esc cierra, cliente sin teléfono sin enlace de WhatsApp; 16/16 archivos de pruebas PHP.
+- **Pendiente a propósito:** "Historial de facturas" tiene el mismo problema con fechas largas ("2 de octubre de 2026" baja a dos líneas); no se tocó.
+
 ## 2 de octubre, 2026 (Fotos de producto: el fondo liso que no es blanco se quita al subir)
 
 Sebastián preguntó si una foto subida desde Productos se vería con el mismo fondo cálido de la ficha del catálogo público. Se probó con el flujo real (formulario del admin → card en el catálogo): **las 26 fotos que ya existen se funden** (todas tienen fondo blanco; `mix-blend-mode: multiply` solo borra el blanco), pero una foto nueva con fondo gris, de color o negro se veía con recuadro (5 de 7 casos de prueba fallaban; solo funcionaban blanco y transparente).

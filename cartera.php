@@ -384,23 +384,37 @@ require __DIR__ . '/includes/cabecera.php';
             <th>Cliente</th>
             <th>No. factura</th>
             <th>Cuota</th>
-            <th>Vence</th>
+            <th><span class="th-fila"><span class="th-vence">Vence</span><span class="th-estado">Estado</span></span></th>
             <th class="num">Monto pendiente</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($pendientes as $p): $f = $p['factura']; $vencida = esta_vencida($p['vence']); $abonado = $p['pactado'] - $p['pendiente']; $ac = $accionesCartera($p, '-t'); ?>
+          <?php foreach ($pendientes as $p): $f = $p['factura']; $vencida = esta_vencida($p['vence']); $abonado = $p['pactado'] - $p['pendiente']; $ac = $accionesCartera($p, '-t');
+              $venceCorta = fecha_abreviada($p['vence']);              // "10 sep 2026"
+              $cortePos   = (int) strrpos($venceCorta, ' ');
+              $venceDia   = substr($venceCorta, 0, $cortePos);          // "10 sep"
+              $venceAnio  = substr($venceCorta, $cortePos + 1);         // "2026"
+          ?>
             <tr>
-              <td>
+              <td title="<?= e($f['cliente']) ?>">
                 <?= e($f['cliente']) ?>
                 <?php if ($f['telefono'] !== ''): ?><span class="sku"><?= e($f['telefono']) ?></span><?php endif; ?>
               </td>
               <td><a class="salir" href="factura.php?n=<?= e($f['numero']) ?>"><?= e($f['numero']) ?></a></td>
               <td><?= e($p['rotulo']) ?></td>
               <td>
-                <?= e(fecha_larga($p['vence'])) ?>
-                <?php if ($vencida): ?><span class="etiqueta vencida">Vencida</span><?php endif; ?>
+                <!-- Celular y tablet (<960px): la fecha larga de siempre. -->
+                <div class="vence-clasica">
+                  <?= e(fecha_larga($p['vence'])) ?>
+                  <?php if ($vencida): ?><span class="etiqueta vencida">Vencida</span><?php endif; ?>
+                </div>
+                <!-- Escritorio (≥960px): fecha corta en dos líneas fijas + estado en su sitio,
+                     para que un mes largo (septiembre, diciembre) no empuje nada. -->
+                <div class="vence-nueva">
+                  <span class="vence-fecha"><b><?= e($venceDia) ?></b><small><?= e($venceAnio) ?></small></span>
+                  <span class="vence-estado"><?= $vencida ? '<span class="etiqueta vencida">Vencida</span>' : '<span class="etiqueta pendiente">Pendiente</span>' ?></span>
+                </div>
               </td>
               <td class="num">
                 <?= pesos($p['pendiente']) ?>
@@ -427,13 +441,23 @@ require __DIR__ . '/includes/cabecera.php';
             <tr class="fila-cobro" id="<?= e($idCobro) ?>" hidden>
               <td colspan="6">
                 <div class="cobro" role="group" aria-label="Cobrar a <?= e($f['cliente']) ?>">
+                  <aside class="cobro-resumen" aria-label="Resumen de la cuota">
+                    <h4 class="cobro-resumen-titulo">Resumen</h4>
+                    <dl>
+                      <div><dt>Cliente</dt><dd><?= e($f['cliente']) ?></dd></div>
+                      <div><dt>Cuota</dt><dd><?= e($p['rotulo']) ?></dd></div>
+                      <div><dt>Vence</dt><dd><?= e($venceCorta) ?></dd></div>
+                      <div><dt>Pendiente</dt><dd class="cobro-pend"><?= pesos($pend) ?></dd></div>
+                    </dl>
+                  </aside>
+                  <div class="cobro-formas">
                   <form method="post" action="cartera.php" class="cobro-form cobro-abono" data-pendiente="<?= $pend ?>">
                     <input type="hidden" name="csrf" value="<?= e($token) ?>">
                     <input type="hidden" name="numero" value="<?= e($f['numero']) ?>">
                     <input type="hidden" name="cuota_idx" value="<?= (int) $p['idx'] ?>">
                     <input type="hidden" name="monto" value="<?= $pend ?>">
                     <div class="cobro-datos">
-                      <h4 class="cobro-titulo">Registrar abono <span>· <?= e($f['cliente']) ?> · <?= e($p['rotulo']) ?></span></h4>
+                      <h4 class="cobro-titulo">Registrar abono</h4>
                       <div class="cobro-campos">
                         <label class="cobro-monto">
                           <span class="cobro-peso" aria-hidden="true">$</span>
@@ -472,7 +496,7 @@ require __DIR__ . '/includes/cabecera.php';
                     <input type="hidden" name="cuota_idx" value="<?= (int) $p['idx'] ?>">
                     <input type="hidden" name="monto" value="<?= $pend ?>">
                     <div class="cobro-datos">
-                      <h4 class="cobro-titulo">Aplicar descuento <span>· <?= e($f['cliente']) ?> · <?= e($p['rotulo']) ?></span></h4>
+                      <h4 class="cobro-titulo">Aplicar descuento</h4>
                       <div class="cobro-campos">
                         <label class="cobro-monto">
                           <span class="cobro-peso" aria-hidden="true">$</span>
@@ -492,6 +516,7 @@ require __DIR__ . '/includes/cabecera.php';
                       <button type="button" class="cobro-enlace" data-cobro-volver>← Volver al abono</button>
                     </div>
                   </form>
+                  </div>
                 </div>
               </td>
             </tr>
