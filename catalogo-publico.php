@@ -127,7 +127,41 @@ $logosPorMarca = [
 </head>
 <body>
 
-<div class="cp-franja">Cuidado capilar en <?= e(APP_CIUDAD) ?> · Pide por WhatsApp</div>
+<?php
+  // Aviso corredizo de la promoción. El mensaje corre en bucle: la cinta lleva dos mitades
+  // idénticas y se desplaza -50 %, así el salto es invisible. Cada mitad repite el mensaje lo
+  // suficiente para cubrir una pantalla ancha. Solo el primer mensaje lo leen los lectores de
+  // pantalla; el resto es decoración (aria-hidden).
+  $cpPromoPct  = (int) PROMO_PORCENTAJE;
+  $cpPromoMas  = (int) PROMO_MAS_DE_UNIDADES;
+  $cpPromoItem = function (bool $leible) use ($cpPromoPct, $cpPromoMas): string {
+      return '<span class="cp-aviso-item"' . ($leible ? '' : ' aria-hidden="true"') . '>'
+           . 'Por la compra de más de ' . $cpPromoMas . ' productos tienes un <b>' . $cpPromoPct
+           . '&nbsp;% de descuento</b> en toda la compra</span>'
+           . '<svg class="cp-aviso-chispa" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1c.6 5.6 5.4 10.4 11 11-5.6.6-10.4 5.4-11 11-.6-5.6-5.4-10.4-11-11C6.6 11.4 11.4 6.6 12 1z"/></svg>';
+  };
+  $cpPromoCopias = 5;
+?>
+<div class="cp-franja" id="cpFranja" role="region" aria-label="Promoción">
+  <div class="cp-etiqueta" aria-hidden="true">
+    <span class="cp-etiqueta-cordon"></span>
+    <span class="cp-etiqueta-cuerpo"><strong><?= $cpPromoPct ?>&nbsp;%</strong><span>DTO.</span></span>
+  </div>
+  <div class="cp-aviso-pista">
+    <div class="cp-aviso-cinta">
+      <div class="cp-aviso-mitad">
+        <?php for ($i = 0; $i < $cpPromoCopias; $i++) { echo $cpPromoItem($i === 0); } ?>
+      </div>
+      <div class="cp-aviso-mitad" aria-hidden="true">
+        <?php for ($i = 0; $i < $cpPromoCopias; $i++) { echo $cpPromoItem(false); } ?>
+      </div>
+    </div>
+  </div>
+  <button type="button" class="cp-aviso-pausa" id="cpAvisoPausa" aria-label="Pausar el mensaje" aria-pressed="false">
+    <svg class="cp-ic-pausa" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><rect x="2" y="1" width="3" height="10" rx="1"/><rect x="7" y="1" width="3" height="10" rx="1"/></svg>
+    <svg class="cp-ic-play" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M3 1.5v9l7.5-4.5z"/></svg>
+  </button>
+</div>
 
 <header class="cp-encabezado">
   <?php

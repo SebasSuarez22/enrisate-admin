@@ -716,3 +716,14 @@ if (chips.length && gruposMarca.length) {
   }, { rootMargin: '-130px 0px -70% 0px' });
   gruposMarca.forEach(grupo => observador.observe(grupo));
 }
+
+/* --- Aviso corredizo: botón de pausa (el mensaje también se pausa con el mouse encima o con el foco) --- */
+const cpFranja = document.getElementById('cpFranja');
+const cpAvisoPausa = document.getElementById('cpAvisoPausa');
+if (cpFranja && cpAvisoPausa) {
+  cpAvisoPausa.addEventListener('click', () => {
+    const pausado = cpFranja.classList.toggle('pausado');
+    cpAvisoPausa.setAttribute('aria-pressed', String(pausado));
+    cpAvisoPausa.setAttribute('aria-label', pausado ? 'Reanudar el mensaje' : 'Pausar el mensaje');
+  });
+}

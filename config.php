@@ -47,6 +47,12 @@ const UMBRAL_CUOTAS_PUBLICO = 70000;
 // (protección simple contra spam/bots en el formulario público).
 const MAX_PEDIDOS_POR_HORA = 8;
 
+/* --- Promoción del catálogo público --- */
+// Aviso corredizo de arriba del catálogo: "Por la compra de más de N
+// productos tienes un X % de descuento en toda la compra".
+const PROMO_MAS_DE_UNIDADES = 5;
+const PROMO_PORCENTAJE      = 10;
+
 /* --- Seguridad --- */
 const MAX_INTENTOS       = 5;    // intentos fallidos antes de bloquear
 const BLOQUEO_SEGUNDOS   = 300;  // 5 minutos de bloqueo
