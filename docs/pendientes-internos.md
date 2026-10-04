@@ -2,6 +2,14 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 4 de octubre, 2026 (Descripciones justificadas con guiones en la ficha, todos los tamaños)
+
+Sebastián pidió alinear los textos de todas las descripciones; se entendió "justificado" y se confirmó con una comparación (izquierda vs justificado con guiones) antes de aplicarlo.
+- **CSS:** `.cp-ficha-descripcion p { text-align: justify; text-justify: inter-word; hyphens: manual }` (la última línea de cada párrafo queda a la izquierda). Aplica en todos los tamaños (celular de pie y acostado, tablet, escritorio). El cuadro "Esta descripción está en camino" no se toca. El botón "Leer más/menos" pasó de `padding: 0 2px` a `0`: quedaba 2 px corrido respecto al texto.
+- **Por qué guiones suaves y no `hyphens: auto`:** `auto` depende del diccionario de cada navegador (en el Chromium de pruebas no separaba nada y las columnas angostas quedaban con huecos enormes). `conGuionesSuaves()` (JS, en `pintarDescripcion`) inserta U+00AD entre sílabas de las palabras de 7 letras o más: nunca deja menos de 2 letras antes ni 3 después, respeta diptongos/hiatos y la u muda de que/qui/gue/gui, y no toca enlaces ni correos.
+- **Validado contra las 39 descripciones reales:** quitando los guiones suaves el texto queda idéntico al original (se verificó con un script de Node); se revisó la lista completa de palabras separadas. La separación es aproximada: si aparece una palabra mal cortada, se corrige en `silabasEs()`.
+- **Verificación:** 12 tamaños × 5 productos (los mismos de la ficha en escritorio): sin errores JS, sin scroll horizontal, precio y botón a la vista, "Leer más" correcto; 17/17 pruebas PHP.
+
 ## 4 de octubre, 2026 (Sombra de apoyo encima del Shampoo PLEX)
 
 Sebastián vio la sombra "encima de la imagen" del Shampoo PLEX (PL-01, envase blanco). Causas encontradas:
