@@ -2,6 +2,15 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 4 de octubre, 2026 (Ficha del producto en escritorio: letra más pequeña, "Leer más" y dos columnas)
+
+Sebastián revisó las descripciones al ampliar una card: en computador iban completas en 17 px (con textos largos quedaban corridas bajo la barra del precio) y no había "Leer más". De 3 propuestas (A panel compacto, B dos columnas, C hoja que sube) eligió la **B**.
+- **Texto:** desde 720 px la descripción baja de 17 px a **14,5 px** (`.90625rem`, interlineado 1,62). Celular de pie y acostado no cambian (16 px).
+- **"Leer más" en todos los tamaños:** el botón y el recorte con degradado ya no están limitados a celular (se quitó la media query que los restringía); `--recorte` por tamaño: celular 9,4 em · tablet 6,5 em (4 líneas) · escritorio 8,1 em (5 líneas). Sigue valiendo la regla de `revisarLeerMas()`: solo aparece si se oculta más de 1,5 líneas (una descripción de 320 caracteres cabe completa en escritorio; la de 541 muestra el botón).
+- **Tablet y portátil bajo 1100 px o 560 px de alto:** el mismo panel lateral (460/520 px) con la foto más baja, `clamp(300px, 46dvh, 440px)` (antes 56/58 dvh), para que el precio y el botón queden a la vista.
+- **Desde 1100 px de ancho y 560 de alto (B):** la ficha se abre **centrada** (980 × 640 máx.) en dos columnas, foto 52 % a la izquierda y texto a la derecha; el precio y el botón fijos abajo de la columna del texto. Reusa la estructura del celular acostado (`.cp-ficha-cuerpo { display: contents }`), así que `ajustarFicha()` y el degradado de scroll no cambiaron. Ojo: `.cp-hoja-producto[hidden]` necesita su propia regla `display: none` porque el modo B pone `display: grid`.
+- **Verificación:** 12 tamaños (390×844, 844×390, 720, 768×1024, 1024×768, 1099×800, 1100×800, 1100×559, 1366×768, 1440×900, 1920×1080, 2560×1440) × 5 productos (descripción larga, media, corta, sin descripción con y sin foto): sin errores JS, sin scroll horizontal, precio y botón siempre a la vista, "Leer más"/"Leer menos" correcto y texto completo al desplegar; 17/17 archivos de pruebas PHP.
+
 ## 4 de octubre, 2026 (Promoción: 10 % de descuento desde 3 productos, ya efectivo en el carrito)
 
 Cambio de planes de Sebastián: el aviso pasa a "Por la compra de 3 o más productos tienes un 10 % de descuento en toda la compra" y el descuento se aplica de verdad.
