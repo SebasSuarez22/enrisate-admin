@@ -2,6 +2,15 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 4 de octubre, 2026 (Catálogo: aviso corredizo con etiqueta "10 % DTO." que cuelga — opción C)
+
+Sebastián pidió el aviso de arriba corredizo con "Por la compra de más de 5 productos tienes un 10 % de descuento en toda la compra" y un efecto especial; de 3 propuestas (A Destello, B Cuenta de 5, C Etiqueta que cuelga) eligió la **C**.
+- **Qué cambió:** reemplaza la franja "Cuidado capilar en Barranquilla · Pide por WhatsApp". `catalogo-publico.php` (bloque `#cpFranja`, texto armado con `PROMO_MAS_DE_UNIDADES` y `PROMO_PORCENTAJE`, nuevas constantes en `config.php`), `assets/css/catalogo-publico.css` (`.cp-franja`, `.cp-aviso-*`, `.cp-etiqueta*`) y `assets/js/catalogo-publico.js` (botón de pausa).
+- **Cómo funciona:** cinta de dos mitades idénticas con 5 copias cada una (cubre hasta ~3300 px) que se desplaza `translateX(-50%)` en 60 s (~55 px/s); solo `transform`. La etiqueta (rosa `--rosa`, 46×52, `clip-path`) cuelga 24 px por debajo de la franja y se balancea 15° con amortiguación en los primeros 20 % de un ciclo de 8 s. Pausa: botón (WCAG 2.2.2) y mouse encima **del texto** (no `:focus-within`: el botón enfocado dejaba el mensaje pausado tras "reanudar"). Solo el primer mensaje es legible para lectores de pantalla; el resto va `aria-hidden`.
+- **Movimiento reducido:** sin animaciones, una sola copia centrada que se parte en líneas (en celular 66 px de alto), sin botón de pausa. Ojo: el `.cp-aviso-item` es `inline-block`; con `inline-flex` se comían los espacios alrededor del `<b>`.
+- **Verificación:** 320, 375, 390 (de pie y acostado), 768, 1280, 1920 y 2560 px sin scroll horizontal; pausa/reanudar con `aria-pressed` y etiqueta; modo `prefers-reduced-motion`; 16/16 pruebas PHP.
+- **PENDIENTE (decisión de Sebastián):** el carrito **todavía no aplica el descuento** (`totalPedido()` en el JS y `$subtotal` en `pedido-publico.php` suman sin rebaja). Propuesta hecha: mostrar "Descuento 10 %" y total rebajado en el carrito y en el mensaje de WhatsApp, y guardar el descuento en el pedido. También falta definir si "más de 5" cuenta unidades (como hoy el carrito: 6 desde la sexta unidad) o productos distintos.
+
 ## 4 de octubre, 2026 (Catálogo: tarjetas compactas y ficha grande — se invierte la "Vitrina amplia")
 
 Sebastián prefirió tarjetas compactas como antes y el producto grande al abrir la ficha. **Ojo:** dijo que ya había corrido "Revisar fondos de fotos", pero en los logs HTTP de Railway no hay ninguna visita de navegador a `/revisar-fotos.php` y las fotos siguen en 640×640 (solo MIL-17 está recortada): parece que la corrió en su XAMPP local. Hay que correrla en producción.
