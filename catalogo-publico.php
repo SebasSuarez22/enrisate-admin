@@ -43,6 +43,20 @@ function cp_img_attrs(string $rutaRelativa): string {
     return $dim ? sprintf('width="%d" height="%d"', $dim[0], $dim[1]) : '';
 }
 
+// Escala de la foto en la tarjeta según la forma del envase (ver .cp-img-foto en el CSS):
+// --a = ancho/alto; --fh = qué parte de la altura disponible ocupa. Una botella alta y delgada
+// (a ≈ 0,35 o menos) la llena; un frasco ancho baja de forma suave (exponente 0,3) para que en
+// la rejilla todos se vean de la misma familia y ninguno parezca gigante o diminuto.
+function cp_foto_escala(string $rutaRelativa): string {
+    $dim = @getimagesize(__DIR__ . '/' . $rutaRelativa);
+    if (!$dim || $dim[0] < 1 || $dim[1] < 1) {
+        return '';
+    }
+    $a  = $dim[0] / $dim[1];
+    $fh = min(1.0, 0.97 * (0.35 / $a) ** 0.3);
+    return sprintf('; --a: %.3F; --fh: %.3F', $a, $fh);
+}
+
 // Nombres de marca mal escritos en la base. Arréglalos en MySQL cuando puedas
 // y esta tabla se queda vacía.
 $nombreVisible = [
@@ -188,7 +202,7 @@ $logosPorMarca = [
                    data-cat-fondo="<?= e($tipoFondo) ?>"
                    data-cat-tinta="<?= e($tipoTinta) ?>"
                    data-busca="<?= e($busca) ?>">
-            <div class="cp-img-wrap <?= $tieneFoto ? 'cp-img-foto' : '' ?><?= $tieneFoto && $tieneLogo ? ' cp-con-logo' : '' ?>" style="--tipo-fondo: <?= $tipoFondo ?>; --tipo-tinta: <?= $tipoTinta ?>">
+            <div class="cp-img-wrap <?= $tieneFoto ? 'cp-img-foto' : '' ?><?= $tieneFoto && $tieneLogo ? ' cp-con-logo' : '' ?>" style="--tipo-fondo: <?= $tipoFondo ?>; --tipo-tinta: <?= $tipoTinta ?><?= $tieneFoto ? cp_foto_escala($rutaFoto) : '' ?>">
               <?php if ($tieneFoto): ?>
                 <img class="cp-foto" src="<?= e(cp_img_v($rutaFoto)) ?>" alt="<?= e($p['nombre']) ?> · <?= e($marcaVisible) ?>" <?= cp_img_attrs($rutaFoto) ?> loading="<?= $cpCarga ?>" <?= $cpPrioridadAttr ?> decoding="async">
                 <?php if ($tieneLogo): ?>

@@ -196,6 +196,14 @@ require __DIR__ . '/includes/cabecera.php';
     </form>
   </section>
 
+  <section class="panel panel-fotos">
+    <div>
+      <h2 class="titulo-panel">Fotos del catálogo</h2>
+      <p>Las fotos nuevas se arreglan solas al subirlas. Para pasar por el mismo arreglo las que ya estaban subidas, y ver cuáles conviene volver a subir, revísalas aquí.</p>
+    </div>
+    <a class="boton mini fantasma" href="revisar-fotos.php">Revisar fondos de fotos</a>
+  </section>
+
   <?php if ($porMarca): ?>
     <section class="panel panel-buscador-productos">
       <div class="panel-header">

@@ -151,5 +151,55 @@ $ok = quitar_fondo_uniforme($im);
 $ms = (int) round((microtime(true) - $t0) * 1000);
 verificar($ok && $ms < 3000, "una foto de 640×640 se procesa en menos de 3 s ($ms ms)");
 
+/* procesar_foto_producto(): lo que se hace al subir y en "Revisar fondos de fotos". */
+
+// 11) Gris claro de estudio → fondo blanco puro (no transparente) y el producto conserva su color,
+//     apenas aclarado en la misma proporción que el fondo.
+$im = foto_prueba(fondo_liso([235, 235, 235]));
+[$im, $cambios] = procesar_foto_producto($im);
+$w = imagesx($im); $h = imagesy($im);
+[$r, $g, $b] = rgb($im, intdiv($w, 2), intdiv($h, 2));
+$gan = 255 / 235;
+verificar(in_array('blanqueada', $cambios, true) && rgb($im, 1, 1) === [255, 255, 255] && alfa($im, 1, 1) === 0,
+    'gris claro de estudio: el fondo queda blanco puro');
+verificar(abs($r - round(196 * $gan)) <= 1 && abs($g - round(92 * $gan)) <= 1 && abs($b - round(120 * $gan)) <= 1,
+    "gris claro de estudio: el producto conserva su color (rgb $r,$g,$b)");
+
+// 12) Con viñeta (esquinas más oscuras) también queda blanco hasta las esquinas.
+$vineta = fn($x, $y) => [($v = (int) round(240 - 14 * min(1, hypot($x - 100, $y - 100) / 140))), $v, $v];
+$im = foto_prueba($vineta);
+[$im, $cambios] = procesar_foto_producto($im);
+verificar(in_array('blanqueada', $cambios, true) && rgb($im, 0, 0) === [255, 255, 255], 'gris con viñeta: blanco hasta las esquinas');
+
+// 13) Envase blanco sobre gris: blanquear borraría la silueta → no se blanquea y queda marcado para volver a subir.
+$im = imagecreatetruecolor(T, T);
+imagefilledrectangle($im, 0, 0, T, T, (232 << 16) | (232 << 8) | 232);
+imagefilledrectangle($im, 70, 40, 130, 165, (250 << 16) | (250 << 8) | 250);
+verificar(!blanquear_fondo_claro($im) && rgb($im, 100, 100) === [250, 250, 250], 'envase blanco sobre gris: no se blanquea (se perdería la silueta)');
+
+// 14) Beige de color (no es un gris de estudio): no se blanquea, se vuelve transparente como antes.
+$im = foto_prueba(fondo_liso([225, 210, 190]));
+[$im, $cambios] = procesar_foto_producto($im);
+verificar($cambios[0] === 'transparente' && alfa($im, 1, 1) >= 120, 'fondo beige: transparente, no blanqueado');
+
+// 15) Márgenes: se recortan dejando un respiro de 4 % del lado mayor del producto.
+$im = foto_prueba(fondo_liso([255, 255, 255]));
+[$im, $cambios] = procesar_foto_producto($im);
+$pad = (int) round(126 * 0.04);
+verificar($cambios === ['recortada'] && imagesx($im) === 61 + 2 * $pad && imagesy($im) === 126 + 2 * $pad,
+    'márgenes blancos recortados: ' . imagesx($im) . '×' . imagesy($im) . ' (producto 61×126 + respiro)');
+verificar(rgb($im, $pad + 30, $pad + 60) === [196, 92, 120], 'el recorte no mueve ni cambia el producto');
+
+// 16) Revisar dos veces no vuelve a cambiar nada.
+$copia = imagecreatetruecolor(imagesx($im), imagesy($im));
+imagecopy($copia, $im, 0, 0, 0, 0, imagesx($im), imagesy($im));
+[$otra, $cambios2] = procesar_foto_producto($copia);
+verificar($cambios2 === [] && imagesx($otra) === imagesx($im), 'procesar una foto ya procesada no cambia nada');
+
+// 17) foto_fondo_ok(): blanco y transparente sí; gris o de color, no (se marca para volver a subir).
+verificar(foto_fondo_ok(foto_prueba(fondo_liso([255, 255, 255]))), 'fondo blanco: se funde con el catálogo');
+verificar(foto_fondo_ok(foto_prueba(fondo_liso([0, 0, 0, 127]))), 'fondo transparente: se funde con el catálogo');
+verificar(!foto_fondo_ok(foto_prueba(fondo_liso([232, 232, 232]))), 'fondo gris: conviene volver a subirla');
+
 echo "\n" . ($fallos === 0 ? "TODO OK" : "$fallos prueba(s) fallaron") . "\n";
 exit($fallos === 0 ? 0 : 1);
