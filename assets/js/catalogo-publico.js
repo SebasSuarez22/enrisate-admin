@@ -515,6 +515,38 @@ function pintarDescripcion(texto, nombre) {
    según la forma del envase (--a y --fh, que la tarjeta trae de PHP). Aquí la escena no es
    cuadrada, así que el tamaño se calcula en px; la sombra de apoyo toma ese ancho y esa base.
    Se recalcula cada vez que cambia el tamaño de la escena (abrir, girar, --quita). */
+/* Cuánto aire (fracción del alto de la foto) queda VACÍO bajo el producto. Las fotos se recortan al
+   subirlas, pero ese aire va de 0 a 6 % según la foto (un envase blanco sobre blanco casi no deja
+   nada), así que la sombra de apoyo se coloca con la medida real: se baja la foto a una miniatura
+   y se busca desde abajo la primera fila con algo que no sea blanco ni transparente. */
+function medirPieFoto(img) {
+  try {
+    const nw = img.naturalWidth, nh = img.naturalHeight;
+    if (!nw || !nh) return null;
+    const w = Math.min(nw, 96), h = Math.max(1, Math.round(w * nh / nw));
+    const lienzo = document.createElement('canvas');
+    lienzo.width = w; lienzo.height = h;
+    const g = lienzo.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0, w, h);
+    const d = g.getImageData(0, 0, w, h).data;
+    for (let y = h - 1; y >= 0; y--) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        if (d[i + 3] > 40 && Math.min(d[i], d[i + 1], d[i + 2]) < 240) return (h - 1 - y) / h;
+      }
+    }
+  } catch (e) { /* sin canvas o foto de otro origen: se queda el valor por defecto */ }
+  return null;
+}
+
+document.querySelectorAll('.cp-img-foto .cp-foto').forEach(img => {
+  const fijar = () => {
+    const pie = medirPieFoto(img);
+    if (pie !== null) img.closest('.cp-img-wrap').style.setProperty('--pie', pie.toFixed(4));
+  };
+  if (img.complete && img.naturalWidth) fijar(); else img.addEventListener('load', fijar, { once: true });
+});
+
 function encuadrarFotoFicha() {
   const img = productoFoto.querySelector('img.cp-foto');
   const W = productoFoto.clientWidth, H = productoFoto.clientHeight;
@@ -529,7 +561,8 @@ function encuadrarFotoFicha() {
   img.style.height = h + 'px';
   const base = productoEscena.getBoundingClientRect().bottom - productoFoto.getBoundingClientRect().bottom;
   productoEscena.style.setProperty('--ancho-producto', w + 'px');
-  productoEscena.style.setProperty('--apoyo', (base + h * 0.03) + 'px');
+  const pie = parseFloat(productoEscena.dataset.pie);
+  productoEscena.style.setProperty('--apoyo', (base + h * (isNaN(pie) ? 0.03 : pie)) + 'px');
 }
 if ('ResizeObserver' in window) new ResizeObserver(encuadrarFotoFicha).observe(productoFoto);
 
@@ -540,11 +573,16 @@ function pintarFotoFicha(tarjeta) {
     const envolturaFoto = fotoTarjeta.closest('.cp-img-wrap');
     productoEscena.dataset.a  = envolturaFoto.style.getPropertyValue('--a').trim();
     productoEscena.dataset.fh = envolturaFoto.style.getPropertyValue('--fh').trim();
+    productoEscena.dataset.pie = envolturaFoto.style.getPropertyValue('--pie').trim();
     const img = document.createElement('img');
     img.className = 'cp-foto';
     img.alt = fotoTarjeta.alt;
     img.decoding = 'async';
-    img.addEventListener('load', encuadrarFotoFicha);
+    img.addEventListener('load', () => {
+      const pie = medirPieFoto(img);                       // la versión grande, por si la de la tarjeta aún no se midió
+      if (pie !== null) productoEscena.dataset.pie = pie.toFixed(4);
+      encuadrarFotoFicha();
+    });
     // Se muestra al instante la de la tarjeta (ya está en caché) y se cambia por la grande
     // (hasta 1200 px) en cuanto termina de llegar, sin dejar la ficha en blanco mientras tanto.
     img.src = fotoTarjeta.currentSrc || fotoTarjeta.src;

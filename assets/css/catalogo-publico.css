@@ -429,7 +429,9 @@ body {
   padding: 0;
   --zona: calc(89% - var(--logo, 0px));
   --ancho-producto: min(84%, calc(var(--a, .6) * var(--fh, .85) * var(--zona)));
-  --apoyo: calc(7% + var(--logo, 0px) + var(--fh, .85) * var(--zona) * .03);
+  /* --pie = fracción del alto de la foto que queda VACÍA bajo el producto; la mide el JS de cada
+     foto (medirPieFoto) porque varía de 0 a 6 % según cómo se recortó. .03 mientras se mide. */
+  --apoyo: calc(7% + var(--logo, 0px) + var(--fh, .85) * var(--zona) * var(--pie, .03));
 }
 .cp-img-foto .cp-foto {
   position: absolute; left: 50%; bottom: calc(7% + var(--logo, 0px)); z-index: 1;
@@ -444,20 +446,25 @@ body {
   filter: brightness(1.015);
 }
 /* Sombra de apoyo en dos capas, del ancho del producto y pegada a su base: una difusa que lo
-   asienta y una de contacto, más oscura y angosta. */
+   asienta y una de contacto, más oscura y angosta.
+   Solo se ve la mitad de abajo (la máscara oculta lo que queda sobre la línea de la base): la foto
+   se mezcla con multiply y el blanco del envase "deja pasar" lo que tenga detrás, así que una
+   sombra que invadiera el producto se vería como una mancha gris sobre un envase blanco (PLEX). */
 .cp-img-foto::before,
 .cp-img-foto::after {
   content: ""; position: absolute; left: 50%; bottom: var(--apoyo); z-index: 0;
   translate: -50% 50%;
   border-radius: 50%; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 48%, #000 66%);
+          mask-image: linear-gradient(to bottom, transparent 48%, #000 66%);
 }
 .cp-img-foto::before {
-  width: calc(var(--ancho-producto) * .98); height: 8%;
+  width: calc(var(--ancho-producto) * .98); height: 11%;
   background: radial-gradient(closest-side, rgba(92,54,24,.15), rgba(92,54,24,.06) 55%, rgba(92,54,24,0));
   filter: blur(3px);
 }
 .cp-img-foto::after {
-  width: calc(var(--ancho-producto) * .72); height: 3.6%;
+  width: calc(var(--ancho-producto) * .72); height: 5%;
   background: radial-gradient(closest-side, var(--sombra-producto), rgba(74,40,16,.16) 50%, rgba(74,40,16,0));
   filter: blur(1.2px);
 }
@@ -820,17 +827,22 @@ body.cp-con-carrito .cp-pie {
    (catalogo-publico.js) según el tamaño real del producto en la escena. */
 .cp-ficha-escena::before,
 .cp-ficha-escena::after {
-  content: ""; position: absolute; left: 50%; bottom: var(--apoyo, 60px); z-index: 0;
+  /* z-index: -1 (dentro del isolation de la escena): debajo de la foto. Con 0, ::after quedaba
+     DESPUÉS de la foto en el orden de pintado y se dibujaba encima del producto. Solo se ve la
+     mitad de abajo, por la misma razón que en la tarjeta. */
+  content: ""; position: absolute; left: 50%; bottom: var(--apoyo, 60px); z-index: -1;
   translate: -50% 50%;
   border-radius: 50%; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 48%, #000 66%);
+          mask-image: linear-gradient(to bottom, transparent 48%, #000 66%);
 }
 .cp-ficha-escena::before {
-  width: calc(var(--ancho-producto, 120px) * 1.02); height: 30px;
+  width: calc(var(--ancho-producto, 120px) * 1.02); height: 42px;
   background: radial-gradient(closest-side, rgba(92,54,24,.15), rgba(92,54,24,.06) 55%, rgba(92,54,24,0));
   filter: blur(3px);
 }
 .cp-ficha-escena::after {
-  width: calc(var(--ancho-producto, 120px) * .75); height: 12px;
+  width: calc(var(--ancho-producto, 120px) * .75); height: 17px;
   background: radial-gradient(closest-side, var(--sombra-producto), rgba(74,40,16,.16) 50%, rgba(74,40,16,0));
   filter: blur(1.2px);
 }
