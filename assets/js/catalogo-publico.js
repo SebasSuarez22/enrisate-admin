@@ -43,6 +43,11 @@ const hoja        = document.getElementById('hojaCarrito');
 const cerrarBtn   = document.getElementById('cerrarCarrito');
 const listaPedido = document.getElementById('listaPedido');
 const hojaTotal   = document.getElementById('hojaTotal');
+const hojaResumen       = document.getElementById('hojaResumen');
+const hojaSubtotal      = document.getElementById('hojaSubtotal');
+const hojaDescEtiqueta  = document.getElementById('hojaDescEtiqueta');
+const hojaDescuento     = document.getElementById('hojaDescuento');
+const hojaPromoPista    = document.getElementById('hojaPromoPista');
 
 const cpNombre          = document.getElementById('cpNombre');
 const cpTelefono        = document.getElementById('cpTelefono');
@@ -56,12 +61,26 @@ const cpEnviarTexto     = document.getElementById('cpEnviarTexto');
 
 let ultimoFoco = null;
 
-function totalPedido() {
+function subtotalPedido() {
   return pedido.reduce((s, i) => s + i.precio * i.cant, 0);
 }
 
 function cantidadTotal() {
   return pedido.reduce((s, i) => s + i.cant, 0);
+}
+
+/* Promoción: PROMO_PCT % en toda la compra desde PROMO_MIN unidades. Misma cuenta que
+   descuento_promo() en PHP (el servidor la recalcula y es quien manda). */
+function descuentoPedido() {
+  const sub = subtotalPedido();
+  if (sub <= 0 || cantidadTotal() < PROMO_MIN) return 0;
+  return Math.round(sub * PROMO_PCT / 100);
+}
+
+/* Lo que de verdad paga la clienta: ya con el descuento. Es el que ve el botón flotante, el que
+   decide si alcanza para cuotas y el que va en el mensaje de WhatsApp. */
+function totalPedido() {
+  return subtotalPedido() - descuentoPedido();
 }
 
 function sincronizarBotonAgregar(boton, enPedido) {
@@ -177,6 +196,27 @@ function renderLista() {
   });
 }
 
+/* Subtotal y descuento (solo cuando ya aplica) o, si todavía faltan unidades, cuánto falta. */
+function renderResumen() {
+  const faltan = PROMO_MIN - cantidadTotal();
+  const desc = descuentoPedido();
+  hojaResumen.hidden = desc === 0;
+  if (desc > 0) {
+    hojaSubtotal.textContent = cop(subtotalPedido());
+    hojaDescEtiqueta.textContent = 'Descuento ' + PROMO_PCT + ' %';
+    hojaDescuento.textContent = '−' + cop(desc);
+  }
+  if (faltan > 0) {
+    hojaPromoPista.textContent = 'Agrega ' + faltan + (faltan === 1 ? ' producto más' : ' productos más')
+      + ' y llevas ' + PROMO_PCT + ' % de descuento en toda la compra.';
+    hojaPromoPista.classList.remove('lograda');
+  } else {
+    hojaPromoPista.textContent = '¡Listo! Tienes ' + PROMO_PCT + ' % de descuento en toda la compra.';
+    hojaPromoPista.classList.add('lograda');
+  }
+  hojaPromoPista.hidden = false;
+}
+
 function actualizarInsignia() {
   const cant = cantidadTotal();
   fabInsignia.textContent = cant > 99 ? '99+' : String(cant);
@@ -201,6 +241,7 @@ function actualizarCarrito() {
   actualizarInsignia();
   fabTotal.textContent = cop(totalPedido());
   renderLista();
+  renderResumen();
   hojaTotal.textContent = cop(totalPedido());
 
   // Si la hoja ya está abierta y el carrito cambió, refleja si ahora
@@ -259,7 +300,12 @@ function mensajePedido(numero, plan) {
   pedido.forEach(i => {
     msg += '• ' + i.cant + ' x ' + i.nombre + ' — ' + cop(i.precio * i.cant) + '\n';
   });
-  msg += '\nTotal aproximado: ' + cop(totalPedido()) + '\n';
+  const desc = descuentoPedido();
+  if (desc > 0) {
+    msg += '\nSubtotal: ' + cop(subtotalPedido()) + '\n';
+    msg += 'Descuento ' + PROMO_PCT + ' % (' + PROMO_MIN + ' o más productos): −' + cop(desc) + '\n';
+  }
+  msg += (desc > 0 ? '' : '\n') + 'Total aproximado: ' + cop(totalPedido()) + '\n';
   msg += plan === 'cuotas' ? 'Prefiero pagar a cuotas.\n' : 'Prefiero pagar de contado.\n';
   if (numero) msg += '\nPedido ' + numero + ' (este es mi pedido, todavía no he pagado nada)';
   return msg;

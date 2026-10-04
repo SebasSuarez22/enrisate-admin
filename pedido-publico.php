@@ -61,6 +61,7 @@ if (!$items || count($items) > 50) {
 // Se recalcula todo en el servidor: los precios del navegador no son de fiar.
 $lineas   = [];
 $subtotal = 0;
+$unidades = 0;
 foreach ($items as $it) {
     $p = producto_por_sku((string) ($it['sku'] ?? ''));
     $c = max(1, min(99, (int) ($it['cant'] ?? 1)));
@@ -75,14 +76,20 @@ foreach ($items as $it) {
         'cant'   => $c,
     ];
     $subtotal += $p['precio'] * $c;
+    $unidades += $c;
 }
 
 if (!$lineas) {
     responder(400, ['ok' => false, 'error' => 'Ninguno de los productos existe ya en el catálogo. Recarga la página.']);
 }
 
+// Promoción: N o más productos → X % de descuento en toda la compra. El total que se guarda ya
+// viene rebajado (el subtotal queda aparte); la cuenta de cobro lo precarga como descuento.
+$descuento = descuento_promo($subtotal, $unidades);
+$total     = $subtotal - $descuento;
+
 $plan = ($datos['plan'] ?? 'contado') === 'cuotas' ? 'cuotas' : 'contado';
-if ($plan === 'cuotas' && $subtotal < UMBRAL_CUOTAS_PUBLICO) {
+if ($plan === 'cuotas' && $total < UMBRAL_CUOTAS_PUBLICO) {
     $plan = 'contado'; // no cumple el mínimo: nunca se confía en lo que decida el navegador
 }
 
@@ -98,11 +105,18 @@ $numero = crear_pedido([
     'telefono'             => $telefono,
     'lineas'               => $lineas,
     'subtotal'             => $subtotal,
-    'total'                => $subtotal,
+    'total'                => $total,
     'plan'                 => $plan,
     'num_cuotas_preferido' => $numCuotasPreferido,
 ]);
 
 registrar_pedido_ip();
 
-responder(200, ['ok' => true, 'numero' => $numero, 'plan' => $plan]);
+responder(200, [
+    'ok'        => true,
+    'numero'    => $numero,
+    'plan'      => $plan,
+    'subtotal'  => $subtotal,
+    'descuento' => $descuento,
+    'total'     => $total,
+]);

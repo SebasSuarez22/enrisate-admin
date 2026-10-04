@@ -129,6 +129,9 @@ require __DIR__ . '/includes/cabecera.php';
                 <p class="ped-meta">
                   <span class="ped-tel"><?= !empty($p['telefono']) ? e($p['telefono']) : 'Sin teléfono' ?></span>
                   <span>Llegó <?= e(fecha_abreviada(substr((string) ($p['creado'] ?? ''), 0, 10))) ?> · <?= numero($unidades) ?> unidad<?= $unidades === 1 ? '' : 'es' ?></span>
+                  <?php $dto = (int) ($p['subtotal'] ?? 0) - (int) ($p['total'] ?? 0); if ($dto > 0): ?>
+                    <span class="ped-dto">Incluye descuento de <?= e(pesos($dto)) ?></span>
+                  <?php endif; ?>
                 </p>
               </div>
               <span class="ped-plan<?= $cuotas ? ' es-cuotas' : '' ?>">
@@ -189,6 +192,9 @@ require __DIR__ . '/includes/cabecera.php';
                   <?= (int) $l['cant'] ?> × <?= e($l['nombre']) ?><br>
                 <?php endforeach; ?>
               </div>
+              <?php $dtoM = (int) ($p['subtotal'] ?? 0) - (int) ($p['total'] ?? 0); if ($dtoM > 0): ?>
+                <div class="campo-detalle"><strong>Descuento del catálogo</strong>−<?= e(pesos($dtoM)) ?> (el total ya lo incluye)</div>
+              <?php endif; ?>
               <div class="campo-detalle">
                 <strong>Plan propuesto</strong>
                 <?php if (($p['plan'] ?? 'contado') === 'cuotas'): ?>
