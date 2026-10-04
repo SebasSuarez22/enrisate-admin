@@ -310,11 +310,11 @@ body {
 .cp-tarjeta.agotada { opacity: .55; }
 
 /* Todas las tarjetas comparten el mismo fondo (halo), con o sin foto. Las que no tienen foto
-   se distinguen por el ícono de su tipo en un círculo de color. Cuadrada: el producto se ve
-   cerca de un 35 % más grande que en el 4:3 de antes. */
+   se distinguen por el ícono de su tipo en un círculo de color. Vertical (4:5), como la forma
+   de los envases: las botellas se ven cerca de un 40 % más grandes que en la foto cuadrada. */
 .cp-img-wrap {
   position: relative;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: var(--sp-2);
@@ -325,23 +325,27 @@ body {
 }
 .cp-foto { width: 100%; height: 100%; object-fit: contain; }
 
-/* Tamaño del producto en la tarjeta: todos se paran en la misma línea (10 % sobre el borde) y la
+/* Tamaño del producto en la tarjeta: todos se paran en la misma línea (7 % sobre el borde) y la
    altura depende de la FORMA del envase, no de cuánto aire traía la foto (los márgenes se
    recortan al subirla). --a = ancho/alto de la foto y --fh = qué parte de la zona ocupa, los dos
    calculados en PHP (cp_foto_escala): una botella alta llena la zona; un frasco ancho se queda
-   más bajo para no verse gigante a su lado; nada pasa del 72 % del ancho. La tarjeta es
-   cuadrada, así que un % sirve igual en alto y en ancho. */
+   más bajo para no verse gigante a su lado; nada pasa del 84 % del ancho.
+   La zona del producto es el 89 % del alto (4 % arriba, 7 % abajo). Como la tarjeta es 4:5,
+   ese mismo alto medido en % del ANCHO es 89 % × 1,25 = 111,25 %: con eso se calcula el ancho
+   del producto (a × alto) en la unidad que usa width. */
 .cp-img-foto {
   padding: 0;
-  --zona: calc(85% - var(--logo, 0px));
-  --ancho-producto: min(72%, calc(var(--a, .6) * var(--fh, .85) * var(--zona)));
-  --apoyo: calc(10% + var(--logo, 0px) + var(--fh, .85) * var(--zona) * .03);
+  --zona: calc(89% - var(--logo, 0px));
+  --ancho-producto: min(84%, calc(var(--a, .6) * var(--fh, .85) * (111.25% - var(--logo, 0px))));
+  --apoyo: calc(7% + var(--logo, 0px) + var(--fh, .85) * var(--zona) * .03);
 }
 .cp-img-foto .cp-foto {
-  position: absolute; left: 50%; bottom: calc(10% + var(--logo, 0px)); z-index: 1;
+  position: absolute; left: 50%; bottom: calc(7% + var(--logo, 0px)); z-index: 1;
   translate: -50% 0;
   width: var(--ancho-producto); height: calc(var(--fh, .85) * var(--zona));
   object-position: 50% 100%;
+  transform-origin: 50% 100%;
+  transition: transform .35s cubic-bezier(.2, .7, .2, 1);
   /* El blanco de la foto se funde con el halo: sin recuadro ni borde de recorte. Las fotos traen
      el blanco en 253-254; un 1,5 % de brillo lo lleva a blanco puro sin cambiar el producto. */
   mix-blend-mode: multiply;
@@ -356,14 +360,18 @@ body {
   border-radius: 50%; pointer-events: none;
 }
 .cp-img-foto::before {
-  width: calc(var(--ancho-producto) * .98); height: 8%;
+  width: calc(var(--ancho-producto) * .98); height: 6.4%;
   background: radial-gradient(closest-side, rgba(92,54,24,.15), rgba(92,54,24,.06) 55%, rgba(92,54,24,0));
   filter: blur(3px);
 }
 .cp-img-foto::after {
-  width: calc(var(--ancho-producto) * .72); height: 3.6%;
+  width: calc(var(--ancho-producto) * .72); height: 2.9%;
   background: radial-gradient(closest-side, var(--sombra-producto), rgba(74,40,16,.16) 50%, rgba(74,40,16,0));
   filter: blur(1.2px);
+}
+/* Con mouse, al pasar sobre la tarjeta el producto se acerca un poco desde su base. */
+@media (hover: hover) {
+  .cp-tarjeta:hover .cp-img-foto .cp-foto { transform: scale(1.06); }
 }
 .cp-logo-fondo {
   max-width: 68%; max-height: 46%; width: auto; height: auto;
@@ -1014,15 +1022,18 @@ body.cp-con-carrito .cp-pie {
    ---------------------------------------------------------
    Número de columnas fijo en cada tramo, nunca decreciente:
    ensanchar la ventana siempre muestra igual o más producto.
-     320-539  → 2      1024-1339 → 5
-     540-767  → 3      1340-1699 → 6
-     768-1023 → 4      1700+     → 7
+   "Vitrina amplia": una columna menos que antes desde tablet, para
+   que cada tarjeta (y su foto) sea más ancha.
+     320-599  → 2      1340-1699 → 5
+     600-899  → 3      1700+     → 6
+     900-1339 → 4
    ========================================================= */
-@media (min-width: 540px)  { :root { --cols: 3; --gap: var(--sp-4); } }
-@media (min-width: 768px)  { :root { --cols: 4; } }
-@media (min-width: 1024px) { :root { --cols: 5; --margen: var(--sp-6); } }
-@media (min-width: 1340px) { :root { --cols: 6; --ancho: 1320px; } }
-@media (min-width: 1700px) { :root { --cols: 7; --ancho: 1560px; } }
+@media (min-width: 540px)  { :root { --gap: var(--sp-4); } }
+@media (min-width: 600px)  { :root { --cols: 3; } }
+@media (min-width: 900px)  { :root { --cols: 4; } }
+@media (min-width: 1024px) { :root { --margen: var(--sp-6); } }
+@media (min-width: 1340px) { :root { --cols: 5; --ancho: 1320px; } }
+@media (min-width: 1700px) { :root { --cols: 6; --ancho: 1560px; } }
 
 /* Pantallas muy angostas (iPhone SE, o cualquier móvil con el texto al 200%):
    márgenes y separación más apretados para conservar las dos columnas. */

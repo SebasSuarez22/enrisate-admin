@@ -45,7 +45,7 @@ function cp_img_attrs(string $rutaRelativa): string {
 
 // Escala de la foto en la tarjeta según la forma del envase (ver .cp-img-foto en el CSS):
 // --a = ancho/alto; --fh = qué parte de la altura disponible ocupa. Una botella alta y delgada
-// (a ≈ 0,35 o menos) la llena; un frasco ancho baja de forma suave (exponente 0,3) para que en
+// (a ≈ 0,45 o menos) la llena; un frasco ancho baja de forma suave (exponente 0,3) para que en
 // la rejilla todos se vean de la misma familia y ninguno parezca gigante o diminuto.
 function cp_foto_escala(string $rutaRelativa): string {
     $dim = @getimagesize(__DIR__ . '/' . $rutaRelativa);
@@ -53,7 +53,7 @@ function cp_foto_escala(string $rutaRelativa): string {
         return '';
     }
     $a  = $dim[0] / $dim[1];
-    $fh = min(1.0, 0.97 * (0.35 / $a) ** 0.3);
+    $fh = min(1.0, 1.09 * (0.35 / $a) ** 0.3);
     return sprintf('; --a: %.3F; --fh: %.3F', $a, $fh);
 }
 
@@ -178,7 +178,9 @@ $logosPorMarca = [
       <div class="cp-rejilla">
         <?php foreach ($ps as $p): ?>
           <?php
-            $rutaFoto  = producto_ruta_foto($p['sku']);
+            // En la rejilla va la versión liviana; la grande solo se descarga al abrir la ficha.
+            $rutaFoto  = producto_ruta_foto_tarjeta($p['sku']);
+            $rutaGrande = producto_ruta_foto($p['sku']);
             $tieneFoto = $rutaFoto !== null;
             $tieneLogo = isset($logosPorMarca[$marca]);
             [$tipoEtq, $tipoFondo, $tipoTinta, $tipoIcono] = categoria_estilo($p, $marcaVisible);
@@ -204,7 +206,7 @@ $logosPorMarca = [
                    data-busca="<?= e($busca) ?>">
             <div class="cp-img-wrap <?= $tieneFoto ? 'cp-img-foto' : '' ?><?= $tieneFoto && $tieneLogo ? ' cp-con-logo' : '' ?>" style="--tipo-fondo: <?= $tipoFondo ?>; --tipo-tinta: <?= $tipoTinta ?><?= $tieneFoto ? cp_foto_escala($rutaFoto) : '' ?>">
               <?php if ($tieneFoto): ?>
-                <img class="cp-foto" src="<?= e(cp_img_v($rutaFoto)) ?>" alt="<?= e($p['nombre']) ?> · <?= e($marcaVisible) ?>" <?= cp_img_attrs($rutaFoto) ?> loading="<?= $cpCarga ?>" <?= $cpPrioridadAttr ?> decoding="async">
+                <img class="cp-foto" src="<?= e(cp_img_v($rutaFoto)) ?>" data-grande="<?= e(cp_img_v($rutaGrande)) ?>" alt="<?= e($p['nombre']) ?> · <?= e($marcaVisible) ?>" <?= cp_img_attrs($rutaFoto) ?> loading="<?= $cpCarga ?>" <?= $cpPrioridadAttr ?> decoding="async">
                 <?php if ($tieneLogo): ?>
                   <?php $cpRutaLogo = 'assets/img/marcas/' . $logosPorMarca[$marca]; ?>
                   <span class="cp-marca-logo"><img src="<?= e(cp_img_v($cpRutaLogo)) ?>" alt="<?= e($marcaVisible) ?>" <?= cp_img_attrs($cpRutaLogo) ?> loading="lazy"></span>
