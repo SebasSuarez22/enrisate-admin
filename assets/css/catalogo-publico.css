@@ -902,7 +902,12 @@ body.cp-con-carrito .cp-pie {
   overflow-wrap: anywhere;
   min-width: 0;
 }
-.cp-ficha-descripcion p { margin: 0; white-space: pre-line; }
+.cp-ficha-descripcion p {
+  margin: 0; white-space: pre-line;
+  /* Justificado con guiones: ver conGuionesSuaves() en catalogo-publico.js (guiones suaves,
+     por eso hyphens: manual). La última línea de cada párrafo queda a la izquierda. */
+  text-align: justify; text-justify: inter-word; hyphens: manual; -webkit-hyphens: manual;
+}
 .cp-ficha-sin {
   display: flex; flex-direction: column; gap: 6px;
   padding: 16px; border-radius: 16px;
@@ -917,7 +922,7 @@ body.cp-con-carrito .cp-pie {
 .cp-ficha-mas {
   display: inline-flex;
   align-self: flex-start; align-items: center;
-  min-height: 44px; margin-top: -6px; padding: 0 2px;
+  min-height: 44px; margin-top: -6px; padding: 0;
   border: 0; background: none;
   font: inherit; font-size: 1rem; font-weight: 700;
   color: var(--rosa); text-decoration: underline; text-underline-offset: 3px;

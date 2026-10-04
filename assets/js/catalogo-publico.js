@@ -485,6 +485,73 @@ function revisarLeerMas() {
   pistaFicha();
 }
 
+/* --- Descripción justificada con guiones ---
+   El texto de la ficha va justificado (parejo a los dos lados). Sin separar las palabras largas
+   quedan huecos grandes entre palabras en las columnas angostas, así que a cada palabra de 7 letras
+   o más se le insertan guiones suaves (U+00AD) entre sílabas: el navegador solo los muestra
+   cuando una palabra se corta al final de la línea. No depende del diccionario de cada navegador
+   (hyphens: auto no existe igual en todos). La separación es aproximada, pensada para el español
+   de estas descripciones: diptongos juntos, hiatos separados, grupos pr/br/tr/pl/bl/ch/ll/rr... juntos. */
+function silabasEs(palabra) {
+  const V = 'aeiouáéíóúüAEIOUÁÉÍÓÚÜ', FUERTES = 'aeoáéíóúAEOÁÉÍÓÚ', TILDE_DEBIL = 'íúÍÚ';
+  const grupos = ['pr', 'br', 'tr', 'dr', 'cr', 'gr', 'fr', 'pl', 'bl', 'cl', 'gl', 'fl', 'ch', 'll', 'rr', 'kr', 'kl'];
+  // La u de "que/qui" y "gue/gui" no suena: es parte de la consonante, no una vocal.
+  const uMuda = i => /[uU]/.test(palabra[i]) &&
+    (/[qQ]/.test(palabra[i - 1] || '') || (/[gG]/.test(palabra[i - 1] || '') && /[eiéíEIÉÍ]/.test(palabra[i + 1] || '')));
+  const esV = (c, i) => V.includes(c) && !uMuda(i);
+  const n = palabra.length;
+  const nucleos = [];
+  for (let i = 0; i < n;) {
+    if (!esV(palabra[i], i)) { i++; continue; }
+    let j = i + 1;
+    while (j < n && esV(palabra[j], j)) {
+      const a = palabra[j - 1], b = palabra[j];
+      // hiato: dos vocales fuertes, o una débil acentuada junto a otra vocal
+      if ((FUERTES.includes(a) && FUERTES.includes(b)) || TILDE_DEBIL.includes(a) || TILDE_DEBIL.includes(b)) break;
+      j++;
+    }
+    nucleos.push([i, j]);
+    i = j;
+  }
+  const cortes = [];
+  for (let k = 0; k < nucleos.length - 1; k++) {
+    const fin = nucleos[k][1];
+    let cons = palabra.slice(fin, nucleos[k + 1][0]).toLowerCase();
+    // "qu" / "gu" mudas viajan juntas a la sílaba siguiente; lo que quede antes cierra la anterior.
+    if (/(qu|gu)$/.test(cons)) {
+      cons = cons.slice(0, -2);
+      cortes.push(fin + cons.length);
+      continue;
+    }
+    const m = cons.length;
+    if (m <= 1) cortes.push(fin);
+    else if (m === 2) cortes.push(grupos.includes(cons) ? fin : fin + 1);
+    else if (m === 3) cortes.push(grupos.includes(cons.slice(1)) ? fin + 1 : fin + 2);
+    else cortes.push(grupos.includes(cons.slice(2)) ? fin + 2 : fin + 3);
+  }
+  const silabas = [];
+  let ant = 0;
+  cortes.forEach(c => { silabas.push(palabra.slice(ant, c)); ant = c; });
+  silabas.push(palabra.slice(ant));
+  return silabas;
+}
+
+function conGuionesSuaves(texto) {
+  return texto.split(/(\s+)/).map(trozo => {
+    if (/[@:\/]|www\./i.test(trozo)) return trozo;               // enlaces y correos, tal cual
+    return trozo.replace(/[A-Za-zÁÉÍÓÚÜáéíóúüñÑ]{7,}/g, palabra => {
+      let r = '', hasta = '';
+      silabasEs(palabra).forEach((sil, i) => {
+        // nunca deja menos de 2 letras antes del guion ni menos de 3 después
+        if (i > 0 && hasta.length >= 2 && palabra.length - hasta.length >= 3) r += '\u00AD';
+        r += sil;
+        hasta += sil;
+      });
+      return r;
+    });
+  }).join('');
+}
+
 function pintarDescripcion(texto, nombre) {
   productoDescripcion.replaceChildren();
   if (!texto) {
@@ -506,7 +573,7 @@ function pintarDescripcion(texto, nombre) {
   // Un párrafo por cada bloque separado por una línea en blanco; los saltos de línea sueltos se respetan.
   texto.split(/\n\s*\n/).map(x => x.trim()).filter(Boolean).forEach(parrafo => {
     const p = document.createElement('p');
-    p.textContent = parrafo;
+    p.textContent = conGuionesSuaves(parrafo);
     productoDescripcion.append(p);
   });
 }
