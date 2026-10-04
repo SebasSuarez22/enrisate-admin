@@ -465,17 +465,43 @@ function pintarDescripcion(texto, nombre) {
   });
 }
 
+/* La foto de la ficha sigue el mismo criterio que la tarjeta: apoyada abajo y con el tamaño
+   según la forma del envase (--a y --fh, que la tarjeta trae de PHP). Aquí la escena no es
+   cuadrada, así que el tamaño se calcula en px; la sombra de apoyo toma ese ancho y esa base.
+   Se recalcula cada vez que cambia el tamaño de la escena (abrir, girar, --quita). */
+function encuadrarFotoFicha() {
+  const img = productoFoto.querySelector('img.cp-foto');
+  const W = productoFoto.clientWidth, H = productoFoto.clientHeight;
+  if (!img || !W || !H) return;
+  const a  = parseFloat(productoEscena.dataset.a) || (img.naturalWidth / img.naturalHeight) || 0.6;
+  const fh = parseFloat(productoEscena.dataset.fh) || 0.85;
+  let h = fh * H, w = a * h;
+  const maxW = Math.min(W, productoEscena.clientWidth * 0.62);
+  if (w > maxW) { w = maxW; h = w / a; }
+  img.style.width = w + 'px';
+  img.style.height = h + 'px';
+  const base = productoEscena.getBoundingClientRect().bottom - productoFoto.getBoundingClientRect().bottom;
+  productoEscena.style.setProperty('--ancho-producto', w + 'px');
+  productoEscena.style.setProperty('--apoyo', (base + h * 0.03) + 'px');
+}
+if ('ResizeObserver' in window) new ResizeObserver(encuadrarFotoFicha).observe(productoFoto);
+
 function pintarFotoFicha(tarjeta) {
   productoFoto.replaceChildren();
   const fotoTarjeta = tarjeta.querySelector('.cp-foto');
   if (fotoTarjeta) {
+    const envolturaFoto = fotoTarjeta.closest('.cp-img-wrap');
+    productoEscena.dataset.a  = envolturaFoto.style.getPropertyValue('--a').trim();
+    productoEscena.dataset.fh = envolturaFoto.style.getPropertyValue('--fh').trim();
     const img = document.createElement('img');
     img.className = 'cp-foto';
     img.alt = fotoTarjeta.alt;
     img.decoding = 'async';
+    img.addEventListener('load', encuadrarFotoFicha);
     img.src = fotoTarjeta.currentSrc || fotoTarjeta.src;
     productoFoto.append(img);
     productoEscena.classList.remove('sin-foto');
+    encuadrarFotoFicha();
   } else {
     const envoltura = tarjeta.querySelector('.cp-img-wrap');
     if (envoltura) productoFoto.append(envoltura.cloneNode(true));

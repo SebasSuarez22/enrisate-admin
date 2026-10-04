@@ -43,6 +43,10 @@
   --crema:      #FBF6F0;
   --arena:      #ECDFD1;
   --escena:     #F6EBDD;   /* fondo cálido detrás de la foto en la ficha */
+  /* "Halo": el fondo de TODAS las fotos (tarjetas y ficha). Crema de la marca con una luz
+     blanca detrás del producto; el blanco de la foto se funde con él (multiply). */
+  --halo: radial-gradient(ellipse 58% 62% at 50% 50%, #FFFFFF 0%, #FFFFFF 30%, rgba(255,255,255,0) 75%), var(--crema);
+  --sombra-producto: rgba(74,40,16,.40);
   --cacao:      #6B4013;   /* el color del logo */
   --tinta:      #33200F;
   --gris:       #6E5A4A;
@@ -305,29 +309,71 @@ body {
 .cp-tarjeta.en-pedido { border-color: var(--verde); box-shadow: 0 0 0 1px var(--verde); }
 .cp-tarjeta.agotada { opacity: .55; }
 
-/* El fondo cambia según el TIPO de producto: 102 tarjetas sin foto
-   dejan de ser 102 tarjetas idénticas. */
+/* Todas las tarjetas comparten el mismo fondo (halo), con o sin foto. Las que no tienen foto
+   se distinguen por el ícono de su tipo en un círculo de color. Cuadrada: el producto se ve
+   cerca de un 35 % más grande que en el 4:3 de antes. */
 .cp-img-wrap {
   position: relative;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1 / 1;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: var(--sp-2);
   padding: var(--sp-4);
-  background: var(--tipo-fondo, #F1EAE2);
+  background: var(--halo);
   border-bottom: 1px solid var(--arena);
   overflow: hidden;
 }
-.cp-img-foto { padding: var(--sp-2); background: var(--papel); }
 .cp-foto { width: 100%; height: 100%; object-fit: contain; }
-/* Las fotos de producto traen el blanco en 254 o 253 (no 255): sobre la tarjeta blanca se notaba
-   un recuadro apenas gris. Un 1,5 % de brillo las lleva a blanco puro sin cambiar el producto. */
-.cp-img-foto .cp-foto { filter: brightness(1.015); }
+
+/* Tamaño del producto en la tarjeta: todos se paran en la misma línea (10 % sobre el borde) y la
+   altura depende de la FORMA del envase, no de cuánto aire traía la foto (los márgenes se
+   recortan al subirla). --a = ancho/alto de la foto y --fh = qué parte de la zona ocupa, los dos
+   calculados en PHP (cp_foto_escala): una botella alta llena la zona; un frasco ancho se queda
+   más bajo para no verse gigante a su lado; nada pasa del 72 % del ancho. La tarjeta es
+   cuadrada, así que un % sirve igual en alto y en ancho. */
+.cp-img-foto {
+  padding: 0;
+  --zona: calc(85% - var(--logo, 0px));
+  --ancho-producto: min(72%, calc(var(--a, .6) * var(--fh, .85) * var(--zona)));
+  --apoyo: calc(10% + var(--logo, 0px) + var(--fh, .85) * var(--zona) * .03);
+}
+.cp-img-foto .cp-foto {
+  position: absolute; left: 50%; bottom: calc(10% + var(--logo, 0px)); z-index: 1;
+  translate: -50% 0;
+  width: var(--ancho-producto); height: calc(var(--fh, .85) * var(--zona));
+  object-position: 50% 100%;
+  /* El blanco de la foto se funde con el halo: sin recuadro ni borde de recorte. Las fotos traen
+     el blanco en 253-254; un 1,5 % de brillo lo lleva a blanco puro sin cambiar el producto. */
+  mix-blend-mode: multiply;
+  filter: brightness(1.015);
+}
+/* Sombra de apoyo en dos capas, del ancho del producto y pegada a su base: una difusa que lo
+   asienta y una de contacto, más oscura y angosta. */
+.cp-img-foto::before,
+.cp-img-foto::after {
+  content: ""; position: absolute; left: 50%; bottom: var(--apoyo); z-index: 0;
+  translate: -50% 50%;
+  border-radius: 50%; pointer-events: none;
+}
+.cp-img-foto::before {
+  width: calc(var(--ancho-producto) * .98); height: 8%;
+  background: radial-gradient(closest-side, rgba(92,54,24,.15), rgba(92,54,24,.06) 55%, rgba(92,54,24,0));
+  filter: blur(3px);
+}
+.cp-img-foto::after {
+  width: calc(var(--ancho-producto) * .72); height: 3.6%;
+  background: radial-gradient(closest-side, var(--sombra-producto), rgba(74,40,16,.16) 50%, rgba(74,40,16,0));
+  filter: blur(1.2px);
+}
 .cp-logo-fondo {
   max-width: 68%; max-height: 46%; width: auto; height: auto;
   object-fit: contain; opacity: .9;
 }
-.cp-tipo-icono { width: 40px; height: 40px; color: var(--tipo-tinta, var(--cacao)); }
+.cp-tipo-icono {
+  width: 62px; height: 62px; padding: 15px; box-sizing: border-box; flex: none;
+  border-radius: 50%; background: var(--tipo-fondo, #F1EAE2);
+  color: var(--tipo-tinta, var(--cacao));
+}
 .cp-tipo-nombre {
   font-size: var(--t-xs);
   font-weight: 700;
@@ -350,7 +396,7 @@ body {
    blanco de la tarjeta. La foto deja ese espacio libre (padding-bottom), así que el logo
    nunca tapa el producto. El ancho es definido (48 %) para que un SVG sin tamaño propio
    (La Poción) no se encoja a un cuadrito. */
-.cp-img-foto.cp-con-logo { padding-bottom: 26px; }
+.cp-img-foto.cp-con-logo { --logo: 20px; }
 .cp-marca-logo {
   position: absolute; right: 10px; bottom: 6px;
   display: flex; align-items: flex-end; justify-content: flex-end;
@@ -652,27 +698,44 @@ body.cp-con-carrito .cp-pie {
   position: relative; isolation: isolate; flex: none;
   height: calc(clamp(230px, 40vh, 340px) - var(--quita, 0px));
   height: calc(clamp(230px, 40dvh, 340px) - var(--quita, 0px));
-  background: var(--escena);
+  background: var(--halo);
   overflow: hidden;
 }
+/* La misma sombra de apoyo de la tarjeta. El ancho y la base los pone encuadrarFotoFicha()
+   (catalogo-publico.js) según el tamaño real del producto en la escena. */
+.cp-ficha-escena::before,
 .cp-ficha-escena::after {
-  content: ""; position: absolute; left: 50%; bottom: 40px; translate: -50% 0;
-  width: 52%; height: 16px; border-radius: 50%; z-index: 0; pointer-events: none;
-  background: radial-gradient(closest-side, rgba(107,64,19,.26), transparent);
+  content: ""; position: absolute; left: 50%; bottom: var(--apoyo, 60px); z-index: 0;
+  translate: -50% 50%;
+  border-radius: 50%; pointer-events: none;
 }
+.cp-ficha-escena::before {
+  width: calc(var(--ancho-producto, 120px) * 1.02); height: 30px;
+  background: radial-gradient(closest-side, rgba(92,54,24,.15), rgba(92,54,24,.06) 55%, rgba(92,54,24,0));
+  filter: blur(3px);
+}
+.cp-ficha-escena::after {
+  width: calc(var(--ancho-producto, 120px) * .75); height: 12px;
+  background: radial-gradient(closest-side, var(--sombra-producto), rgba(74,40,16,.16) 50%, rgba(74,40,16,0));
+  filter: blur(1.2px);
+}
+.cp-ficha-escena.sin-foto::before,
 .cp-ficha-escena.sin-foto::after { display: none; }
 .cp-ficha-logo { position: absolute; top: 14px; left: 18px; z-index: 2; width: 52px; height: auto; }
 /* Sin z-index a propósito: un z-index crearía un grupo aparte y el multiply de la foto ya no
    se mezclaría con el fondo de la escena (se vería el recuadro blanco de la foto). */
-.cp-ficha-imagen { position: absolute; inset: 46px 20px 48px; }
+.cp-ficha-imagen { position: absolute; inset: 50px 16px calc(14% + 16px); }
+/* Mismo criterio que en la tarjeta: apoyado abajo, tamaño según la forma del envase. */
 .cp-ficha-imagen .cp-foto {
+  position: absolute; left: 50%; bottom: 0; translate: -50% 0;
   display: block; width: 100%; height: 100%;
-  object-fit: contain; mix-blend-mode: multiply;
+  object-fit: contain; object-position: 50% 100%;
+  mix-blend-mode: multiply; filter: brightness(1.015);
 }
 /* Producto sin foto: la misma tarjeta de color y ícono de la rejilla, a pantalla completa de la escena. */
 .cp-ficha-escena.sin-foto .cp-ficha-imagen { inset: 0; }
 .cp-ficha-imagen .cp-img-wrap { position: absolute; inset: 0; aspect-ratio: auto; border-bottom: 0; padding: 48px 20px 20px; }
-.cp-ficha-imagen .cp-tipo-icono { width: 72px; height: 72px; }
+.cp-ficha-imagen .cp-tipo-icono { width: 84px; height: 84px; padding: 20px; }
 .cp-ficha-imagen .cp-tipo-nombre { font-size: var(--t-sm); }
 .cp-ficha-imagen .cp-proximamente { top: auto; right: auto; bottom: 36px; left: 50%; translate: -50% 0; white-space: nowrap; }
 
@@ -809,7 +872,6 @@ body.cp-con-carrito .cp-pie {
   .cp-ficha-logo { top: 10px; left: 14px; width: 38px; }
   .cp-ficha-imagen { inset: 44px 16px 26px; }
   .cp-ficha-escena.sin-foto .cp-ficha-imagen { inset: 0; }
-  .cp-ficha-escena::after { bottom: 14%; }
   .cp-ficha-detalle {
     grid-column: 2; grid-row: 1; min-height: 0;
     margin-top: 0; border-radius: 0;

@@ -259,6 +259,277 @@ function quitar_fondo_uniforme(\GdImage $img): bool
     return true;
 }
 
+/**
+ * Fondo claro de estudio (gris perla, crema, casi blanco, con o sin viñeta) → blanco puro.
+ *
+ * quitar_fondo_uniforme() no toca los fondos de 244 para arriba y deja transparentes los
+ * más oscuros; pero un gris de estudio de 225-252 se veía como un recuadro gris dentro de
+ * la tarjeta. Aquí ese fondo se vuelve blanco y el producto conserva sus colores:
+ *   1. Tono del fondo = percentil 90 del borde (la viñeta oscurece solo las esquinas).
+ *      Si no es un claro parejo (muy oscuro, muy de color, ya blanco), no se toca.
+ *   2. Se recorre el fondo desde el borde: avanza solo si el color cambia muy poco de un
+ *      píxel al vecino (≤ 4: viñeta, ruido) y no se aleja del tono. El contorno del
+ *      producto, aunque sea sutil, lo detiene.
+ *   3. Si buena parte de ese contorno es MÁS CLARO que el fondo (envase blanco sobre gris),
+ *      blanquear borraría la silueta: no se toca (la revisión de fotos la marca para
+ *      volver a subirla).
+ *   4. El fondo recorrido queda en 255 y el resto recibe una ganancia suave (máx. +15 %)
+ *      para que no se vea apagado al lado del blanco nuevo.
+ * Devuelve true solo si cambió la foto.
+ */
+function blanquear_fondo_claro(\GdImage $img): bool
+{
+    $w = imagesx($img);
+    $h = imagesy($img);
+    if ($w < 40 || $h < 40) {
+        return false;
+    }
+
+    $px = [];
+    for ($y = 0; $y < $h; $y++) {
+        for ($x = 0; $x < $w; $x++) {
+            $px[] = imagecolorat($img, $x, $y);
+        }
+    }
+
+    // Anillo de 2 px del borde.
+    $anillo = [];
+    $hr = $hg = $hb = array_fill(0, 256, 0);
+    $opacos = 0;
+    $transparentes = 0;
+    for ($y = 0; $y < $h; $y++) {
+        for ($x = 0; $x < $w; $x++) {
+            if ($y >= 2 && $y < $h - 2 && $x >= 2 && $x < $w - 2) {
+                continue;
+            }
+            $i = $y * $w + $x;
+            $anillo[] = $i;
+            $c = $px[$i];
+            if ((($c >> 24) & 127) >= 16) {
+                $transparentes++;
+                continue;
+            }
+            $hr[($c >> 16) & 255]++;
+            $hg[($c >> 8) & 255]++;
+            $hb[$c & 255]++;
+            $opacos++;
+        }
+    }
+    if ($opacos === 0 || $transparentes > 0.05 * count($anillo)) {
+        return false;
+    }
+
+    $percentil = function (array $hist, float $p) use ($opacos): int {
+        $acum = 0;
+        foreach ($hist as $valor => $cuantos) {
+            $acum += $cuantos;
+            if ($acum >= $opacos * $p) {
+                return $valor;
+            }
+        }
+        return 255;
+    };
+    $br = $percentil($hr, 0.9);
+    $bg = $percentil($hg, 0.9);
+    $bb = $percentil($hb, 0.9);
+    $min = min($br, $bg, $bb);
+    $max = max($br, $bg, $bb);
+    // Ya blanco, demasiado oscuro o demasiado de color: no es un fondo claro de estudio.
+    if ($min >= 253 || $max < 225 || $min < 208 || $max - $min > 25) {
+        return false;
+    }
+
+    $lejos = fn(int $c): int => max(abs((($c >> 16) & 255) - $br), abs((($c >> 8) & 255) - $bg), abs(($c & 255) - $bb));
+    $paso  = fn(int $a, int $b): int => max(
+        abs((($a >> 16) & 255) - (($b >> 16) & 255)),
+        abs((($a >> 8) & 255) - (($b >> 8) & 255)),
+        abs(($a & 255) - ($b & 255))
+    );
+
+    $fondo = str_repeat("\0", $w * $h);
+    $pila = [];
+    foreach ($anillo as $i) {
+        if ($lejos($px[$i]) <= 32) {
+            $fondo[$i] = "\1";
+            $pila[] = $i;
+        }
+    }
+    $contorno = [];
+    while ($pila) {
+        $i = array_pop($pila);
+        $c = $px[$i];
+        $x = $i % $w;
+        $vecinos = [];
+        if ($x > 0)             { $vecinos[] = $i - 1; }
+        if ($x < $w - 1)        { $vecinos[] = $i + 1; }
+        if ($i >= $w)           { $vecinos[] = $i - $w; }
+        if ($i < $w * ($h - 1)) { $vecinos[] = $i + $w; }
+        foreach ($vecinos as $j) {
+            if ($fondo[$j] !== "\0") {
+                continue;
+            }
+            $cj = $px[$j];
+            if ($paso($c, $cj) <= 4 && $lejos($cj) <= 32) {
+                $fondo[$j] = "\1";
+                $pila[] = $j;
+            } else {
+                $contorno[$j] = true;
+            }
+        }
+    }
+
+    $cantidad = substr_count($fondo, "\1");
+    if ($cantidad < 0.15 * $w * $h || $cantidad > 0.95 * $w * $h) {
+        return false; // mala detección: mejor dejar la foto como llegó
+    }
+
+    // ¿El producto es más claro que el fondo (envase blanco sobre gris)?
+    $techo = $max + 5;
+    $claros = 0;
+    $total = 0;
+    foreach ($contorno as $j => $_) {
+        if ($fondo[$j] !== "\0") {
+            continue;
+        }
+        $total++;
+        $c = $px[$j];
+        if ((($c >> 16) & 255) > $techo && (($c >> 8) & 255) > $techo && ($c & 255) > $techo) {
+            $claros++;
+        }
+    }
+    if ($total > 0 && $claros > 0.25 * $total) {
+        return false;
+    }
+
+    $gr = min(1.15, 255 / max(1, $br));
+    $gg = min(1.15, 255 / max(1, $bg));
+    $gb = min(1.15, 255 / max(1, $bb));
+    imagealphablending($img, false);
+    imagesavealpha($img, true);
+    for ($i = 0, $n = $w * $h; $i < $n; $i++) {
+        $c = $px[$i];
+        $a = ($c >> 24) & 127;
+        if ($fondo[$i] === "\1") {
+            $r = $g = $b = 255;
+        } else {
+            $r = (int) min(255, round((($c >> 16) & 255) * $gr));
+            $g = (int) min(255, round((($c >> 8) & 255) * $gg));
+            $b = (int) min(255, round(($c & 255) * $gb));
+        }
+        imagesetpixel($img, $i % $w, intdiv($i, $w), ($a << 24) | ($r << 16) | ($g << 8) | $b);
+    }
+    return true;
+}
+
+/**
+ * Recorta los márgenes vacíos (transparentes o blancos) y deja un respiro parejo de
+ * $margen (fracción del lado mayor del producto) a cada lado. Así cada foto llega al
+ * catálogo con el producto ocupando el cuadro, y el tamaño en la tarjeta lo decide el
+ * diseño (escala según la forma del envase), no cuánto aire dejó quien tomó la foto.
+ * Devuelve la misma imagen si no hay nada que recortar.
+ */
+function recortar_margenes(\GdImage $img, float $margen = 0.04): \GdImage
+{
+    $w = imagesx($img);
+    $h = imagesy($img);
+    // Píxeles con producto por fila y por columna. Vacío = transparente o casi blanco (≥ 240:
+    // las fotos de estudio traen ruido y viñeta suave de 240-254 en el fondo). Una fila o
+    // columna cuenta como producto si tiene al menos 2 píxeles así, para que una mota suelta
+    // en el fondo no impida el recorte.
+    $porFila = array_fill(0, $h, 0);
+    $porColumna = array_fill(0, $w, 0);
+    for ($y = 0; $y < $h; $y++) {
+        for ($x = 0; $x < $w; $x++) {
+            $c = imagecolorat($img, $x, $y);
+            if ((($c >> 24) & 127) < 110
+                && ((($c >> 16) & 255) < 240 || (($c >> 8) & 255) < 240 || ($c & 255) < 240)) {
+                $porFila[$y]++;
+                $porColumna[$x]++;
+            }
+        }
+    }
+    $hay = fn(int $n): bool => $n >= 2;
+    $filas = array_keys(array_filter($porFila, $hay));
+    $columnas = array_keys(array_filter($porColumna, $hay));
+    $x0 = $columnas ? min($columnas) : 0;
+    $x1 = $columnas ? max($columnas) : -1;
+    $y0 = $filas ? min($filas) : 0;
+    $y1 = $filas ? max($filas) : -1;
+    if ($x1 < 0) {
+        return $img; // foto vacía
+    }
+    $pad = (int) round(max($x1 - $x0 + 1, $y1 - $y0 + 1) * $margen);
+    $x0 = max(0, $x0 - $pad);
+    $y0 = max(0, $y0 - $pad);
+    $x1 = min($w - 1, $x1 + $pad);
+    $y1 = min($h - 1, $y1 + $pad);
+    $nw = $x1 - $x0 + 1;
+    $nh = $y1 - $y0 + 1;
+    // Casi nada que recortar (menos de un 5 % por lado, del orden del propio respiro): se deja
+    // igual. Así revisar dos veces la misma foto no la vuelve a recortar ni a recomprimir.
+    if ($w - $nw <= max(2, 0.05 * $w) && $h - $nh <= max(2, 0.05 * $h)) {
+        return $img;
+    }
+
+    $out = imagecreatetruecolor($nw, $nh);
+    imagealphablending($out, false);
+    imagesavealpha($out, true);
+    imagecopy($out, $img, 0, 0, $x0, $y0, $nw, $nh);
+    return $out;
+}
+
+/**
+ * Todo lo que se le hace a una foto de producto antes de guardarla (al subirla y en
+ * "Revisar fondos de fotos"): fondo claro → blanco, fondo de color → transparente,
+ * márgenes recortados. Devuelve [imagen resultante, cambios] con cambios ⊆
+ * ['blanqueada', 'transparente', 'recortada'].
+ *
+ * @return array{0: \GdImage, 1: list<string>}
+ */
+function procesar_foto_producto(\GdImage $img): array
+{
+    $cambios = [];
+    if (blanquear_fondo_claro($img)) {
+        $cambios[] = 'blanqueada';
+    } elseif (quitar_fondo_uniforme($img)) {
+        $cambios[] = 'transparente';
+    }
+    $recortada = recortar_margenes($img);
+    if ($recortada !== $img) {
+        imagedestroy($img);
+        $img = $recortada;
+        $cambios[] = 'recortada';
+    }
+    return [$img, $cambios];
+}
+
+/**
+ * ¿El fondo de la foto ya se funde con el catálogo? Sí si el borde es blanco (≥ 244)
+ * o transparente. Si no, es un fondo de color, de ambiente o un envase blanco sobre
+ * gris que no se pudo arreglar solo: conviene volver a subirla con fondo blanco.
+ */
+function foto_fondo_ok(\GdImage $img): bool
+{
+    $w = imagesx($img);
+    $h = imagesy($img);
+    $buenos = 0;
+    $total = 0;
+    for ($y = 0; $y < $h; $y++) {
+        for ($x = 0; $x < $w; $x++) {
+            if ($y >= 2 && $y < $h - 2 && $x >= 2 && $x < $w - 2) {
+                continue;
+            }
+            $c = imagecolorat($img, $x, $y);
+            $total++;
+            if ((($c >> 24) & 127) >= 100
+                || ((($c >> 16) & 255) >= 244 && (($c >> 8) & 255) >= 244 && ($c & 255) >= 244)) {
+                $buenos++;
+            }
+        }
+    }
+    return $total > 0 && $buenos >= 0.9 * $total;
+}
+
 /** Ruta relativa (para <img src>) de la foto de un SKU, o null si no tiene. */
 function producto_ruta_foto(string $sku): ?string
 {
@@ -341,9 +612,9 @@ function guardar_imagen_producto(string $sku, array $archivo): string
         return 'No existe la carpeta de imágenes y no se pudo crear.';
     }
 
-    // Fondo gris, de color o negro → transparente, para que se funda con la
-    // ficha igual que las fotos con fondo blanco (ver quitar_fondo_uniforme()).
-    quitar_fondo_uniforme($origen);
+    // Fondo claro de estudio → blanco; gris oscuro, de color o negro → transparente;
+    // márgenes vacíos recortados (ver procesar_foto_producto()).
+    [$origen] = procesar_foto_producto($origen);
 
     $ok = imagewebp($origen, PRODUCTOS_IMG_DIR . '/' . $sku . '.webp', 82);
     imagedestroy($origen);
@@ -381,4 +652,162 @@ function quitar_imagen_producto(string $sku): bool
         }
     }
     return $borrado;
+}
+
+/* =========================================================
+   Revisar fondos de fotos (Productos → "Revisar fondos de fotos")
+   =========================================================
+   Pasa las fotos que ya están subidas por el mismo arreglo que reciben las
+   nuevas (procesar_foto_producto). Antes de reemplazar una foto se guarda la
+   original en _respaldos/<fecha>/, dentro de la misma carpeta de fotos (el
+   Volume de Railway), así sobrevive a los despliegues y la revisión se puede
+   deshacer. Solo se respaldan y reescriben las fotos que cambian.
+   ========================================================= */
+
+define('PRODUCTOS_RESPALDOS_DIR', PRODUCTOS_IMG_DIR . '/_respaldos');
+
+/** SKUs que tienen foto, en orden. */
+function skus_con_foto(): array
+{
+    $skus = [];
+    foreach (PRODUCTOS_IMG_EXTS as $ext) {
+        foreach (glob(PRODUCTOS_IMG_DIR . '/*.' . $ext) ?: [] as $ruta) {
+            $sku = pathinfo($ruta, PATHINFO_FILENAME);
+            if (preg_match('/^[A-Z0-9\-_]+$/', $sku)) {
+                $skus[$sku] = true;
+            }
+        }
+    }
+    $skus = array_keys($skus);
+    sort($skus);
+    return $skus;
+}
+
+function respaldo_valido(string $id): bool
+{
+    return (bool) preg_match('/^\d{8}-\d{6}$/', $id);
+}
+
+/** La revisión más reciente (id de su carpeta de respaldo) o null. */
+function ultima_revision_fotos(): ?string
+{
+    $ids = array_filter(
+        array_map('basename', glob(PRODUCTOS_RESPALDOS_DIR . '/*', GLOB_ONLYDIR) ?: []),
+        'respaldo_valido'
+    );
+    rsort($ids);
+    return $ids[0] ?? null;
+}
+
+/** Reporte de una revisión: sku => ['cambios' => [...], 'fondo_ok' => bool, 'original' => archivo]. */
+function reporte_revision_fotos(string $id): array
+{
+    if (!respaldo_valido($id)) {
+        return [];
+    }
+    $json = @file_get_contents(PRODUCTOS_RESPALDOS_DIR . '/' . $id . '/reporte.json');
+    $datos = $json ? json_decode($json, true) : null;
+    return is_array($datos) ? $datos : [];
+}
+
+/**
+ * Revisa la foto de un SKU dentro de la revisión $id. Si cambia, respalda la
+ * original y guarda la nueva como <SKU>.webp. Devuelve la fila del reporte.
+ */
+function revisar_foto_producto(string $sku, string $id): array
+{
+    $ruta = producto_ruta_foto($sku);
+    if ($ruta === null || !respaldo_valido($id)) {
+        return ['cambios' => [], 'fondo_ok' => true, 'error' => 'sin foto'];
+    }
+    $archivo = BASE_DIR . '/' . $ruta;
+    $ext = strtolower(pathinfo($archivo, PATHINFO_EXTENSION));
+    $img = match ($ext) {
+        'webp'        => @imagecreatefromwebp($archivo),
+        'png'         => @imagecreatefrompng($archivo),
+        'jpg', 'jpeg' => @imagecreatefromjpeg($archivo),
+        default       => false,
+    };
+    if (!$img) {
+        return ['cambios' => [], 'fondo_ok' => false, 'error' => 'no se pudo abrir'];
+    }
+    imagepalettetotruecolor($img);
+    imagealphablending($img, true);
+    imagesavealpha($img, true);
+
+    [$img, $cambios] = procesar_foto_producto($img);
+    $fila = ['cambios' => $cambios, 'fondo_ok' => foto_fondo_ok($img)];
+
+    if ($cambios) {
+        $dir = PRODUCTOS_RESPALDOS_DIR . '/' . $id;
+        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+            imagedestroy($img);
+            return ['cambios' => [], 'fondo_ok' => $fila['fondo_ok'], 'error' => 'no se pudo crear el respaldo'];
+        }
+        // Sin respaldo no se toca la original.
+        if (!copy($archivo, $dir . '/' . basename($archivo))) {
+            imagedestroy($img);
+            return ['cambios' => [], 'fondo_ok' => $fila['fondo_ok'], 'error' => 'no se pudo respaldar'];
+        }
+        $nueva = PRODUCTOS_IMG_DIR . '/' . $sku . '.webp';
+        $temporal = $nueva . '.tmp';
+        if (!imagewebp($img, $temporal, 82) || !rename($temporal, $nueva)) {
+            @unlink($temporal);
+            imagedestroy($img);
+            return ['cambios' => [], 'fondo_ok' => $fila['fondo_ok'], 'error' => 'no se pudo guardar'];
+        }
+        if ($ext !== 'webp') {
+            unlink($archivo);
+        }
+        $fila['original'] = basename($archivo);
+        clearstatcache(true, $nueva);
+        $fila['guardada'] = filemtime($nueva);
+    }
+    imagedestroy($img);
+    return $fila;
+}
+
+/** Agrega filas al reporte de la revisión $id. */
+function guardar_reporte_revision(string $id, array $filas): void
+{
+    $dir = PRODUCTOS_RESPALDOS_DIR . '/' . $id;
+    if (!is_dir($dir)) {
+        mkdir($dir, 0775, true);
+    }
+    $reporte = reporte_revision_fotos($id);
+    foreach ($filas as $sku => $fila) {
+        $reporte[$sku] = $fila;
+    }
+    file_put_contents($dir . '/reporte.json', json_encode($reporte, JSON_UNESCAPED_UNICODE), LOCK_EX);
+}
+
+/** Devuelve las fotos originales de la revisión $id. Devuelve cuántas restauró. */
+function deshacer_revision_fotos(string $id): int
+{
+    if (!respaldo_valido($id)) {
+        return 0;
+    }
+    $dir = PRODUCTOS_RESPALDOS_DIR . '/' . $id;
+    $restauradas = 0;
+    foreach (reporte_revision_fotos($id) as $sku => $fila) {
+        $original = (string) ($fila['original'] ?? '');
+        if ($original === '' || !preg_match('/^[A-Z0-9\-_]+\.(webp|png|jpe?g)$/', $original) || !is_file($dir . '/' . $original)) {
+            continue;
+        }
+        $nueva = PRODUCTOS_IMG_DIR . '/' . $sku . '.webp';
+        clearstatcache(true, $nueva);
+        // Si después de la revisión alguien subió otra foto de este producto, esa se respeta.
+        if (is_file($nueva) && filemtime($nueva) !== ($fila['guardada'] ?? null)) {
+            continue;
+        }
+        if ($original !== $sku . '.webp' && is_file($nueva)) {
+            unlink($nueva);
+        }
+        if (copy($dir . '/' . $original, PRODUCTOS_IMG_DIR . '/' . $original)) {
+            $restauradas++;
+        }
+    }
+    // La revisión deshecha se archiva para que no vuelva a aparecer como la última.
+    rename($dir, PRODUCTOS_RESPALDOS_DIR . '/deshecha-' . $id);
+    return $restauradas;
 }
