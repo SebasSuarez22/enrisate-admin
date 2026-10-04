@@ -498,7 +498,15 @@ function pintarFotoFicha(tarjeta) {
     img.alt = fotoTarjeta.alt;
     img.decoding = 'async';
     img.addEventListener('load', encuadrarFotoFicha);
+    // Se muestra al instante la de la tarjeta (ya está en caché) y se cambia por la grande
+    // (hasta 1200 px) en cuanto termina de llegar, sin dejar la ficha en blanco mientras tanto.
     img.src = fotoTarjeta.currentSrc || fotoTarjeta.src;
+    const grande = fotoTarjeta.dataset.grande;
+    if (grande && !img.src.endsWith(grande)) {
+      const previa = new Image();
+      previa.onload = () => { if (img.isConnected) img.src = previa.src; };
+      previa.src = grande;
+    }
     productoFoto.append(img);
     productoEscena.classList.remove('sin-foto');
     encuadrarFotoFicha();

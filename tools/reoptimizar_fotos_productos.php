@@ -49,6 +49,9 @@ foreach ($archivos as $ruta) {
 
     $pesoOriginal = filesize($ruta);
     $sku = pathinfo($ruta, PATHINFO_FILENAME);
+    if (str_contains($sku, '.')) {
+        continue; // versión de tarjeta (<SKU>.tarjeta.webp): se rehace sola con la foto
+    }
 
     // Reutiliza el mismo procesamiento que usa la subida normal, a partir
     // del archivo que ya está en disco: mismo redimensionado, mismo WebP

@@ -14,13 +14,16 @@ declare(strict_types=1);
 
 define('PRODUCTOS_IMG_DIR', BASE_DIR . '/assets/img/productos');
 define('PRODUCTOS_IMG_WEB', 'assets/img/productos');
-// Lado más largo que se guarda, en px. La tarjeta del catálogo público
-// nunca la muestra a más de ~210px de ancho (7 columnas en el punto más
-// ancho), así que 1200px era puro peso sin ganancia de nitidez ni
-// siquiera en pantallas de 3x: una foto de celular normal salía en
-// ~400-500 KB. 640px es lo que ya usan las fotos reales que había antes
-// de esta función (20-30 KB cada una) y se ve igual de nítida.
-define('PRODUCTOS_IMG_MAX', 640);
+// Lado más largo que se guarda, en px. Cada foto se guarda en dos tamaños:
+//   <SKU>.webp          hasta 1200 px: solo se descarga al abrir la ficha del
+//                       producto, donde se ve grande (~400 px de alto en
+//                       computador, el doble en pantallas de alta resolución).
+//   <SKU>.tarjeta.webp  hasta 640 px: la que carga la rejilla del catálogo
+//                       (tarjetas de ~280 px de ancho), liviana como antes.
+// Así la ficha se ve nítida sin que la página del catálogo pese más. Las fotos
+// de 640 px o menos no llevan versión de tarjeta: la misma sirve para todo.
+define('PRODUCTOS_IMG_MAX', 1200);
+define('PRODUCTOS_IMG_TARJETA', 640);
 define('PRODUCTOS_IMG_EXTS', ['webp', 'jpg', 'jpeg', 'png']);
 
 /**
@@ -530,6 +533,60 @@ function foto_fondo_ok(\GdImage $img): bool
     return $total > 0 && $buenos >= 0.9 * $total;
 }
 
+/** Ruta de la versión liviana para la tarjeta (o la foto normal si no hace falta). */
+function producto_ruta_foto_tarjeta(string $sku): ?string
+{
+    if (is_file(PRODUCTOS_IMG_DIR . '/' . $sku . '.tarjeta.webp')) {
+        return PRODUCTOS_IMG_WEB . '/' . $sku . '.tarjeta.webp';
+    }
+    return producto_ruta_foto($sku);
+}
+
+/** Guarda (o borra, si la foto ya es pequeña) la versión de tarjeta de $img. */
+function guardar_version_tarjeta(\GdImage $img, string $sku): void
+{
+    $destino = PRODUCTOS_IMG_DIR . '/' . $sku . '.tarjeta.webp';
+    $w = imagesx($img);
+    $h = imagesy($img);
+    $lado = max($w, $h);
+    if ($lado <= PRODUCTOS_IMG_TARJETA) {
+        if (is_file($destino)) {
+            unlink($destino);
+        }
+        return;
+    }
+    $factor = PRODUCTOS_IMG_TARJETA / $lado;
+    $chica = imagecreatetruecolor(max(1, (int) round($w * $factor)), max(1, (int) round($h * $factor)));
+    imagealphablending($chica, false);
+    imagesavealpha($chica, true);
+    imagecopyresampled($chica, $img, 0, 0, 0, 0, imagesx($chica), imagesy($chica), $w, $h);
+    imagewebp($chica, $destino, 82);
+    imagedestroy($chica);
+}
+
+/** Rehace la versión de tarjeta a partir de la foto que está en disco. */
+function actualizar_version_tarjeta(string $sku): void
+{
+    $ruta = producto_ruta_foto($sku);
+    if ($ruta === null) {
+        @unlink(PRODUCTOS_IMG_DIR . '/' . $sku . '.tarjeta.webp');
+        return;
+    }
+    $archivo = BASE_DIR . '/' . $ruta;
+    $img = match (strtolower(pathinfo($archivo, PATHINFO_EXTENSION))) {
+        'webp'        => @imagecreatefromwebp($archivo),
+        'png'         => @imagecreatefrompng($archivo),
+        'jpg', 'jpeg' => @imagecreatefromjpeg($archivo),
+        default       => false,
+    };
+    if ($img) {
+        imagepalettetotruecolor($img);
+        imagesavealpha($img, true);
+        guardar_version_tarjeta($img, $sku);
+        imagedestroy($img);
+    }
+}
+
 /** Ruta relativa (para <img src>) de la foto de un SKU, o null si no tiene. */
 function producto_ruta_foto(string $sku): ?string
 {
@@ -617,6 +674,9 @@ function guardar_imagen_producto(string $sku, array $archivo): string
     [$origen] = procesar_foto_producto($origen);
 
     $ok = imagewebp($origen, PRODUCTOS_IMG_DIR . '/' . $sku . '.webp', 82);
+    if ($ok) {
+        guardar_version_tarjeta($origen, $sku);
+    }
     imagedestroy($origen);
 
     if (!$ok) {
@@ -644,6 +704,7 @@ function quitar_imagen_producto(string $sku): bool
         return false;
     }
     $borrado = false;
+    @unlink(PRODUCTOS_IMG_DIR . '/' . $sku . '.tarjeta.webp');
     foreach (PRODUCTOS_IMG_EXTS as $ext) {
         $ruta = PRODUCTOS_IMG_DIR . '/' . $sku . '.' . $ext;
         if (is_file($ruta)) {
@@ -762,6 +823,9 @@ function revisar_foto_producto(string $sku, string $id): array
         $fila['original'] = basename($archivo);
         clearstatcache(true, $nueva);
         $fila['guardada'] = filemtime($nueva);
+        guardar_version_tarjeta($img, $sku);
+    } elseif (!is_file(PRODUCTOS_IMG_DIR . '/' . $sku . '.tarjeta.webp')) {
+        guardar_version_tarjeta($img, $sku);
     }
     imagedestroy($img);
     return $fila;
@@ -805,6 +869,7 @@ function deshacer_revision_fotos(string $id): int
         }
         if (copy($dir . '/' . $original, PRODUCTOS_IMG_DIR . '/' . $original)) {
             $restauradas++;
+            actualizar_version_tarjeta($sku);
         }
     }
     // La revisión deshecha se archiva para que no vuelva a aparecer como la última.

@@ -2,6 +2,16 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 4 de octubre, 2026 (Catálogo: "Vitrina amplia" — fotos más grandes y en dos tamaños)
+
+Sebastián sintió las fotos pequeñas (en producción todavía no se había corrido "Revisar fondos de fotos": siguen en 640×640 con bordes). Se mostraron 3 propuestas sobre las fotos revisadas; eligió la **C · Vitrina amplia**.
+- **Tarjeta 4:5** (antes 1:1) para todas, con zona de producto del 89 % del alto (4 % arriba, 7 % abajo) y tope de ancho 84 %. Como ya no es cuadrada, el ancho del producto se calcula con `111.25%` (= 89 % × 1,25) en `--ancho-producto`. Sombras: 6,4 % y 2,9 % del alto.
+- **`--fh` más generoso:** `min(1, 1,09·(0,35/a)^0,3)` (antes 0,97); aplica también a la ficha.
+- **Columnas:** 2 (<600) · 3 (600-899) · 4 (900-1339) · 5 (1340-1699) · 6 (1700+). Antes 2/3/4/5/6/7 con cortes en 540/768/1024.
+- **Hover:** con mouse, el producto escala 1,06 desde su base (`transform`; el `translate` va aparte y no choca). La regla global de movimiento reducido apaga la transición.
+- **Dos tamaños de foto:** `PRODUCTOS_IMG_MAX` sube a **1200** (ficha) y se guarda `<SKU>.tarjeta.webp` a 640 para la rejilla (`guardar_version_tarjeta`, `producto_ruta_foto_tarjeta`). La tarjeta trae `data-grande`; la ficha muestra primero la de tarjeta (en caché) y la cambia por la grande cuando llega. `skus_con_foto()` ignora las `.tarjeta` (el punto no pasa la regex del SKU); `quitar_imagen_producto`, la revisión y el deshacer las mantienen al día. `tools/reoptimizar_fotos_productos.php` las salta. Las fotos actuales (≤640) no generan versión de tarjeta.
+- **Verificación:** 390×844, 844×390, 700×1000, 1024×768, 1280×900 y 1440×900 sin scroll horizontal; fichas ET-02 (subida simulada de 1600 px → 394×1153 + tarjeta 219×640), MIL-17 y MEN-08; 16/16 pruebas PHP.
+
 ## 4 de octubre, 2026 (Catálogo público: diseño "Halo", tamaño según la forma del envase y "Revisar fondos de fotos")
 
 Sebastián vio fondos dispares entre tarjetas (las "Sin foto aún" con bloque de color junto a fotos blancas; ORI-03 con fondo gris) y una sombra rara en la ficha (elipse fija que no seguía al producto). Con acceso a las 96 fotos reales del Volume se hicieron mockups; eligió la **C · Halo**.
