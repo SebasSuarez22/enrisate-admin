@@ -2,6 +2,15 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 4 de octubre, 2026 (Sombra de apoyo encima del Shampoo PLEX)
+
+Sebastián vio la sombra "encima de la imagen" del Shampoo PLEX (PL-01, envase blanco). Causas encontradas:
+- **La foto se mezcla con `multiply`:** el blanco del envase "deja pasar" lo que tenga detrás, así que la mitad de la elipse que quedaba por encima de la línea de la base se veía como una mancha gris dentro del envase blanco (en cualquier producto claro).
+- **Orden de pintado en la ficha:** `.cp-ficha-escena::after` (z-index 0) quedaba DESPUÉS de `.cp-ficha-imagen` y se pintaba encima del producto. Ahora las dos sombras de la ficha llevan `z-index: -1` (dentro del `isolation` de la escena).
+- **Base mal estimada:** la sombra se centraba suponiendo 3 % de aire bajo el producto, pero la foto real deja entre 0 % (PL-01, PL-02: el envase toca el borde de abajo) y 6 %. `medirPieFoto()` (JS) lo mide con un canvas pequeño (primera fila desde abajo con algo que no sea blanco/transparente) y lo guarda en `--pie` de cada tarjeta; la ficha lo toma de la tarjeta y lo vuelve a medir con la versión grande.
+- **Solución:** las dos sombras (tarjeta y ficha) llevan una máscara que oculta la mitad de arriba, así solo se ve la sombra sobre el piso, nunca sobre el producto. Se agrandaron un poco (11 %/5 % del alto en la tarjeta, 42/17 px en la ficha) para compensar la mitad oculta.
+- **Verificación:** diferencia de píxeles con y sin sombra en la ficha de escritorio: la sombra empieza justo en la fila de la base (PL-01 y PL-02 desde 660 = base; ET-02 desde 641 = base menos su aire); revisado en 1366×768, 390×844 y 1024×768 con PL-01, PL-02, ET-02 y MIL-17; 17/17 pruebas PHP.
+
 ## 4 de octubre, 2026 (Ficha del producto en escritorio: letra más pequeña, "Leer más" y dos columnas)
 
 Sebastián revisó las descripciones al ampliar una card: en computador iban completas en 17 px (con textos largos quedaban corridas bajo la barra del precio) y no había "Leer más". De 3 propuestas (A panel compacto, B dos columnas, C hoja que sube) eligió la **B**.
