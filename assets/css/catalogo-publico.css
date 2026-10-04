@@ -900,9 +900,10 @@ body.cp-con-carrito .cp-pie {
 .cp-ficha-sin strong { color: var(--tinta); font-weight: 700; }
 .cp-ficha-sin a { width: fit-content; color: var(--verde); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 
-/* "Leer más": solo donde el espacio es poco (celular de pie y celular acostado). */
+/* "Leer más": en todos los tamaños. Solo aparece si la descripción pasa del recorte (ver
+   revisarLeerMas() en catalogo-publico.js); una descripción corta se muestra completa. */
 .cp-ficha-mas {
-  display: none;
+  display: inline-flex;
   align-self: flex-start; align-items: center;
   min-height: 44px; margin-top: -6px; padding: 0 2px;
   border: 0; background: none;
@@ -935,14 +936,12 @@ body.cp-con-carrito .cp-pie {
 }
 .cp-hoja-producto .cp-boton-agregar svg { width: 20px; height: 20px; }
 
-/* Texto recortado con degradado: solo en celular de pie y celular acostado. */
-@media (max-width: 719.98px), (orientation: landscape) and (max-height: 500px) {
-  .cp-ficha-mas { display: inline-flex; }
-  .cp-ficha-descripcion.recortada {
-    max-height: var(--recorte, 9.4em); overflow: hidden;
-    -webkit-mask-image: linear-gradient(#000 70%, transparent);
-            mask-image: linear-gradient(#000 70%, transparent);
-  }
+/* Texto recortado con degradado hasta que se toca "Leer más". --recorte es el alto del recorte y
+   cambia por tamaño: celular de pie 9,4 em · tablet 6,5 em (4 líneas) · escritorio 8,1 em (5 líneas). */
+.cp-ficha-descripcion.recortada {
+  max-height: var(--recorte, 9.4em); overflow: hidden;
+  -webkit-mask-image: linear-gradient(#000 70%, transparent);
+          mask-image: linear-gradient(#000 70%, transparent);
 }
 
 /* Tablet y escritorio: panel lateral */
@@ -950,16 +949,54 @@ body.cp-con-carrito .cp-pie {
   .cp-hoja-carrito.cp-hoja-producto { width: min(460px, 92vw); max-height: none; border-radius: 22px 0 0 22px; }
   .cp-hoja-carrito.cp-hoja-producto:focus,
   .cp-hoja-carrito.cp-hoja-producto:focus-visible { border-radius: 22px 0 0 22px; }
-  .cp-ficha-escena { height: calc(clamp(320px, 56vh, 520px) - var(--quita, 0px)); height: calc(clamp(320px, 56dvh, 520px) - var(--quita, 0px)); }
-  .cp-ficha-descripcion { font-size: 1.0625rem; }
+  .cp-ficha-escena { height: calc(clamp(300px, 46vh, 440px) - var(--quita, 0px)); height: calc(clamp(300px, 46dvh, 440px) - var(--quita, 0px)); }
+  .cp-ficha-descripcion { font-size: .90625rem; line-height: 1.62; --recorte: 6.5em; }
+  .cp-ficha-mas { min-height: 34px; margin-top: -4px; font-size: .875rem; }
   .cp-ficha-detalle { padding: 26px 24px 32px; }
   .cp-ficha-pie { padding-inline: var(--sp-6); }
 }
 @media (min-width: 1100px) {
   .cp-hoja-carrito.cp-hoja-producto { width: min(520px, 92vw); }
-  .cp-ficha-escena { height: calc(clamp(340px, 58vh, 560px) - var(--quita, 0px)); height: calc(clamp(340px, 58dvh, 560px) - var(--quita, 0px)); }
   .cp-ficha-nombre { font-size: 2rem; }
   .cp-ficha-precio { font-size: 1.875rem; }
+}
+
+/* Escritorio y portátil (desde 1100 px de ancho y 560 de alto): la ficha se abre al centro en dos
+   columnas, la foto grande a la izquierda y el texto a la derecha, cada uno con su espacio; el
+   precio y el botón quedan fijos abajo de la columna del texto. Es la misma estructura de dos
+   columnas del celular acostado (display: contents deja foto y detalle como hijos de la rejilla),
+   así que ajustarFicha() y el degradado de scroll ya la entienden. Debajo de ese tamaño sigue el
+   panel lateral. */
+@media (min-width: 1100px) and (min-height: 560px) {
+  .cp-hoja-carrito.cp-hoja-producto {
+    left: 50%; top: 50%; right: auto; bottom: auto;
+    width: min(980px, 92vw); height: min(640px, 88vh); height: min(640px, 88dvh);
+    max-height: none;
+    display: grid; grid-template-columns: minmax(0, 52%) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto;
+    border-radius: 24px;
+    box-shadow: 0 30px 80px rgba(51,32,15,.4);
+    transform: translate(-50%, -48%); opacity: 0;
+    transition: transform .32s cubic-bezier(.32,.72,0,1), opacity .24s ease;
+  }
+  .cp-hoja-carrito.cp-hoja-producto:focus,
+  .cp-hoja-carrito.cp-hoja-producto:focus-visible { border-radius: 24px; }
+  .cp-hoja-carrito.cp-hoja-producto[hidden] { display: none; }
+  .cp-hoja-carrito.cp-hoja-producto.abierta { transform: translate(-50%, -50%); opacity: 1; }
+  .cp-hoja-producto .cp-ficha-cuerpo { display: contents; }
+  .cp-hoja-producto .cp-ficha-escena { grid-column: 1; grid-row: 1 / span 2; height: auto; }
+  .cp-ficha-imagen { inset: 60px 28px 44px; }
+  .cp-hoja-producto .cp-ficha-detalle {
+    grid-column: 2; grid-row: 1; min-height: 0;
+    margin-top: 0; border-radius: 0;
+    padding: 40px 40px 12px; gap: 14px;
+    overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: none; -ms-overflow-style: none;
+  }
+  .cp-ficha-nombre { padding-right: 36px; }
+  .cp-ficha-descripcion { --recorte: 8.1em; }
+  .cp-hoja-producto .cp-ficha-pie { grid-column: 2; grid-row: 2; padding: 14px 40px 22px; }
+  .cp-ficha-precio { font-size: 1.75rem; }
+  .cp-hoja-producto .cp-ficha-cerrar { top: 14px; right: 14px; }
 }
 
 /* Celular acostado o ventana muy baja: ventana con dos columnas.

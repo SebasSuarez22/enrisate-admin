@@ -466,9 +466,9 @@ function ajustarFicha() {
 
 /* "Leer más": el botón y el recorte solo existen si el recorte esconde de verdad más de una
    línea y media. Antes el degradado del recorte se aplicaba siempre, aunque el texto cupiera
-   entero, y apagaba la última línea de las descripciones cortas. Depende del tamaño de pantalla
-   (en el panel lateral el texto va completo), por eso se vuelve a revisar al girar o cambiar
-   el tamaño de la ventana. */
+   entero, y apagaba la última línea de las descripciones cortas. El alto del recorte (--recorte)
+   depende del tamaño de pantalla (celular, tablet o escritorio en dos columnas), por eso se
+   vuelve a revisar al girar o cambiar el tamaño de la ventana. */
 function revisarLeerMas() {
   productoDescripcion.classList.add('recortada');            // se mide con el recorte puesto
   const linea = parseFloat(getComputedStyle(productoDescripcion).lineHeight) || 27;
