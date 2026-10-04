@@ -48,9 +48,10 @@ const UMBRAL_CUOTAS_PUBLICO = 70000;
 const MAX_PEDIDOS_POR_HORA = 8;
 
 /* --- Promoción del catálogo público --- */
-// Aviso corredizo de arriba del catálogo: "Por la compra de más de N
-// productos tienes un X % de descuento en toda la compra".
-const PROMO_MAS_DE_UNIDADES = 5;
+// Por la compra de N o más productos (unidades en total) hay un X % de
+// descuento en toda la compra. Lo anuncia el aviso de arriba del catálogo
+// público y lo aplican el carrito, el pedido guardado y la cuenta de cobro.
+const PROMO_MINIMO_UNIDADES = 3;
 const PROMO_PORCENTAJE      = 10;
 
 /* --- Seguridad --- */

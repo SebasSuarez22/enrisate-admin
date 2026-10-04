@@ -71,7 +71,9 @@ require __DIR__ . '/includes/cabecera.php';
     <p class="aviso" role="alert"><?= e($error) ?></p>
   <?php endif; ?>
   <?php if ($pedidoDesde): ?>
-    <p class="aviso neutro">Prellenado desde el pedido <?= e($pedidoDesde['numero']) ?> de <?= e($pedidoDesde['cliente']) ?>. Revisa todo antes de generar la factura.</p>
+    <p class="aviso neutro">Prellenado desde el pedido <?= e($pedidoDesde['numero']) ?> de <?= e($pedidoDesde['cliente']) ?>. Revisa todo antes de generar la factura.<?php
+      $dtoPedido = (int) ($pedidoDesde['subtotal'] ?? 0) - (int) ($pedidoDesde['total'] ?? 0);
+      if ($dtoPedido > 0): ?><br>Este pedido trae el descuento de la promoción del catálogo (<?= e(pesos($dtoPedido)) ?>): ya quedó en el campo Descuento.<?php endif; ?></p>
     <label class="opcion opcion-pago-pedido">
       <input type="checkbox" id="pedidoYaPago">
       <span>Ya me pagó el total</span>
@@ -114,7 +116,7 @@ require __DIR__ . '/includes/cabecera.php';
 
         <div class="campo apretado">
           <label for="descuento">Descuento</label>
-          <input type="number" id="descuento" name="descuento" value="0" min="0" step="1000">
+          <input type="number" id="descuento" name="descuento" value="0" min="0" step="1">
         </div>
       </section>
 
@@ -570,6 +572,13 @@ if (PEDIDO_DESDE) {
       items.push({ sku: prod.sku, nombre: prod.nombre, precio: prod.precio, costo: prod.costo, cant: l.cant });
     }
   });
+
+  // Descuento de la promoción del catálogo (3 o más productos): el pedido guarda el total ya
+  // rebajado, y la diferencia con el subtotal se precarga aquí para que llegue a la cuenta.
+  const descuentoPedido = Math.max(0, (parseInt(PEDIDO_DESDE.subtotal, 10) || 0) - (parseInt(PEDIDO_DESDE.total, 10) || 0));
+  if (descuentoPedido > 0) {
+    document.getElementById('descuento').value = String(descuentoPedido);
+  }
 
   // Si el teléfono (o, si no hay, el nombre) ya corresponde a una clienta
   // guardada, se precarga como "Clienta existente" (así se ve su saldo a

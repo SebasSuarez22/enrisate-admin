@@ -21,6 +21,20 @@ require_once __DIR__ . '/red.php';
    con la IP REAL del visitante (ver includes/red.php).
    ========================================================= */
 
+/**
+ * Descuento de la promoción del catálogo público: PROMO_PORCENTAJE % sobre TODA la compra cuando
+ * lleva PROMO_MINIMO_UNIDADES o más unidades (el carrito suma unidades: 2 shampoos + 1 gel = 3).
+ * El carrito (assets/js/catalogo-publico.js) hace la misma cuenta para mostrarla; el servidor es
+ * quien manda: pedido-publico.php la recalcula y guarda el total ya rebajado.
+ */
+function descuento_promo(int $subtotal, int $unidades): int
+{
+    if ($subtotal <= 0 || $unidades < PROMO_MINIMO_UNIDADES) {
+        return 0;
+    }
+    return (int) round($subtotal * PROMO_PORCENTAJE / 100);
+}
+
 function leer_pedidos(): array
 {
     return leer_pedidos_donde(null, null);

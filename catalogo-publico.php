@@ -133,10 +133,10 @@ $logosPorMarca = [
   // suficiente para cubrir una pantalla ancha. Solo el primer mensaje lo leen los lectores de
   // pantalla; el resto es decoración (aria-hidden).
   $cpPromoPct  = (int) PROMO_PORCENTAJE;
-  $cpPromoMas  = (int) PROMO_MAS_DE_UNIDADES;
-  $cpPromoItem = function (bool $leible) use ($cpPromoPct, $cpPromoMas): string {
+  $cpPromoMin  = (int) PROMO_MINIMO_UNIDADES;
+  $cpPromoItem = function (bool $leible) use ($cpPromoPct, $cpPromoMin): string {
       return '<span class="cp-aviso-item"' . ($leible ? '' : ' aria-hidden="true"') . '>'
-           . 'Por la compra de más de ' . $cpPromoMas . ' productos tienes un <b>' . $cpPromoPct
+           . 'Por la compra de ' . $cpPromoMin . ' o más productos tienes un <b>' . $cpPromoPct
            . '&nbsp;% de descuento</b> en toda la compra</span>'
            . '<svg class="cp-aviso-chispa" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1c.6 5.6 5.4 10.4 11 11-5.6.6-10.4 5.4-11 11-.6-5.6-5.4-10.4-11-11C6.6 11.4 11.4 6.6 12 1z"/></svg>';
   };
@@ -339,6 +339,13 @@ $logosPorMarca = [
   <div class="cp-hoja-cuerpo">
     <div class="cp-lista-pedido" id="listaPedido"></div>
 
+    <!-- Promoción: avisa cuánto falta para el descuento o lo muestra aplicado. -->
+    <p class="cp-promo-pista" id="hojaPromoPista" role="status" hidden></p>
+    <div class="cp-resumen" id="hojaResumen" hidden>
+      <div class="cp-resumen-fila"><span>Subtotal</span><span id="hojaSubtotal">$0</span></div>
+      <div class="cp-resumen-fila cp-resumen-desc"><span id="hojaDescEtiqueta">Descuento</span><span id="hojaDescuento">$0</span></div>
+    </div>
+
     <div class="cp-hoja-total">
       <span>Total</span>
       <strong id="hojaTotal">$0</strong>
@@ -440,6 +447,8 @@ $logosPorMarca = [
 const WHATSAPP = '<?= e(APP_WHATSAPP) ?>';
 const NOMBRE_NEGOCIO = '<?= e(APP_NOMBRE) ?>';
 const UMBRAL_CUOTAS = <?= (int) UMBRAL_CUOTAS_PUBLICO ?>;
+const PROMO_MIN = <?= (int) PROMO_MINIMO_UNIDADES ?>;   // unidades para el descuento (ver descuento_promo() en includes/pedidos.php)
+const PROMO_PCT = <?= (int) PROMO_PORCENTAJE ?>;
 const TOTAL_PRODUCTOS = <?= $totalProductos ?>;
 </script>
 <script src="assets/js/catalogo-publico.js?v=<?= filemtime(__DIR__ . '/assets/js/catalogo-publico.js') ?>" defer></script>

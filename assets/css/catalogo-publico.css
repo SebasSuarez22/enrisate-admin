@@ -747,6 +747,20 @@ body.cp-con-carrito .cp-pie {
   font-size: var(--t-xl); font-weight: 600; color: var(--tinta);
   font-variant-numeric: tabular-nums;
 }
+/* Promoción dentro del carrito: lo que falta para el descuento, o el descuento ya aplicado. */
+.cp-promo-pista {
+  margin: var(--sp-3) 0 0; padding: 10px 14px;
+  font-size: var(--t-sm); font-weight: 600; line-height: 1.35;
+  color: var(--cacao); background: #F6EBDD; border-radius: var(--radio);
+}
+.cp-promo-pista.lograda { color: #fff; background: var(--rosa); }
+.cp-resumen { margin-top: var(--sp-3); display: grid; gap: 6px; }
+.cp-resumen[hidden], .cp-promo-pista[hidden] { display: none; }
+.cp-resumen-fila {
+  display: flex; justify-content: space-between; gap: var(--sp-3);
+  font-size: var(--t-sm); color: var(--gris); font-variant-numeric: tabular-nums;
+}
+.cp-resumen-desc { color: var(--rosa); font-weight: 700; }
 .cp-hoja-subtitulo { margin: var(--sp-5) 0 var(--sp-4); }
 
 /* =========================================================

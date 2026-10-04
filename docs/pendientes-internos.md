@@ -2,6 +2,16 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 4 de octubre, 2026 (Promoción: 10 % de descuento desde 3 productos, ya efectivo en el carrito)
+
+Cambio de planes de Sebastián: el aviso pasa a "Por la compra de 3 o más productos tienes un 10 % de descuento en toda la compra" y el descuento se aplica de verdad.
+- **Regla (una sola fuente):** `PROMO_MINIMO_UNIDADES = 3` y `PROMO_PORCENTAJE = 10` en `config.php`; `descuento_promo($subtotal, $unidades)` en `includes/pedidos.php` (redondea al peso). **Cuenta unidades**, como el carrito (3 shampoos = 3). El descuento es sobre TODA la compra. No hay tope ni se acumula con nada más.
+- **Carrito (`assets/js/catalogo-publico.js`):** `subtotalPedido()` (suma), `descuentoPedido()` (misma cuenta que PHP) y `totalPedido()` ahora devuelve el total **ya rebajado**, así lo usan sin cambios el botón flotante, el mínimo para cuotas (70.000, ahora sobre lo que realmente paga) y el mensaje de WhatsApp. La hoja del carrito muestra una pista ("Agrega N productos más y llevas 10 %…" / "¡Listo!…") y, ya aplicado, Subtotal / Descuento 10 % / Total. El mensaje de WhatsApp lleva subtotal, descuento y total.
+- **Servidor (`pedido-publico.php`):** recalcula todo (nunca confía en el navegador), guarda `subtotal` y `total` ya rebajado, y devuelve `subtotal/descuento/total`. El plan a cuotas se valida contra el total rebajado.
+- **Panel:** `pedidos.php` muestra "Incluye descuento de $X" (desktop) y "Descuento del catálogo" (celular). `facturar.php?desde_pedido=` precarga el campo Descuento con `subtotal − total` del pedido (antes quedaba en 0 y se habría facturado sin rebaja); el campo `descuento` pasó de `step=1000` a `step=1` (con 1000 el navegador bloqueaba el envío de un descuento como $16.300).
+- **Verificación (base de prueba):** pedido real de 3 productos ($163.000) → carrito $146.700 con −$16.300; pedido guardado con subtotal 163000 / total 146700; "Confirmar y facturar" precargó 16300 y la factura quedó con descuento 16300 y total 146700; con 1 y 2 unidades no hay descuento ni resumen y se muestra cuánto falta; 390 y 1280 px; 17/17 archivos de pruebas (nuevo `promo_descuento_test.php`).
+- **Pendiente a propósito:** los pedidos que ya estaban guardados antes de este cambio no traen descuento (total = subtotal).
+
 ## 4 de octubre, 2026 (Catálogo: aviso corredizo con etiqueta "10 % DTO." que cuelga — opción C)
 
 Sebastián pidió el aviso de arriba corredizo con "Por la compra de más de 5 productos tienes un 10 % de descuento en toda la compra" y un efecto especial; de 3 propuestas (A Destello, B Cuenta de 5, C Etiqueta que cuelga) eligió la **C**.
