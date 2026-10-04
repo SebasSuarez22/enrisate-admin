@@ -310,11 +310,11 @@ body {
 .cp-tarjeta.agotada { opacity: .55; }
 
 /* Todas las tarjetas comparten el mismo fondo (halo), con o sin foto. Las que no tienen foto
-   se distinguen por el ícono de su tipo en un círculo de color. Vertical (4:5), como la forma
-   de los envases: las botellas se ven cerca de un 40 % más grandes que en la foto cuadrada. */
+   se distinguen por el ícono de su tipo en un círculo de color. Cuadrada y compacta: la rejilla
+   muestra mucho producto a la vez; el tamaño grande lo da la ficha al abrir un producto. */
 .cp-img-wrap {
   position: relative;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1 / 1;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: var(--sp-2);
@@ -330,13 +330,12 @@ body {
    recortan al subirla). --a = ancho/alto de la foto y --fh = qué parte de la zona ocupa, los dos
    calculados en PHP (cp_foto_escala): una botella alta llena la zona; un frasco ancho se queda
    más bajo para no verse gigante a su lado; nada pasa del 84 % del ancho.
-   La zona del producto es el 89 % del alto (4 % arriba, 7 % abajo). Como la tarjeta es 4:5,
-   ese mismo alto medido en % del ANCHO es 89 % × 1,25 = 111,25 %: con eso se calcula el ancho
-   del producto (a × alto) en la unidad que usa width. */
+   La zona del producto es el 89 % del alto (4 % arriba, 7 % abajo). La tarjeta es cuadrada,
+   así que el mismo % sirve en alto y en ancho para calcular el ancho del producto (a × alto). */
 .cp-img-foto {
   padding: 0;
   --zona: calc(89% - var(--logo, 0px));
-  --ancho-producto: min(84%, calc(var(--a, .6) * var(--fh, .85) * (111.25% - var(--logo, 0px))));
+  --ancho-producto: min(84%, calc(var(--a, .6) * var(--fh, .85) * var(--zona)));
   --apoyo: calc(7% + var(--logo, 0px) + var(--fh, .85) * var(--zona) * .03);
 }
 .cp-img-foto .cp-foto {
@@ -360,12 +359,12 @@ body {
   border-radius: 50%; pointer-events: none;
 }
 .cp-img-foto::before {
-  width: calc(var(--ancho-producto) * .98); height: 6.4%;
+  width: calc(var(--ancho-producto) * .98); height: 8%;
   background: radial-gradient(closest-side, rgba(92,54,24,.15), rgba(92,54,24,.06) 55%, rgba(92,54,24,0));
   filter: blur(3px);
 }
 .cp-img-foto::after {
-  width: calc(var(--ancho-producto) * .72); height: 2.9%;
+  width: calc(var(--ancho-producto) * .72); height: 3.6%;
   background: radial-gradient(closest-side, var(--sombra-producto), rgba(74,40,16,.16) 50%, rgba(74,40,16,0));
   filter: blur(1.2px);
 }
@@ -704,8 +703,9 @@ body.cp-con-carrito .cp-pie {
    foto se funda con el fondo (las fotos de producto no son transparentes). */
 .cp-ficha-escena {
   position: relative; isolation: isolate; flex: none;
-  height: calc(clamp(230px, 40vh, 340px) - var(--quita, 0px));
-  height: calc(clamp(230px, 40dvh, 340px) - var(--quita, 0px));
+  /* La ficha es donde el producto se ve grande (la tarjeta de la rejilla es compacta). */
+  height: calc(clamp(300px, 52vh, 460px) - var(--quita, 0px));
+  height: calc(clamp(300px, 52dvh, 460px) - var(--quita, 0px));
   background: var(--halo);
   overflow: hidden;
 }
@@ -732,7 +732,7 @@ body.cp-con-carrito .cp-pie {
 .cp-ficha-logo { position: absolute; top: 14px; left: 18px; z-index: 2; width: 52px; height: auto; }
 /* Sin z-index a propósito: un z-index crearía un grupo aparte y el multiply de la foto ya no
    se mezclaría con el fondo de la escena (se vería el recuadro blanco de la foto). */
-.cp-ficha-imagen { position: absolute; inset: 50px 16px calc(14% + 16px); }
+.cp-ficha-imagen { position: absolute; inset: 44px 12px calc(10% + 14px); }
 /* Mismo criterio que en la tarjeta: apoyado abajo, tamaño según la forma del envase. */
 .cp-ficha-imagen .cp-foto {
   position: absolute; left: 50%; bottom: 0; translate: -50% 0;
@@ -843,14 +843,14 @@ body.cp-con-carrito .cp-pie {
   .cp-hoja-carrito.cp-hoja-producto { width: min(460px, 92vw); max-height: none; border-radius: 22px 0 0 22px; }
   .cp-hoja-carrito.cp-hoja-producto:focus,
   .cp-hoja-carrito.cp-hoja-producto:focus-visible { border-radius: 22px 0 0 22px; }
-  .cp-ficha-escena { height: calc(clamp(240px, 42vh, 360px) - var(--quita, 0px)); height: calc(clamp(240px, 42dvh, 360px) - var(--quita, 0px)); }
+  .cp-ficha-escena { height: calc(clamp(320px, 56vh, 520px) - var(--quita, 0px)); height: calc(clamp(320px, 56dvh, 520px) - var(--quita, 0px)); }
   .cp-ficha-descripcion { font-size: 1.0625rem; }
   .cp-ficha-detalle { padding: 26px 24px 32px; }
   .cp-ficha-pie { padding-inline: var(--sp-6); }
 }
 @media (min-width: 1100px) {
   .cp-hoja-carrito.cp-hoja-producto { width: min(520px, 92vw); }
-  .cp-ficha-escena { height: calc(clamp(260px, 44vh, 400px) - var(--quita, 0px)); height: calc(clamp(260px, 44dvh, 400px) - var(--quita, 0px)); }
+  .cp-ficha-escena { height: calc(clamp(340px, 58vh, 560px) - var(--quita, 0px)); height: calc(clamp(340px, 58dvh, 560px) - var(--quita, 0px)); }
   .cp-ficha-nombre { font-size: 2rem; }
   .cp-ficha-precio { font-size: 1.875rem; }
 }
@@ -1022,18 +1022,15 @@ body.cp-con-carrito .cp-pie {
    ---------------------------------------------------------
    Número de columnas fijo en cada tramo, nunca decreciente:
    ensanchar la ventana siempre muestra igual o más producto.
-   "Vitrina amplia": una columna menos que antes desde tablet, para
-   que cada tarjeta (y su foto) sea más ancha.
-     320-599  → 2      1340-1699 → 5
-     600-899  → 3      1700+     → 6
-     900-1339 → 4
+     320-539  → 2      1024-1339 → 5
+     540-767  → 3      1340-1699 → 6
+     768-1023 → 4      1700+     → 7
    ========================================================= */
-@media (min-width: 540px)  { :root { --gap: var(--sp-4); } }
-@media (min-width: 600px)  { :root { --cols: 3; } }
-@media (min-width: 900px)  { :root { --cols: 4; } }
-@media (min-width: 1024px) { :root { --margen: var(--sp-6); } }
-@media (min-width: 1340px) { :root { --cols: 5; --ancho: 1320px; } }
-@media (min-width: 1700px) { :root { --cols: 6; --ancho: 1560px; } }
+@media (min-width: 540px)  { :root { --cols: 3; --gap: var(--sp-4); } }
+@media (min-width: 768px)  { :root { --cols: 4; } }
+@media (min-width: 1024px) { :root { --cols: 5; --margen: var(--sp-6); } }
+@media (min-width: 1340px) { :root { --cols: 6; --ancho: 1320px; } }
+@media (min-width: 1700px) { :root { --cols: 7; --ancho: 1560px; } }
 
 /* Pantallas muy angostas (iPhone SE, o cualquier móvil con el texto al 200%):
    márgenes y separación más apretados para conservar las dos columnas. */

@@ -2,6 +2,14 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 4 de octubre, 2026 (Catálogo: tarjetas compactas y ficha grande — se invierte la "Vitrina amplia")
+
+Sebastián prefirió tarjetas compactas como antes y el producto grande al abrir la ficha. **Ojo:** dijo que ya había corrido "Revisar fondos de fotos", pero en los logs HTTP de Railway no hay ninguna visita de navegador a `/revisar-fotos.php` y las fotos siguen en 640×640 (solo MIL-17 está recortada): parece que la corrió en su XAMPP local. Hay que correrla en producción.
+- **Tarjetas:** vuelven a 1:1 y a las columnas originales (2 / 3 desde 540 / 4 desde 768 / 5 desde 1024 / 6 desde 1340 / 7 desde 1700). Se queda la zona de producto más generosa (89 % del alto, base al 7 %, tope 84 % del ancho, `--fh` con 1,09) y el zoom al pasar el mouse. Sombras de nuevo 8 % / 3,6 %.
+- **Ficha:** escena más alta: celular `clamp(300px, 52vh, 460px)` (antes 230/40vh/340), ≥720 `clamp(320px, 56vh, 520px)`, ≥1100 `clamp(340px, 58vh, 560px)`; `#productoFoto` con inset `44px 12px calc(10% + 14px)`; `encuadrarFotoFicha()` usa `fh × 1,1` y tope del 74 % del ancho (antes 62 %). Celular acostado sin cambios.
+- **Fotos en dos tamaños (1200 / 640) se mantienen.**
+- **Verificación:** 375×667, 390×844, 844×390, 768×1024, 1280×900 y 1600×900 sin scroll horizontal; fichas ET-02, MIL-17, MEN-04 en los 6 tamaños; 16/16 pruebas PHP.
+
 ## 4 de octubre, 2026 (Catálogo: "Vitrina amplia" — fotos más grandes y en dos tamaños)
 
 Sebastián sintió las fotos pequeñas (en producción todavía no se había corrido "Revisar fondos de fotos": siguen en 640×640 con bordes). Se mostraron 3 propuestas sobre las fotos revisadas; eligió la **C · Vitrina amplia**.

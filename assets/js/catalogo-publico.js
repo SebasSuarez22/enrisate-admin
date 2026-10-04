@@ -474,9 +474,10 @@ function encuadrarFotoFicha() {
   const W = productoFoto.clientWidth, H = productoFoto.clientHeight;
   if (!img || !W || !H) return;
   const a  = parseFloat(productoEscena.dataset.a) || (img.naturalWidth / img.naturalHeight) || 0.6;
-  const fh = parseFloat(productoEscena.dataset.fh) || 0.85;
+  // En la ficha el producto va un 10 % más grande que en la tarjeta (relativo a su zona).
+  const fh = Math.min(1, (parseFloat(productoEscena.dataset.fh) || 0.85) * 1.1);
   let h = fh * H, w = a * h;
-  const maxW = Math.min(W, productoEscena.clientWidth * 0.62);
+  const maxW = Math.min(W, productoEscena.clientWidth * 0.74);
   if (w > maxW) { w = maxW; h = w / a; }
   img.style.width = w + 'px';
   img.style.height = h + 'px';
