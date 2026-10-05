@@ -332,83 +332,138 @@ $logosPorMarca = [
 <!-- Fondo oscurecido detrás de la hoja de carrito -->
 <div class="cp-carrito-fondo" id="carritoFondo" hidden></div>
 
-<!-- Hoja de carrito: productos, plan de pago y datos de contacto en una sola vista -->
-<div class="cp-hoja-carrito" id="hojaCarrito" role="dialog" aria-modal="true" aria-labelledby="hojaCarritoTitulo" hidden>
+<!-- Hoja de carrito en tres pasos: 1 Pedido (productos y descuento), 2 Datos (pago y contacto),
+     3 Confirmar (resumen final y envío por WhatsApp). Celular de pie: hoja que sube desde abajo;
+     tablet: panel lateral; celular acostado y escritorio: ventana con un riel a la izquierda
+     (pasos y total) y el contenido del paso a la derecha. -->
+<div class="cp-hoja-carrito cp-hoja-pasos" id="hojaCarrito" role="dialog" aria-modal="true" aria-labelledby="hojaCarritoTitulo" data-paso="1" hidden>
   <div class="cp-hoja-agarradera" aria-hidden="true"></div>
 
-  <div class="cp-hoja-cabecera">
+  <button type="button" class="cp-hoja-cerrar" id="cerrarCarrito" aria-label="Cerrar el pedido">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+  </button>
+
+  <div class="cp-pasos-riel">
     <h2 class="cp-hoja-titulo" id="hojaCarritoTitulo">Tu pedido</h2>
-    <div class="cp-hoja-acciones">
-      <button type="button" class="cp-hoja-vaciar" id="vaciarPedido">Vaciar</button>
-      <button type="button" class="cp-hoja-cerrar" id="cerrarCarrito" aria-label="Cerrar el pedido">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    <ol class="cp-pasos-lista" id="pasosLista">
+      <li><button type="button" class="cp-paso-tab" data-paso="1"><span class="cp-paso-num" aria-hidden="true">1</span><span class="cp-paso-nombre">Pedido</span></button></li>
+      <li><button type="button" class="cp-paso-tab" data-paso="2"><span class="cp-paso-num" aria-hidden="true">2</span><span class="cp-paso-nombre">Datos</span></button></li>
+      <li><button type="button" class="cp-paso-tab" data-paso="3"><span class="cp-paso-num" aria-hidden="true">3</span><span class="cp-paso-nombre">Confirmar</span></button></li>
+    </ol>
+    <div class="cp-riel-total" aria-hidden="true">
+      <small>Total</small>
+      <strong id="rielTotal">$0</strong>
+      <em id="rielAhorro" hidden></em>
+    </div>
+  </div>
+
+  <div class="cp-pasos-main">
+    <div class="cp-hoja-cuerpo" id="pasosCuerpo">
+
+      <!-- Paso 1 · Pedido -->
+      <section class="cp-paso-panel" data-paso="1" aria-labelledby="pasoTitulo1">
+        <h3 class="cp-paso-titulo" id="pasoTitulo1" tabindex="-1">Revisa tus productos</h3>
+        <p class="cp-paso-sub">Cambia las cantidades o quita lo que no quieras.</p>
+        <div class="cp-lista-pedido" id="listaPedido"></div>
+
+        <!-- Promoción: avisa cuánto falta para el descuento o lo muestra aplicado. -->
+        <div class="cp-promo-pista" id="hojaPromoPista" role="status" hidden>
+          <svg class="cp-promo-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+          <span class="cp-promo-texto" id="hojaPromoTexto"></span>
+          <span class="cp-promo-barra" aria-hidden="true"><i id="hojaPromoBarra"></i></span>
+        </div>
+        <div class="cp-resumen" id="hojaResumen" hidden>
+          <div class="cp-resumen-fila"><span>Subtotal</span><span id="hojaSubtotal">$0</span></div>
+          <div class="cp-resumen-fila cp-resumen-desc"><span id="hojaDescEtiqueta">Descuento</span><span id="hojaDescuento">$0</span></div>
+        </div>
+
+        <button type="button" class="cp-hoja-vaciar" id="vaciarPedido">Vaciar pedido</button>
+      </section>
+
+      <!-- Paso 2 · Datos -->
+      <section class="cp-paso-panel" data-paso="2" aria-labelledby="pasoTitulo2" hidden>
+        <h3 class="cp-paso-titulo" id="pasoTitulo2" tabindex="-1">Tus datos</h3>
+        <p class="cp-paso-sub">Total del pedido: <strong id="datosTotal">$0</strong></p>
+
+        <div class="cp-form-campo" id="cpBloquePlan" hidden>
+          <p class="cp-form-etiqueta">¿Cómo prefieres pagar?</p>
+          <div class="cp-form-opciones">
+            <label class="cp-form-opcion">
+              <input type="radio" name="cpPlan" value="contado" checked>
+              <span>De contado</span>
+            </label>
+            <label class="cp-form-opcion">
+              <input type="radio" name="cpPlan" value="cuotas">
+              <span>A cuotas</span>
+            </label>
+          </div>
+          <div class="cp-form-campo" id="cpBloqueNumCuotas" hidden>
+            <label for="cpNumCuotas">Número de cuotas</label>
+            <select id="cpNumCuotas">
+              <option value="2" selected>2 cuotas</option>
+              <option value="3">3 cuotas</option>
+              <option value="4">4 cuotas</option>
+            </select>
+            <p class="cp-form-pista">Gina te confirma los montos y las fechas exactas por WhatsApp.</p>
+          </div>
+        </div>
+
+        <p class="cp-form-titulo cp-hoja-subtitulo">Para mandar tu pedido, ¿cómo te contactamos?</p>
+
+        <div class="cp-form-contacto">
+          <div class="cp-form-campo">
+            <label for="cpNombre">Tu nombre</label>
+            <input type="text" id="cpNombre" placeholder="Nombre y apellido" autocomplete="name" maxlength="120">
+          </div>
+          <div class="cp-form-campo">
+            <label for="cpTelefono">Tu WhatsApp</label>
+            <input type="tel" id="cpTelefono" placeholder="3001234567" inputmode="numeric" autocomplete="tel" maxlength="15">
+          </div>
+        </div>
+
+        <!-- Campo trampa: invisible para personas, solo lo llena un bot. -->
+        <div class="cp-form-trampa" aria-hidden="true">
+          <label for="cpSitioWeb">Sitio web</label>
+          <input type="text" id="cpSitioWeb" tabindex="-1" autocomplete="off">
+        </div>
+
+        <p class="cp-form-error" id="cpFormError" role="alert" hidden></p>
+      </section>
+
+      <!-- Paso 3 · Confirmar -->
+      <section class="cp-paso-panel" data-paso="3" aria-labelledby="pasoTitulo3" hidden>
+        <h3 class="cp-paso-titulo" id="pasoTitulo3" tabindex="-1">Confirma y envía</h3>
+        <p class="cp-paso-sub">Revisa que todo esté bien. Se abre WhatsApp con tu pedido listo.</p>
+        <div class="cp-revision-lineas" id="revLineas"></div>
+        <div class="cp-resumen cp-resumen-final">
+          <div class="cp-resumen-fila" id="revSubtotalFila"><span>Subtotal</span><span id="revSubtotal">$0</span></div>
+          <div class="cp-resumen-fila cp-resumen-desc" id="revDescFila"><span id="revDescEtiqueta">Descuento</span><span id="revDescuento">$0</span></div>
+          <div class="cp-hoja-total">
+            <span>Total</span>
+            <strong id="revTotal">$0</strong>
+          </div>
+        </div>
+        <dl class="cp-revision-datos">
+          <div><dt>Pago</dt><dd><span id="revPago">De contado</span><button type="button" class="cp-cambiar" data-paso="2">Cambiar</button></dd></div>
+          <div><dt>Nombre</dt><dd id="revNombre">—</dd></div>
+          <div><dt>WhatsApp</dt><dd id="revTelefono">—</dd></div>
+        </dl>
+      </section>
+    </div>
+
+    <div class="cp-hoja-pie">
+      <div class="cp-pie-total">
+        <small>Total</small>
+        <strong id="hojaTotal">$0</strong>
+        <em id="pieAhorro" hidden></em>
+      </div>
+      <button type="button" class="cp-boton-atras" id="pasoAtras">Atrás</button>
+      <button type="button" class="cp-boton-sigue" id="pasoSigue">Continuar</button>
+      <button type="button" class="cp-form-enviar" id="cpConfirmarPedido">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm5.8 14.06c-.25.69-1.44 1.32-1.99 1.37-.53.05-1.02.24-3.45-.72-2.9-1.14-4.75-4.1-4.9-4.29-.14-.19-1.17-1.55-1.17-2.96s.74-2.1 1-2.39c.26-.29.57-.36.76-.36l.54.01c.17.01.41-.07.64.49.25.6.84 2.07.91 2.22.07.15.12.32.02.51-.1.19-.15.31-.29.48l-.44.51c-.14.14-.29.3-.13.59.17.29.74 1.22 1.59 1.98 1.09.97 2.01 1.27 2.3 1.42.29.14.46.12.63-.07.17-.19.73-.85.92-1.14.19-.29.39-.24.65-.14.26.09 1.66.78 1.95.93.29.14.48.22.55.34.07.12.07.7-.18 1.39Z"/></svg>
+        <span id="cpEnviarTexto">Enviar por WhatsApp</span>
       </button>
     </div>
-  </div>
-
-  <div class="cp-hoja-cuerpo">
-    <div class="cp-lista-pedido" id="listaPedido"></div>
-
-    <!-- Promoción: avisa cuánto falta para el descuento o lo muestra aplicado. -->
-    <p class="cp-promo-pista" id="hojaPromoPista" role="status" hidden></p>
-    <div class="cp-resumen" id="hojaResumen" hidden>
-      <div class="cp-resumen-fila"><span>Subtotal</span><span id="hojaSubtotal">$0</span></div>
-      <div class="cp-resumen-fila cp-resumen-desc"><span id="hojaDescEtiqueta">Descuento</span><span id="hojaDescuento">$0</span></div>
-    </div>
-
-    <div class="cp-hoja-total">
-      <span>Total</span>
-      <strong id="hojaTotal">$0</strong>
-    </div>
-
-    <div class="cp-form-campo" id="cpBloquePlan" hidden>
-      <p class="cp-form-etiqueta">¿Cómo prefieres pagar?</p>
-      <div class="cp-form-opciones">
-        <label class="cp-form-opcion">
-          <input type="radio" name="cpPlan" value="contado" checked>
-          <span>De contado</span>
-        </label>
-        <label class="cp-form-opcion">
-          <input type="radio" name="cpPlan" value="cuotas">
-          <span>A cuotas</span>
-        </label>
-      </div>
-      <div class="cp-form-campo" id="cpBloqueNumCuotas" hidden>
-        <label for="cpNumCuotas">Número de cuotas</label>
-        <select id="cpNumCuotas">
-          <option value="2" selected>2 cuotas</option>
-          <option value="3">3 cuotas</option>
-          <option value="4">4 cuotas</option>
-        </select>
-        <p class="cp-form-pista">Gina te confirma los montos y las fechas exactas por WhatsApp.</p>
-      </div>
-    </div>
-
-    <p class="cp-form-titulo cp-hoja-subtitulo">Para mandar tu pedido, ¿cómo te contactamos?</p>
-
-    <div class="cp-form-campo">
-      <label for="cpNombre">Tu nombre</label>
-      <input type="text" id="cpNombre" placeholder="Nombre y apellido" autocomplete="name" maxlength="120">
-    </div>
-    <div class="cp-form-campo">
-      <label for="cpTelefono">Tu WhatsApp</label>
-      <input type="tel" id="cpTelefono" placeholder="3001234567" inputmode="numeric" autocomplete="tel" maxlength="15">
-    </div>
-
-    <!-- Campo trampa: invisible para personas, solo lo llena un bot. -->
-    <div class="cp-form-trampa" aria-hidden="true">
-      <label for="cpSitioWeb">Sitio web</label>
-      <input type="text" id="cpSitioWeb" tabindex="-1" autocomplete="off">
-    </div>
-
-    <p class="cp-form-error" id="cpFormError" hidden></p>
-  </div>
-
-  <div class="cp-hoja-pie">
-    <button type="button" class="cp-form-enviar" id="cpConfirmarPedido">
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm5.8 14.06c-.25.69-1.44 1.32-1.99 1.37-.53.05-1.02.24-3.45-.72-2.9-1.14-4.75-4.1-4.9-4.29-.14-.19-1.17-1.55-1.17-2.96s.74-2.1 1-2.39c.26-.29.57-.36.76-.36l.54.01c.17.01.41-.07.64.49.25.6.84 2.07.91 2.22.07.15.12.32.02.51-.1.19-.15.31-.29.48l-.44.51c-.14.14-.29.3-.13.59.17.29.74 1.22 1.59 1.98 1.09.97 2.01 1.27 2.3 1.42.29.14.46.12.63-.07.17-.19.73-.85.92-1.14.19-.29.39-.24.65-.14.26.09 1.66.78 1.95.93.29.14.48.22.55.34.07.12.07.7-.18 1.39Z"/></svg>
-      <span id="cpEnviarTexto">Confirmar y enviar por WhatsApp</span>
-    </button>
   </div>
 </div>
 
