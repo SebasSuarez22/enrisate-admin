@@ -36,6 +36,8 @@ const cop = n => '$' + Math.round(n).toLocaleString('es-CO');
 const pedido = [];
 
 const fab         = document.getElementById('fabCarrito');
+const fabZona     = document.getElementById('fabZona');
+const fabDto      = document.getElementById('fabDto');
 const fabInsignia = document.getElementById('fabInsignia');
 const fabTotal    = document.getElementById('fabTotal');
 const fondo       = document.getElementById('carritoFondo');
@@ -113,7 +115,7 @@ function sincronizarBotonProducto(sku) {
 /* Agregar al pedido: una sola acción, sin selector de cantidad (la
    cantidad se ajusta en el carrito). La usan tanto el botón de la
    tarjeta como el de la ficha de producto. */
-function agregarAlPedido(sku, nombre, precio) {
+function agregarAlPedido(sku, nombre, precio, origen) {
   const ya = pedido.find(i => i.sku === sku);
   if (ya) {
     ya.cant = Math.min(99, ya.cant + 1);
@@ -123,6 +125,8 @@ function agregarAlPedido(sku, nombre, precio) {
   sincronizarTarjeta(sku);
   sincronizarBotonProducto(sku);
   actualizarCarrito();
+  mostrarTicket();
+  animarGota(origen);
 }
 
 function quitarDelPedido(sku) {
@@ -225,9 +229,55 @@ function actualizarInsignia() {
   fabInsignia.classList.add('cp-fab-insignia-pulso');
 }
 
+function movimientoReducido() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/* El total del botón flotante sale en un "ticket" unos segundos al agregar algo. */
+let ticketTimer = null;
+function mostrarTicket(ms = 3600) {
+  fabZona.classList.add('ver');
+  clearTimeout(ticketTimer);
+  ticketTimer = setTimeout(() => fabZona.classList.remove('ver'), ms);
+}
+
+/* Una gota rosa viaja del botón "Agregar" (de la tarjeta) al carrito, que rebota al recibirla.
+   No se hace con la ficha abierta (el botón queda detrás del fondo oscuro) ni con "reducir movimiento". */
+function animarGota(origen) {
+  if (!origen || movimientoReducido() || !hojaProducto.hidden || fabZona.hidden) return;
+  const o = origen.getBoundingClientRect();
+  const f = fab.getBoundingClientRect();
+  if (!o.width || !f.width) return;
+  const gota = document.createElement('span');
+  gota.className = 'cp-gota';
+  gota.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(gota);
+  const x0 = o.left + o.width / 2 - 10, y0 = o.top + o.height / 2 - 10;
+  const x1 = f.left + f.width / 2 - 10, y1 = f.top + f.height / 2 - 10;
+  const vuelo = gota.animate([
+    { transform: 'translate(' + x0 + 'px,' + y0 + 'px) scale(1)', offset: 0 },
+    { transform: 'translate(' + (x0 + x1) / 2 + 'px,' + (Math.min(y0, y1) - 50) + 'px) scale(1.1)', offset: .5 },
+    { transform: 'translate(' + x1 + 'px,' + y1 + 'px) scale(.4)', opacity: .9, offset: 1 },
+  ], { duration: 620, easing: 'cubic-bezier(.4,.1,.6,1)' });
+  vuelo.onfinish = () => {
+    gota.remove();
+    fab.classList.remove('rebota');
+    void fab.offsetWidth;                      // reinicia la animación
+    fab.classList.add('rebota');
+  };
+  vuelo.oncancel = () => gota.remove();
+}
+
 function actualizarCarrito() {
   const hayPedido = pedido.length > 0;
-  fab.hidden = !hayPedido;
+  const eraOculto = fabZona.hidden;
+  fabZona.hidden = !hayPedido;
+  if (hayPedido && eraOculto && !movimientoReducido()) {
+    fabZona.classList.remove('entra');
+    void fabZona.offsetWidth;
+    fabZona.classList.add('entra');
+  }
+  if (!hayPedido) fabZona.classList.remove('ver');
   // El pie reserva espacio de más solo mientras el botón flotante está
   // realmente ahí (con carrito vacío, que es la mayoría de las visitas,
   // no hace falta ese aire de sobra al final de la página).
@@ -240,6 +290,12 @@ function actualizarCarrito() {
 
   actualizarInsignia();
   fabTotal.textContent = cop(totalPedido());
+  const dto = descuentoPedido();
+  fabDto.hidden = dto === 0;
+  fabDto.textContent = '−' + PROMO_PCT + ' % aplicado';
+  const unidades = cantidadTotal();
+  fab.setAttribute('aria-label', 'Ver pedido: ' + unidades + (unidades === 1 ? ' producto' : ' productos')
+    + ', total ' + cop(totalPedido()) + (dto > 0 ? ', con ' + PROMO_PCT + ' % de descuento' : ''));
   renderLista();
   renderResumen();
   hojaTotal.textContent = cop(totalPedido());
@@ -260,6 +316,7 @@ function abrirCarrito() {
     hoja.classList.add('abierta');
   });
   fab.setAttribute('aria-expanded', 'true');
+  fabZona.classList.add('abierta');
   actualizarBloquePlan();
   cpFormError.hidden = true;
   cerrarBtn.focus();
@@ -271,6 +328,7 @@ function cerrarCarrito() {
   hoja.classList.remove('abierta');
   if (hojaProducto.hidden) document.body.classList.remove('cp-bloqueo-scroll');
   fab.setAttribute('aria-expanded', 'false');
+  fabZona.classList.remove('abierta');
 
   let hecho = false;
   const finalizar = () => {
@@ -397,7 +455,7 @@ document.querySelectorAll('.cp-tarjeta').forEach(tarjeta => {
   const boton  = tarjeta.querySelector('.cp-boton-agregar');
   if (!boton) return;
 
-  boton.addEventListener('click', () => agregarAlPedido(sku, nombre, precio));
+  boton.addEventListener('click', () => agregarAlPedido(sku, nombre, precio, boton));
 });
 
 /* --- Ficha de producto: foto + descripción al tocar la tarjeta (en

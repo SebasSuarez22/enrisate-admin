@@ -2,6 +2,16 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 5 de octubre, 2026 (Botón flotante del carrito: círculo con carrito, "Gota y ticket")
+
+Sebastián pidió un botón del carrito totalmente redondo con ícono de carrito; de 3 propuestas (A Anillo de descuento, B Gota y ticket, C Círculo que se vuelve píldora) eligió la **B**, adaptada a todos los tamaños.
+- **Markup (`catalogo-publico.php`):** `#fabZona` (contenedor fijo, `hidden` mientras el pedido está vacío) con `#fabTicket` (el total, `role="status"`, línea `#fabDto` "−10 % aplicado") y `#fabCarrito` (el botón, siempre visible dentro de la zona) con el carrito en SVG (ruedas con `.cp-fab-rueda`) y `#fabInsignia`. Antes `#fabCarrito` era la píldora y se ocultaba con `hidden`: ahora se oculta la zona. Ya no hay texto visible "Ver pedido": el nombre accesible lo arma `actualizarCarrito()` ("Ver pedido: 3 productos, total $146.700, con 10 % de descuento").
+- **Tamaños:** círculo de 64 px (56 en celular acostado, `orientation: landscape and max-height: 500px`); 16 px del borde en celular, 24 px desde 720 px; respeta `env(safe-area-inset-right/bottom)`. El pie de la página reserva 72 px (antes 56) mientras hay carrito. El ticket y la insignia sobresalen del círculo; con la hoja del pedido abierta la zona se esconde (`.abierta`, la pone `abrirCarrito()`).
+- **Ticket:** sale 3,6 s al agregar (`mostrarTicket()`), y al pasar el cursor (solo `hover: hover`) o enfocar con teclado (`:focus-within`). En celular sale solo al agregar; el total siempre está además dentro de la hoja del pedido.
+- **Gota:** `animarGota(origen)` (Web Animations API) lleva un punto rosa del botón "Agregar" de la tarjeta al carrito en 620 ms y luego el carrito rebota y gira las ruedas. No se hace desde la ficha (el botón queda tras el fondo oscuro), ni con `prefers-reduced-motion`. Con movimiento reducido tampoco hay entrada con escala ni deslizamiento del ticket (solo aparece).
+- **Ojo:** `.cp-fab-zona.entra` usa `animation-fill-mode: backwards`; con `both` la animación mantenía `opacity: 1` y no dejaba esconder la zona con `.abierta`.
+- **Verificación (8 tamaños: 320×568, 375×667, 390×844, 844×390, 768×1024, 1024×768, 1366×768, 1920×1080):** zona en la esquina correcta, ticket siempre dentro de la pantalla, sin scroll horizontal, gota y rebote, ticket sale y se esconde solo, con 3 productos la línea de descuento y el nombre accesible correctos, hover en escritorio, la zona se esconde con la hoja abierta y se oculta al vaciar; desde la ficha no hay gota; con movimiento reducido no hay gota ni entrada animada; 17/17 pruebas PHP.
+
 ## 4 de octubre, 2026 (Descripciones justificadas con guiones en la ficha, todos los tamaños)
 
 Sebastián pidió alinear los textos de todas las descripciones; se entendió "justificado" y se confirmó con una comparación (izquierda vs justificado con guiones) antes de aplicarlo.

@@ -587,7 +587,7 @@ body {
    abierta. Reservarle este respiro siempre, aunque no hubiera botón que
    tapar nada, era el aire de sobra al final de la página. */
 body.cp-con-carrito .cp-pie {
-  padding-bottom: calc(var(--sp-10) + 56px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--sp-10) + 72px + env(safe-area-inset-bottom, 0px));
 }
 /* logo-enrisate-pie.webp ya viene en blanco con fondo transparente
    (generado a partir del logo real a color, para el fondo oscuro del
@@ -651,38 +651,127 @@ body.cp-con-carrito .cp-pie {
 
 .cp-pie-nota { margin: 0; }
 
-/* --- Botón flotante del carrito --- */
-.cp-fab-carrito {
-  position: fixed;
-  right: var(--sp-4);
+/* --- Botón flotante del carrito: círculo con carrito ---
+   Un círculo de cacao de 64 px (56 en celular acostado) con el carrito de compras y el contador de
+   productos. El total no cabe en un círculo: sale en un "ticket" de caja que asoma por detrás al
+   agregar algo (unos segundos) y al pasar el cursor o enfocar con el teclado. Al agregar desde una
+   tarjeta, una gota rosa viaja de su botón al carrito (catalogo-publico.js: animarGota), que rebota
+   y gira las ruedas. Solo se anima con transform y opacity; con "reducir movimiento" no hay gota,
+   ni rebote, ni deslizamiento (el ticket aparece y desaparece sin moverse). */
+.cp-fab-zona {
+  position: fixed; z-index: 47;
+  right: max(var(--sp-4), env(safe-area-inset-right, 0px));
   bottom: calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
-  z-index: 47;
-  min-height: 56px;
-  display: flex; align-items: center; gap: var(--sp-3);
-  padding: 0 var(--sp-5) 0 var(--sp-4);
-  border: 0; border-radius: 999px;
-  background: var(--cacao); color: #fff;
-  font: inherit; font-size: var(--t-sm); font-weight: 700;
-  cursor: pointer;
-  box-shadow: var(--sombra-alta);
-  transition: transform .15s ease, background .15s ease, opacity .2s ease;
+  width: 64px; height: 64px;
+  transition: opacity .2s ease;
 }
-.cp-fab-carrito[hidden] { display: none; }
-.cp-fab-carrito:hover { background: #55330F; }
-.cp-fab-carrito:active { transform: scale(.97); }
-.cp-fab-carrito[aria-expanded="true"] { opacity: 0; pointer-events: none; }
-.cp-fab-total { font-variant-numeric: tabular-nums; }
+.cp-fab-zona[hidden] { display: none; }
+.cp-fab-zona.entra { animation: cp-fab-entra .5s cubic-bezier(.2,1.4,.4,1) backwards; }
+@keyframes cp-fab-entra { from { transform: scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
+/* Con la hoja del pedido abierta, el botón se esconde. */
+.cp-fab-zona.abierta { opacity: 0; pointer-events: none; }
+
+.cp-fab-carrito {
+  position: relative; z-index: 2;
+  width: 100%; height: 100%; padding: 0;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, #8A5A24 0%, var(--cacao) 55%, #4F2F0D 100%);
+  color: #fff; cursor: pointer;
+  box-shadow: 0 10px 24px rgba(51,32,15,.38), inset 0 1px 0 rgba(255,255,255,.18);
+  transition: transform .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.cp-fab-carrito:active { transform: scale(.95); }
+.cp-fab-carrito:focus-visible {
+  outline: 3px solid #fff; outline-offset: 2px;
+  box-shadow: 0 0 0 6px var(--rosa), 0 10px 24px rgba(51,32,15,.38);
+}
+@media (hover: hover) {
+  .cp-fab-carrito:hover { transform: scale(1.05); }
+}
+.cp-fab-disco { display: grid; place-items: center; }
+.cp-fab-disco svg {
+  width: 30px; height: 30px; display: block; margin-top: -1px;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.cp-fab-rueda { fill: currentColor; transform-box: fill-box; transform-origin: center; }
+
 .cp-fab-insignia {
-  min-width: 24px; height: 24px; padding: 0 6px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: var(--t-xs); font-weight: 800;
-  background: rgba(255,255,255,.22); border-radius: 999px;
+  position: absolute; top: -6px; right: -6px;
+  min-width: 26px; height: 26px; padding: 0 7px;
+  display: grid; place-items: center;
+  font-size: .75rem; font-weight: 800;
+  background: var(--rosa); color: #fff;
+  border: 2.5px solid var(--crema); border-radius: 999px;
   font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
 @keyframes cp-pulso-insignia {
-  0% { transform: scale(1); } 35% { transform: scale(1.24); } 100% { transform: scale(1); }
+  0% { transform: scale(1); } 35% { transform: scale(1.3); } 100% { transform: scale(1); }
 }
-.cp-fab-insignia-pulso { animation: cp-pulso-insignia .32s ease; }
+.cp-fab-insignia-pulso { animation: cp-pulso-insignia .34s ease; }
+
+/* Ticket del total: asoma por detrás del círculo, a su izquierda. */
+.cp-fab-ticket {
+  position: absolute; right: 40px; bottom: 10px; z-index: 1;
+  min-width: 98px; padding: 9px 12px 16px; white-space: nowrap;
+  display: grid; gap: 0;
+  background: #fff; color: var(--tinta);
+  border: 1px solid var(--arena); border-bottom: 0; border-radius: 10px 10px 0 0;
+  box-shadow: 0 8px 20px rgba(51,32,15,.16);
+  /* borde inferior dentado, como un tiquete de caja */
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), 90% 100%, 80% calc(100% - 7px), 70% 100%, 60% calc(100% - 7px), 50% 100%, 40% calc(100% - 7px), 30% 100%, 20% calc(100% - 7px), 10% 100%, 0 calc(100% - 7px));
+  opacity: 0; transform: translateX(52px);
+  transition: transform .45s cubic-bezier(.2,1.1,.3,1), opacity .25s ease;
+  pointer-events: none;
+}
+.cp-fab-ticket i {
+  font-size: .59rem; font-style: normal; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--gris);
+}
+.cp-fab-ticket b {
+  font-family: Fraunces, Georgia, serif; font-size: 1rem; font-weight: 600;
+  font-variant-numeric: tabular-nums; line-height: 1.2;
+}
+.cp-fab-ticket small { font-size: .656rem; font-weight: 800; color: var(--rosa); line-height: 1.3; }
+.cp-fab-ticket small[hidden] { display: none; }
+.cp-fab-zona.ver .cp-fab-ticket,
+.cp-fab-zona:focus-within .cp-fab-ticket {
+  opacity: 1; transform: translateX(-52px) rotate(-4deg);
+}
+@media (hover: hover) {
+  .cp-fab-zona:hover .cp-fab-ticket { opacity: 1; transform: translateX(-52px) rotate(-4deg); }
+}
+
+/* La gota que vuela de "Agregar" al carrito, y el rebote con que la recibe. */
+.cp-gota {
+  position: fixed; left: 0; top: 0; z-index: 60;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--rosa); border: 2px solid #fff;
+  box-shadow: 0 4px 10px rgba(51,32,15,.3);
+  pointer-events: none;
+}
+.cp-fab-carrito.rebota .cp-fab-disco { animation: cp-fab-rebota .55s cubic-bezier(.3,1.6,.5,1); }
+.cp-fab-carrito.rebota .cp-fab-rueda { animation: cp-fab-gira .55s ease-in-out; }
+@keyframes cp-fab-rebota {
+  0% { transform: scale(1); } 30% { transform: scale(.88) rotate(-6deg); }
+  60% { transform: scale(1.1) rotate(4deg); } 100% { transform: none; }
+}
+@keyframes cp-fab-gira { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cp-fab-zona.entra, .cp-fab-carrito.rebota .cp-fab-disco, .cp-fab-carrito.rebota .cp-fab-rueda { animation: none; }
+  .cp-fab-ticket { transition: opacity .2s ease; }
+  .cp-fab-zona.ver .cp-fab-ticket, .cp-fab-zona:focus-within .cp-fab-ticket { transform: translateX(-52px); }
+  .cp-fab-carrito:hover, .cp-fab-carrito:active { transform: none; }
+}
+/* Celular acostado (poco alto): un poco más chico para no tapar productos. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .cp-fab-zona { width: 56px; height: 56px; }
+  .cp-fab-ticket { right: 34px; bottom: 8px; }
+  .cp-fab-disco svg { width: 26px; height: 26px; }
+}
 
 /* --- Fondo oscurecido --- */
 .cp-carrito-fondo {
@@ -1230,7 +1319,7 @@ body.cp-con-carrito .cp-pie {
   }
   .cp-hoja-carrito.abierta { transform: translateX(0); }
   .cp-hoja-agarradera { display: none; }
-  .cp-fab-carrito { right: var(--sp-6); bottom: var(--sp-6); }
+  .cp-fab-zona { right: max(var(--sp-6), env(safe-area-inset-right, 0px)); bottom: var(--sp-6); }
 }
 
 @media (max-width: 480px) {
