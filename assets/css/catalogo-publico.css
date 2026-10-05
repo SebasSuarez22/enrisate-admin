@@ -800,17 +800,11 @@ body.cp-con-carrito .cp-pie {
   width: 40px; height: 4px; margin: 10px auto 0;
   border-radius: 999px; background: var(--arena); flex: none;
 }
-.cp-hoja-cabecera {
-  display: flex; align-items: center; gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-5) var(--sp-2);
-  flex: none;
-}
 .cp-hoja-titulo {
   flex: 1; margin: 0;
   font-family: Fraunces, Georgia, serif;
   font-size: var(--t-lg); font-weight: 600; color: var(--tinta);
 }
-.cp-hoja-acciones { display: flex; align-items: center; gap: var(--sp-2); }
 .cp-hoja-vaciar {
   min-height: 44px; padding: 0 16px;
   font: inherit; font-size: var(--t-sm); font-weight: 600;
@@ -827,37 +821,48 @@ body.cp-con-carrito .cp-pie {
 .cp-hoja-cerrar svg { width: 16px; height: 16px; }
 .cp-hoja-cerrar:hover { background: var(--arena); }
 
-.cp-hoja-cuerpo { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--sp-2) var(--sp-5) var(--sp-5); }
+.cp-hoja-cuerpo { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--sp-2) var(--sp-5) var(--sp-5); }
 
 .cp-hoja-total {
   display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3);
-  padding: var(--sp-4) 0; margin-top: var(--sp-1);
-  border-top: 2px solid var(--tinta);
+  padding: var(--sp-3) 0 0; margin-top: var(--sp-2);
+  border-top: 1.5px dashed var(--arena);
 }
 .cp-hoja-total > span {
-  font-size: var(--t-sm); font-weight: 600; color: var(--gris);
-  text-transform: uppercase; letter-spacing: .08em;
+  font-size: var(--t-sm); font-weight: 700; color: var(--tinta);
 }
 .cp-hoja-total strong {
   font-family: Fraunces, Georgia, serif;
   font-size: var(--t-xl); font-weight: 600; color: var(--tinta);
   font-variant-numeric: tabular-nums;
 }
-/* Promoción dentro del carrito: lo que falta para el descuento, o el descuento ya aplicado. */
+/* Promoción dentro del carrito: lo que falta para el descuento (con una barra que avanza),
+   o el descuento ya aplicado. */
 .cp-promo-pista {
-  margin: var(--sp-3) 0 0; padding: 10px 14px;
+  margin: var(--sp-3) 0 0; padding: 11px 14px;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 8px; align-items: center;
   font-size: var(--t-sm); font-weight: 600; line-height: 1.35;
-  color: var(--cacao); background: #F6EBDD; border-radius: var(--radio);
+  color: var(--cacao); background: var(--escena); border-radius: var(--radio);
 }
+.cp-promo-pista[hidden] { display: none; }
+.cp-promo-ok { display: none; width: 18px; height: 18px; }
+.cp-promo-texto { grid-column: 1 / -1; }
+.cp-promo-barra { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--arena); overflow: hidden; }
+.cp-promo-barra i { display: block; height: 100%; width: 0; background: var(--rosa); border-radius: 3px; transition: width .3s ease; }
 .cp-promo-pista.lograda { color: #fff; background: var(--rosa); }
+.cp-promo-pista.lograda .cp-promo-ok { display: block; }
+.cp-promo-pista.lograda .cp-promo-texto { grid-column: 2; }
+.cp-promo-pista.lograda .cp-promo-barra { display: none; }
 .cp-resumen { margin-top: var(--sp-3); display: grid; gap: 6px; }
-.cp-resumen[hidden], .cp-promo-pista[hidden] { display: none; }
+.cp-resumen[hidden] { display: none; }
+.cp-resumen-fila[hidden] { display: none; }
 .cp-resumen-fila {
   display: flex; justify-content: space-between; gap: var(--sp-3);
   font-size: var(--t-sm); color: var(--gris); font-variant-numeric: tabular-nums;
 }
 .cp-resumen-desc { color: var(--rosa); font-weight: 700; }
 .cp-hoja-subtitulo { margin: var(--sp-5) 0 var(--sp-4); }
+#vaciarPedido { margin-top: var(--sp-4); }
 
 /* =========================================================
    Ficha de producto (se abre al tocar una tarjeta)
@@ -1148,39 +1153,76 @@ body.cp-con-carrito .cp-pie {
 
 .cp-hoja-pie {
   flex: none;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
   padding: var(--sp-3) var(--sp-5) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--arena);
   background: var(--papel);
 }
+.cp-pie-total { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; flex: none; }
+.cp-pie-total small, .cp-riel-total small {
+  font-size: var(--t-xs); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--gris);
+}
+.cp-pie-total strong, .cp-riel-total strong {
+  font-family: Fraunces, Georgia, serif; font-size: 1.5rem; font-weight: 600; color: var(--tinta);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.cp-pie-total em, .cp-riel-total em { font-style: normal; font-size: var(--t-xs); font-weight: 700; color: var(--rosa); margin-top: 2px; }
+.cp-pie-total em[hidden], .cp-riel-total em[hidden] { display: none; }
+
+/* Botones del pie: misma altura y forma en los tres pasos. Pueden crecer si el texto del
+   dispositivo es grande (min-height, nunca height), y el de WhatsApp nunca se recorta. */
+.cp-boton-atras, .cp-boton-sigue, .cp-form-enviar {
+  min-height: 52px; border-radius: 999px;
+  font: inherit; font-size: var(--t-base); line-height: 1.2; text-align: center; cursor: pointer;
+}
+.cp-boton-atras {
+  flex: none; padding: 0 22px;
+  font-weight: 600; color: var(--tinta); background: var(--crema); border: 1px solid var(--arena);
+}
+.cp-boton-atras:hover { background: var(--arena); }
+.cp-boton-sigue {
+  flex: 1 1 0; min-width: 0; padding: 10px 18px;
+  font-weight: 700; color: #fff; background: var(--cacao); border: 0;
+}
+.cp-boton-sigue:hover { filter: brightness(1.12); }
+.cp-boton-atras[hidden], .cp-boton-sigue[hidden], .cp-form-enviar[hidden] { display: none; }
 
 /* --- Lista dentro de la hoja --- */
 .cp-lista-pedido { display: flex; flex-direction: column; }
 .cp-lista-fila {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  display: grid; grid-template-columns: var(--foto, 56px) minmax(0, 1fr) auto; gap: var(--sp-3);
+  align-items: center;
   padding: var(--sp-3) 0;
   border-bottom: 1px solid var(--arena);
 }
-.cp-lista-fila:last-child { border-bottom: 0; }
-.cp-lista-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.cp-lista-foto {
+  position: relative; width: var(--foto, 56px); height: var(--foto, 56px); border-radius: 12px; overflow: hidden;
+  display: grid; place-items: center;
+  background: var(--escena);
+  font-family: Fraunces, Georgia, serif; font-size: 1.25rem; font-weight: 600; color: var(--cacao);
+}
+.cp-lista-foto img { position: absolute; inset: 0; box-sizing: border-box; width: 100%; height: 100%; max-width: none; object-fit: contain; padding: 4px; mix-blend-mode: multiply; }
+.cp-lista-info { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
 .cp-lista-nombre {
-  font-size: var(--t-sm); font-weight: 600; color: var(--tinta); line-height: 1.3;
+  font-size: var(--t-sm); font-weight: 700; color: var(--tinta); line-height: 1.25;
   overflow: hidden; text-overflow: ellipsis;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
+.cp-lista-unidad { font-size: var(--t-xs); color: var(--gris); font-variant-numeric: tabular-nums; }
+.cp-lista-lado { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; align-self: stretch; gap: var(--sp-2); }
 .cp-lista-precio {
   font-family: Fraunces, Georgia, serif;
-  font-size: var(--t-sm); font-weight: 600; color: var(--rosa);
-  font-variant-numeric: tabular-nums;
+  font-size: var(--t-md); font-weight: 600; color: var(--rosa);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
 }
-.cp-lista-controles { display: flex; align-items: center; gap: var(--sp-2); flex: none; }
 .cp-stepper-mini {
-  display: flex; align-items: center;
+  display: flex; align-items: center; margin-top: 6px;
   background: var(--crema);
   border: 1px solid var(--arena);
   border-radius: 999px;
 }
 .cp-stepper-mini .cp-paso {
-  width: 40px; height: 44px; flex: none;
+  width: 40px; height: 40px; flex: none;
   border: 0; background: transparent; border-radius: 50%;
   font: inherit; font-size: var(--t-md); font-weight: 600;
   color: var(--cacao); cursor: pointer;
@@ -1192,9 +1234,9 @@ body.cp-con-carrito .cp-pie {
   font-variant-numeric: tabular-nums;
 }
 .cp-lista-quitar {
-  width: 44px; height: 44px; flex: none;
+  width: 40px; height: 40px; flex: none;
   border: 1px solid var(--arena); border-radius: 50%;
-  background: var(--crema); color: var(--gris);
+  background: var(--papel); color: var(--gris);
   font-size: 18px; line-height: 1; cursor: pointer;
 }
 .cp-lista-quitar:hover { color: var(--rosa); border-color: var(--rosa); }
@@ -1252,12 +1294,11 @@ body.cp-con-carrito .cp-pie {
 }
 .cp-form-error[hidden] { display: none; }
 .cp-form-enviar {
-  width: 100%; min-height: 52px;
+  flex: 1 1 0; min-width: 0; padding: 10px 18px;
   display: flex; align-items: center; justify-content: center; gap: 10px;
-  font: inherit; font-size: var(--t-base); font-weight: 700;
+  font-weight: 700;
   color: #fff; background: var(--verde);
-  border: 0; border-radius: 999px;
-  cursor: pointer;
+  border: 0;
   transition: filter .15s ease, transform .1s ease;
 }
 .cp-form-enviar svg { width: 20px; height: 20px; flex: none; }
@@ -1328,4 +1369,194 @@ body.cp-con-carrito .cp-pie {
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
+}
+
+/* =========================================================
+   Hoja de carrito en tres pasos (Pedido · Datos · Confirmar)
+   ---------------------------------------------------------
+   Cada paso es corto, así casi nunca hace falta bajar. Distribuciones:
+     · celular de pie (< 720 px): hoja que sube desde abajo, pasos arriba.
+     · tablet y portátil bajo (720 px en adelante): panel lateral, pasos arriba.
+     · escritorio (desde 1100 × 560) y celular acostado (alto <= 500 px): ventana con un riel
+       a la izquierda (pasos + total siempre visible) y el contenido del paso a la derecha.
+   El botón verde de WhatsApp y los demás botones del pie miden lo mismo en todos los tamaños
+   (alto mínimo 52 px, 44 px en celular acostado) y crecen, nunca se recortan.
+   ========================================================= */
+.cp-hoja-carrito.cp-hoja-pasos {
+  height: min(720px, 92vh); height: min(720px, 92dvh); max-height: none;
+  overflow: hidden;
+}
+.cp-hoja-pasos .cp-hoja-cerrar { position: absolute; top: 18px; right: 14px; z-index: 3; }
+.cp-pasos-riel { flex: none; padding: var(--sp-3) var(--sp-5) var(--sp-1); }
+.cp-pasos-riel .cp-hoja-titulo { flex: none; padding: 4px 56px 0 0; }
+.cp-riel-total { display: none; }
+.cp-pasos-main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; min-width: 0; }
+
+/* Pasos (barra de progreso arriba; en el riel, lista vertical) */
+.cp-pasos-lista { display: flex; gap: 6px; margin: var(--sp-3) 0 0; padding: 0; list-style: none; }
+.cp-pasos-lista li { flex: 1 1 0; min-width: 0; }
+.cp-paso-tab {
+  width: 100%; min-height: 44px; padding: 0 0 8px;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 5px auto; align-content: start;
+  column-gap: 6px; row-gap: 8px; align-items: center; text-align: left;
+  font: inherit; font-size: var(--t-xs); font-weight: 700; color: var(--gris);
+  background: none; border: 0; cursor: pointer;
+}
+.cp-paso-tab::before { content: ""; grid-column: 1 / -1; height: 5px; border-radius: 3px; background: var(--arena); }
+.cp-paso-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 11px; font-weight: 800; color: var(--cacao); background: var(--arena);
+}
+.cp-paso-nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-pasos-lista li.actual .cp-paso-tab { color: var(--tinta); }
+.cp-pasos-lista li.actual .cp-paso-tab::before,
+.cp-pasos-lista li.hecho .cp-paso-tab::before { background: var(--rosa); }
+.cp-pasos-lista li.actual .cp-paso-num,
+.cp-pasos-lista li.hecho .cp-paso-num { color: #fff; background: var(--rosa); }
+
+/* Contenido de cada paso */
+.cp-paso-titulo {
+  margin: var(--sp-2) 0 2px;
+  font-family: Fraunces, Georgia, serif; font-size: 1.1875rem; font-weight: 600; color: var(--tinta);
+}
+.cp-paso-titulo:focus { outline: none; }
+.cp-paso-sub { margin: 0 0 var(--sp-2); font-size: var(--t-sm); color: var(--gris); }
+.cp-paso-sub strong { color: var(--tinta); font-variant-numeric: tabular-nums; }
+.cp-paso-panel[hidden] { display: none; }
+.cp-form-contacto { display: grid; gap: 0 var(--sp-3); }
+
+/* Paso 3: resumen final */
+.cp-rev-linea {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: baseline;
+  padding: 7px 0; font-size: var(--t-sm); color: var(--tinta);
+}
+.cp-rev-linea i { font-style: normal; font-weight: 800; color: var(--rosa); }
+.cp-rev-linea b { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cp-resumen-final { margin-top: var(--sp-2); }
+.cp-revision-datos { margin: var(--sp-4) 0 0; padding: 0; }
+.cp-revision-datos > div {
+  display: flex; justify-content: space-between; gap: var(--sp-3); align-items: baseline;
+  padding: 9px 0; border-top: 1px solid var(--arena); font-size: var(--t-sm);
+}
+.cp-revision-datos dt { color: var(--gris); flex: none; }
+.cp-revision-datos dd { margin: 0; min-width: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+.cp-cambiar {
+  margin-left: 10px; padding: 6px 2px; font: inherit; font-size: var(--t-xs); font-weight: 700;
+  color: var(--rosa); background: none; border: 0; text-decoration: underline; cursor: pointer;
+}
+
+/* Pie por paso: el total solo acompaña al paso 1 (en el 2 está en el texto y en el 3 en el resumen) */
+.cp-hoja-pasos:not([data-paso="1"]) .cp-pie-total { display: none; }
+
+/* Celular angosto (hasta 379 px): en el paso final el botón de WhatsApp ocupa todo el ancho
+   y "Atrás" queda debajo, para que el texto nunca se apriete (desde 380 px caben en una fila). */
+@media (max-width: 379px) {
+  .cp-hoja-pasos[data-paso="3"] .cp-form-enviar { order: -1; flex: 1 1 100%; }
+  .cp-hoja-pasos[data-paso="3"] .cp-boton-atras { flex: 1 1 100%; min-height: 44px; background: transparent; border-color: transparent; }
+}
+@media (max-width: 359px) {
+  .cp-hoja-pasos .cp-hoja-cuerpo, .cp-pasos-riel, .cp-hoja-pasos .cp-hoja-pie { padding-left: var(--sp-4); padding-right: var(--sp-4); }
+  .cp-boton-atras { padding: 0 16px; }
+}
+
+/* Tablet y portátil bajo: panel lateral */
+@media (min-width: 720px) {
+  .cp-hoja-carrito.cp-hoja-pasos { width: min(480px, 92vw); height: auto; }
+  .cp-hoja-pasos .cp-hoja-cerrar { top: 16px; right: 18px; }
+  .cp-pasos-riel { padding: var(--sp-5) var(--sp-6) var(--sp-1); }
+  .cp-hoja-pasos .cp-hoja-cuerpo { padding-left: var(--sp-6); padding-right: var(--sp-6); }
+  .cp-hoja-pasos .cp-hoja-pie { padding-left: var(--sp-6); padding-right: var(--sp-6); }
+}
+
+/* Escritorio y celular acostado: riel a la izquierda */
+@media (orientation: landscape) and (max-height: 500px), (min-width: 1100px) and (min-height: 560px) {
+  .cp-hoja-carrito.cp-hoja-pasos { flex-direction: row; }
+  .cp-pasos-riel {
+    flex: 0 0 var(--riel, 230px); display: flex; flex-direction: column;
+    padding: var(--sp-6) var(--sp-5); background: var(--escena);
+  }
+  .cp-pasos-riel .cp-hoja-titulo { padding: 0; font-size: 1.5rem; }
+  .cp-pasos-lista { flex: none; flex-direction: column; gap: 0; margin-top: var(--sp-5); }
+  .cp-paso-tab {
+    grid-template-columns: 28px minmax(0, 1fr); grid-template-rows: auto; column-gap: 12px;
+    padding: 6px 0; font-size: var(--t-sm);
+  }
+  .cp-paso-tab::before { display: none; }
+  .cp-paso-num { width: 28px; height: 28px; font-size: 12px; background: var(--papel); }
+  .cp-riel-total { display: block; margin-top: auto; padding-top: var(--sp-3); border-top: 1.5px dashed rgba(107,64,19,.25); }
+  .cp-riel-total strong { display: block; font-size: 1.75rem; }
+  .cp-pie-total, .cp-hoja-pasos:not([data-paso="1"]) .cp-pie-total { display: none; }
+  .cp-hoja-pasos .cp-hoja-cuerpo { padding: var(--sp-8) var(--sp-8) var(--sp-4); }
+  .cp-hoja-pasos .cp-hoja-pie { padding: var(--sp-3) var(--sp-8) var(--sp-5); }
+  .cp-hoja-pasos .cp-paso-titulo { margin-top: 0; padding-right: 52px; font-size: 1.375rem; }
+  .cp-form-contacto { grid-template-columns: 1fr 1fr; }
+  .cp-paso-sub { padding-right: 52px; }
+  .cp-hoja-pasos .cp-hoja-agarradera { display: none; }
+  .cp-hoja-pasos .cp-hoja-cerrar { top: 14px; right: 14px; }
+  /* En el riel el botón del paso 3 no necesita el truco de "Atrás" debajo. */
+  .cp-hoja-pasos[data-paso="3"] .cp-form-enviar { order: 0; flex: 1 1 0; }
+  .cp-hoja-pasos[data-paso="3"] .cp-boton-atras { flex: none; min-height: 52px; background: var(--crema); border-color: var(--arena); }
+}
+
+/* Escritorio: ventana centrada, como la ficha */
+@media (min-width: 1100px) and (min-height: 560px) {
+  .cp-hoja-carrito.cp-hoja-pasos {
+    left: 50%; top: 50%; right: auto; bottom: auto;
+    width: min(840px, 92vw); height: min(660px, 90vh); height: min(660px, 90dvh);
+    border-radius: 24px;
+    box-shadow: 0 30px 80px rgba(51,32,15,.4);
+    transform: translate(-50%, -48%); opacity: 0;
+    transition: transform .32s cubic-bezier(.32,.72,0,1), opacity .24s ease;
+  }
+  .cp-hoja-carrito.cp-hoja-pasos.abierta { transform: translate(-50%, -50%); opacity: 1; }
+  .cp-hoja-pasos .cp-lista-fila { padding: 10px 0; }
+  .cp-hoja-pasos .cp-stepper-mini { margin-top: 4px; }
+  .cp-hoja-pasos .cp-stepper-mini .cp-paso, .cp-hoja-pasos .cp-lista-quitar { width: 38px; height: 38px; }
+}
+
+/* Celular acostado: panel a la derecha con riel; todo más compacto */
+@media (orientation: landscape) and (max-height: 500px) {
+  .cp-hoja-carrito.cp-hoja-pasos {
+    --riel: 196px; --foto: 46px;
+    left: auto; right: 0; top: 0; bottom: 0;
+    width: min(680px, 94vw); height: auto; max-height: none;
+    padding-right: env(safe-area-inset-right, 0px);
+    border-radius: 20px 0 0 20px;
+  }
+  .cp-pasos-riel { padding: var(--sp-3) var(--sp-4); }
+  .cp-pasos-riel .cp-hoja-titulo { font-size: 1.25rem; }
+  .cp-pasos-lista { margin-top: var(--sp-2); }
+  .cp-paso-tab { min-height: 40px; padding: 4px 0; }
+  .cp-riel-total strong { font-size: 1.5rem; }
+  .cp-hoja-pasos .cp-hoja-cuerpo { padding: var(--sp-3) var(--sp-5) var(--sp-2); }
+  .cp-hoja-pasos .cp-hoja-pie { padding: var(--sp-2) var(--sp-5) var(--sp-3); }
+  .cp-boton-atras, .cp-boton-sigue, .cp-form-enviar { min-height: 44px; }
+  .cp-hoja-pasos[data-paso="3"] .cp-boton-atras { min-height: 44px; }
+  .cp-hoja-pasos .cp-paso-titulo { font-size: 1.125rem; }
+  .cp-paso-sub { margin-bottom: 0; font-size: var(--t-xs); }
+  .cp-paso-panel[data-paso="1"] .cp-paso-sub { display: none; }
+  .cp-lista-fila { padding: var(--sp-2) 0; gap: 10px; }
+  .cp-stepper-mini { margin-top: 4px; }
+  .cp-stepper-mini .cp-paso, .cp-lista-quitar { width: 36px; height: 36px; }
+  .cp-promo-pista { margin-top: var(--sp-2); padding: 8px 12px; font-size: var(--t-xs); }
+  .cp-resumen { margin-top: var(--sp-2); gap: 4px; }
+  #vaciarPedido { min-height: 40px; margin-top: var(--sp-2); }
+  .cp-hoja-subtitulo { margin: var(--sp-3) 0 var(--sp-2); }
+  .cp-form-campo { margin-bottom: var(--sp-2); }
+  .cp-form-campo input[type="text"], .cp-form-campo input[type="tel"], .cp-form-campo select { min-height: 42px; padding: 8px 12px; }
+  .cp-form-opcion { min-height: 42px; }
+  .cp-rev-linea { padding: 3px 0; font-size: var(--t-xs); }
+  .cp-revision-datos { margin-top: var(--sp-2); }
+  .cp-revision-datos > div { padding: 5px 0; font-size: var(--t-xs); }
+  .cp-hoja-total { padding-top: var(--sp-2); margin-top: var(--sp-1); }
+  .cp-hoja-total strong { font-size: 1.375rem; }
+}
+
+/* Celular acostado muy angosto (iPhone SE y parecidos): riel más delgado para que el botón de
+   WhatsApp quepa en una sola línea. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 640px) {
+  .cp-hoja-carrito.cp-hoja-pasos { --riel: 168px; }
+  .cp-boton-atras { padding: 0 16px; }
+  .cp-hoja-pasos .cp-hoja-cuerpo, .cp-hoja-pasos .cp-hoja-pie { padding-left: var(--sp-4); padding-right: var(--sp-4); }
 }

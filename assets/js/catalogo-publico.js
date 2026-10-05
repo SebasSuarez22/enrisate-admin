@@ -30,7 +30,7 @@ document.querySelectorAll('img').forEach(img => {
   if (img.complete && img.naturalWidth === 0 && img.getAttribute('src')) reintentarFoto(img);
 });
 
-const TEXTO_ENVIAR = 'Confirmar y enviar por WhatsApp';
+const TEXTO_ENVIAR = 'Enviar por WhatsApp';
 const cop = n => '$' + Math.round(n).toLocaleString('es-CO');
 
 const pedido = [];
@@ -50,6 +50,25 @@ const hojaSubtotal      = document.getElementById('hojaSubtotal');
 const hojaDescEtiqueta  = document.getElementById('hojaDescEtiqueta');
 const hojaDescuento     = document.getElementById('hojaDescuento');
 const hojaPromoPista    = document.getElementById('hojaPromoPista');
+const hojaPromoTexto    = document.getElementById('hojaPromoTexto');
+const hojaPromoBarra    = document.getElementById('hojaPromoBarra');
+const rielTotal         = document.getElementById('rielTotal');
+const rielAhorro        = document.getElementById('rielAhorro');
+const pieAhorro         = document.getElementById('pieAhorro');
+const datosTotal        = document.getElementById('datosTotal');
+const pasoAtras         = document.getElementById('pasoAtras');
+const pasoSigue         = document.getElementById('pasoSigue');
+const pasosCuerpo       = document.getElementById('pasosCuerpo');
+const revLineas         = document.getElementById('revLineas');
+const revSubtotalFila   = document.getElementById('revSubtotalFila');
+const revDescFila       = document.getElementById('revDescFila');
+const revSubtotal       = document.getElementById('revSubtotal');
+const revDescEtiqueta   = document.getElementById('revDescEtiqueta');
+const revDescuento      = document.getElementById('revDescuento');
+const revTotal          = document.getElementById('revTotal');
+const revPago           = document.getElementById('revPago');
+const revNombre         = document.getElementById('revNombre');
+const revTelefono       = document.getElementById('revTelefono');
 
 const cpNombre          = document.getElementById('cpNombre');
 const cpTelefono        = document.getElementById('cpTelefono');
@@ -115,12 +134,17 @@ function sincronizarBotonProducto(sku) {
 /* Agregar al pedido: una sola acción, sin selector de cantidad (la
    cantidad se ajusta en el carrito). La usan tanto el botón de la
    tarjeta como el de la ficha de producto. */
+function fotoDeTarjeta(sku) {
+  const img = document.querySelector('.cp-tarjeta[data-sku="' + CSS.escape(sku) + '"] .cp-foto');
+  return img ? (img.dataset.srcOriginal || img.getAttribute('src') || '') : '';
+}
+
 function agregarAlPedido(sku, nombre, precio, origen) {
   const ya = pedido.find(i => i.sku === sku);
   if (ya) {
     ya.cant = Math.min(99, ya.cant + 1);
   } else {
-    pedido.push({ sku, nombre, precio, cant: 1 });
+    pedido.push({ sku, nombre, precio, cant: 1, foto: fotoDeTarjeta(sku) });
   }
   sincronizarTarjeta(sku);
   sincronizarBotonProducto(sku);
@@ -151,18 +175,26 @@ function renderLista() {
     const fila = document.createElement('div');
     fila.className = 'cp-lista-fila';
 
+    const foto = document.createElement('div');
+    foto.className = 'cp-lista-foto';
+    if (i.foto) {
+      const img = document.createElement('img');
+      img.src = i.foto;
+      img.alt = '';
+      img.decoding = 'async';
+      foto.appendChild(img);
+    } else {
+      foto.textContent = i.nombre.trim().charAt(0).toUpperCase();
+    }
+
     const info = document.createElement('div');
     info.className = 'cp-lista-info';
     const nombre = document.createElement('span');
     nombre.className = 'cp-lista-nombre';
     nombre.textContent = i.nombre;
-    const precio = document.createElement('span');
-    precio.className = 'cp-lista-precio';
-    precio.textContent = cop(i.precio * i.cant);
-    info.append(nombre, precio);
-
-    const controles = document.createElement('div');
-    controles.className = 'cp-lista-controles';
+    const unidad = document.createElement('span');
+    unidad.className = 'cp-lista-unidad';
+    unidad.textContent = cop(i.precio) + ' c/u';
 
     const stepper = document.createElement('div');
     stepper.className = 'cp-stepper-mini';
@@ -186,6 +218,13 @@ function renderLista() {
     sumar.addEventListener('click', () => cambiarCantidadPedido(i.sku, 1));
 
     stepper.append(restar, cant, sumar);
+    info.append(nombre, unidad, stepper);
+
+    const lado = document.createElement('div');
+    lado.className = 'cp-lista-lado';
+    const precio = document.createElement('span');
+    precio.className = 'cp-lista-precio';
+    precio.textContent = cop(i.precio * i.cant);
 
     const quitar = document.createElement('button');
     quitar.type = 'button';
@@ -194,13 +233,14 @@ function renderLista() {
     quitar.textContent = '×';
     quitar.addEventListener('click', () => quitarDelPedido(i.sku));
 
-    controles.append(stepper, quitar);
-    fila.append(info, controles);
+    lado.append(precio, quitar);
+    fila.append(foto, info, lado);
     listaPedido.appendChild(fila);
   });
 }
 
-/* Subtotal y descuento (solo cuando ya aplica) o, si todavía faltan unidades, cuánto falta. */
+/* Subtotal y descuento (solo cuando ya aplica) o, si todavía faltan unidades, cuánto falta
+   (con una barra que avanza hacia el mínimo). */
 function renderResumen() {
   const faltan = PROMO_MIN - cantidadTotal();
   const desc = descuentoPedido();
@@ -211,13 +251,14 @@ function renderResumen() {
     hojaDescuento.textContent = '−' + cop(desc);
   }
   if (faltan > 0) {
-    hojaPromoPista.textContent = 'Agrega ' + faltan + (faltan === 1 ? ' producto más' : ' productos más')
+    hojaPromoTexto.textContent = 'Agrega ' + faltan + (faltan === 1 ? ' producto más' : ' productos más')
       + ' y llevas ' + PROMO_PCT + ' % de descuento en toda la compra.';
     hojaPromoPista.classList.remove('lograda');
   } else {
-    hojaPromoPista.textContent = '¡Listo! Tienes ' + PROMO_PCT + ' % de descuento en toda la compra.';
+    hojaPromoTexto.textContent = '¡Listo! Tienes ' + PROMO_PCT + ' % de descuento en toda la compra.';
     hojaPromoPista.classList.add('lograda');
   }
+  hojaPromoBarra.style.width = Math.min(100, Math.round(cantidadTotal() / PROMO_MIN * 100)) + '%';
   hojaPromoPista.hidden = false;
 }
 
@@ -298,7 +339,16 @@ function actualizarCarrito() {
     + ', total ' + cop(totalPedido()) + (dto > 0 ? ', con ' + PROMO_PCT + ' % de descuento' : ''));
   renderLista();
   renderResumen();
-  hojaTotal.textContent = cop(totalPedido());
+  const total = cop(totalPedido());
+  hojaTotal.textContent = total;
+  rielTotal.textContent = total;
+  datosTotal.textContent = total;
+  const ahorro = descuentoPedido();
+  [rielAhorro, pieAhorro].forEach(el => {
+    el.hidden = ahorro === 0;
+    el.textContent = 'Ahorras ' + cop(ahorro);
+  });
+  if (!hoja.hidden) renderPasos();
 
   // Si la hoja ya está abierta y el carrito cambió, refleja si ahora
   // sí (o ya no) alcanza el mínimo para cuotas.
@@ -319,6 +369,7 @@ function abrirCarrito() {
   fabZona.classList.add('abierta');
   actualizarBloquePlan();
   cpFormError.hidden = true;
+  irAPaso(1, { sinFoco: true });
   cerrarBtn.focus();
 }
 
@@ -352,6 +403,102 @@ function actualizarBloquePlan() {
     cpBloqueNumCuotas.hidden = true;
   }
 }
+
+/* --- Pasos: 1 Pedido · 2 Datos · 3 Confirmar --- */
+let pasoActual = 1;
+const PASOS = 3;
+
+function datosContacto() {
+  return { cliente: cpNombre.value.trim(), telefono: cpTelefono.value.replace(/\D+/g, '') };
+}
+
+/* Revisa nombre y WhatsApp; si falta algo, deja el aviso en el paso 2 y devuelve false. */
+function contactoValido() {
+  const { cliente, telefono } = datosContacto();
+  if (!cliente) { mostrarErrorForm('Escribe tu nombre.'); cpNombre.focus(); return false; }
+  if (telefono.length < 7) { mostrarErrorForm('Escribe un WhatsApp válido.'); cpTelefono.focus(); return false; }
+  cpFormError.hidden = true;
+  return true;
+}
+
+function planElegido() {
+  return document.querySelector('input[name="cpPlan"]:checked').value;
+}
+
+function renderRevision() {
+  revLineas.innerHTML = '';
+  pedido.forEach(i => {
+    const l = document.createElement('div');
+    l.className = 'cp-rev-linea';
+    const c = document.createElement('i');
+    c.textContent = i.cant + '×';
+    const n = document.createElement('span');
+    n.textContent = i.nombre;
+    const p = document.createElement('b');
+    p.textContent = cop(i.precio * i.cant);
+    l.append(c, n, p);
+    revLineas.appendChild(l);
+  });
+  const desc = descuentoPedido();
+  revSubtotalFila.hidden = revDescFila.hidden = desc === 0;
+  revSubtotal.textContent = cop(subtotalPedido());
+  revDescEtiqueta.textContent = 'Descuento ' + PROMO_PCT + ' %';
+  revDescuento.textContent = '−' + cop(desc);
+  revTotal.textContent = cop(totalPedido());
+  const { cliente, telefono } = datosContacto();
+  revPago.textContent = planElegido() === 'cuotas' && !cpBloquePlan.hidden
+    ? 'A cuotas (' + (parseInt(cpNumCuotas.value, 10) || 2) + ')'
+    : 'De contado';
+  revNombre.textContent = cliente || '—';
+  revTelefono.textContent = telefono || '—';
+}
+
+/* Pinta el paso actual: el panel visible, el riel de pasos y los botones del pie. */
+function renderPasos() {
+  hoja.dataset.paso = String(pasoActual);
+  document.querySelectorAll('.cp-paso-panel').forEach(p => {
+    p.hidden = Number(p.dataset.paso) !== pasoActual;
+  });
+  document.querySelectorAll('.cp-paso-tab').forEach(t => {
+    const n = Number(t.dataset.paso);
+    const li = t.parentElement;
+    li.classList.toggle('actual', n === pasoActual);
+    li.classList.toggle('hecho', n < pasoActual);
+    t.querySelector('.cp-paso-num').textContent = n < pasoActual ? '✓' : String(n);
+    if (n === pasoActual) t.setAttribute('aria-current', 'step'); else t.removeAttribute('aria-current');
+  });
+  pasoAtras.hidden = pasoActual === 1;
+  pasoSigue.hidden = pasoActual === PASOS;
+  cpConfirmar.hidden = pasoActual !== PASOS;
+  if (pasoActual === PASOS) renderRevision();
+}
+
+function irAPaso(n, opciones = {}) {
+  n = Math.max(1, Math.min(PASOS, n));
+  // Para llegar a Confirmar hacen falta nombre y WhatsApp válidos.
+  if (n === PASOS && !opciones.sinValidar) {
+    if (!pedido.length) return;
+    if (!contactoValido()) { n = 2; }
+  }
+  const cambio = n !== pasoActual;
+  pasoActual = n;
+  renderPasos();
+  pasosCuerpo.scrollTop = 0;
+  if (cambio && !opciones.sinFoco) {
+    const titulo = document.getElementById('pasoTitulo' + n);
+    if (titulo && !(n === 2 && !cpFormError.hidden)) titulo.focus({ preventScroll: true });
+  }
+}
+
+pasoSigue.addEventListener('click', () => irAPaso(pasoActual + 1));
+pasoAtras.addEventListener('click', () => irAPaso(pasoActual - 1));
+document.querySelectorAll('.cp-paso-tab, .cp-cambiar').forEach(b =>
+  b.addEventListener('click', () => irAPaso(Number(b.dataset.paso)))
+);
+// Enter dentro de los campos del paso 2 equivale a "Continuar".
+[cpNombre, cpTelefono].forEach(c => c.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); irAPaso(PASOS); }
+}));
 
 function mensajePedido(numero, plan) {
   let msg = 'Hola! Quiero pedir esto de ' + NOMBRE_NEGOCIO + ':\n\n';
@@ -387,19 +534,22 @@ function mostrarErrorForm(texto) {
   cpFormError.hidden = false;
 }
 
+/* Un error del servidor o de la red se muestra en el paso 2 (ahí vive el aviso), así que se vuelve a él. */
+function mostrarErrorEnvio(texto) {
+  mostrarErrorForm(texto);
+  irAPaso(2, { sinFoco: true });
+}
+
 function restaurarBotonEnviar() {
   cpConfirmar.disabled = false;
   cpEnviarTexto.textContent = TEXTO_ENVIAR;
 }
 
 cpConfirmar.addEventListener('click', async () => {
-  const cliente  = cpNombre.value.trim();
-  const telefono = cpTelefono.value.replace(/\D+/g, '');
-
-  if (!cliente) { mostrarErrorForm('Escribe tu nombre.'); cpNombre.focus(); return; }
-  if (telefono.length < 7) { mostrarErrorForm('Escribe un WhatsApp válido.'); cpTelefono.focus(); return; }
-
-  const plan = document.querySelector('input[name="cpPlan"]:checked').value;
+  // Defensa extra: si por cualquier motivo faltan los datos, vuelve al paso 2 con el aviso.
+  if (!contactoValido()) { irAPaso(2, { sinFoco: true }); return; }
+  const { cliente, telefono } = datosContacto();
+  const plan = planElegido();
 
   cpConfirmar.disabled = true;
   cpEnviarTexto.textContent = 'Enviando...';
@@ -421,7 +571,7 @@ cpConfirmar.addEventListener('click', async () => {
     const data = await resp.json();
 
     if (!resp.ok || !data.ok) {
-      mostrarErrorForm(data.error || 'No se pudo enviar el pedido. Intenta de nuevo.');
+      mostrarErrorEnvio(data.error || 'No se pudo enviar el pedido. Intenta de nuevo.');
       restaurarBotonEnviar();
       return;
     }
@@ -441,7 +591,7 @@ cpConfirmar.addEventListener('click', async () => {
     restaurarBotonEnviar();
     actualizarCarrito(); // pedido vacío: oculta el botón y cierra la hoja
   } catch (err) {
-    mostrarErrorForm('No hay conexión. Revisa tu internet e intenta de nuevo.');
+    mostrarErrorEnvio('No hay conexión. Revisa tu internet e intenta de nuevo.');
     restaurarBotonEnviar();
   }
 });
