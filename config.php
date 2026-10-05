@@ -18,13 +18,18 @@ const APP_TAGLINE = 'Cuidado del cabello';
 const APP_CIUDAD  = 'Barranquilla';
 const APP_VERSION = 'v0.1';
 
-/* --- Cuenta de la administradora ---------------------------------------
-   Clave inicial (solo en XAMPP local): Enrisate2026*
-   CÁMBIALA antes de subir esto a un servidor:
-       php tools/generar_hash.php "TuNuevaClave"
-   y pega el resultado en ADMIN_HASH — o, en un servidor como Railway,
-   defínela como variable de entorno ADMIN_HASH (así la clave real no
-   queda escrita en el código que se sube a GitHub).
+/* --- Primera cuenta del panel ------------------------------------------
+   Cada persona entra con su propio usuario, su contraseña y el código de 6
+   dígitos de su app autenticadora (ver includes/auth.php e includes/usuarios.php).
+   Esta cuenta solo se usa UNA vez: cuando la tabla de usuarios está vacía, se
+   convierte en el primer usuario administrador.
+     · En XAMPP local: usuario admin, clave Enrisate2026* (pide cambiarla al entrar).
+     · En Railway: solo si la variable de entorno ADMIN_HASH está definida
+       (php tools/generar_hash.php "TuClave"); la clave de arriba nunca abre el
+       panel en producción.
+   ADMIN_HASH también firma los enlaces de los PDF de factura (includes/facturas.php):
+   no se cambia sin necesidad, o los enlaces ya enviados dejan de abrir.
+   La verificación en dos pasos necesita además APP_SECRETO (ver includes/cifrado.php).
 ------------------------------------------------------------------------ */
 const ADMIN_USUARIO = 'admin';
 const ADMIN_NOMBRE  = 'Administradora';
@@ -54,9 +59,9 @@ const MAX_PEDIDOS_POR_HORA = 8;
 const PROMO_MINIMO_UNIDADES = 3;
 const PROMO_PORCENTAJE      = 10;
 
-/* --- Seguridad --- */
-const MAX_INTENTOS       = 5;    // intentos fallidos antes de bloquear
-const BLOQUEO_SEGUNDOS   = 300;  // 5 minutos de bloqueo
+/* --- Seguridad ---
+   Límite de intentos del ingreso: includes/usuarios.php (por cuenta y por IP real).
+   Sesión máxima de 8 h y pre-ingreso de 10 min: includes/auth.php. */
 const SESION_INACTIVIDAD = 1800; // 30 minutos sin actividad = cierre de sesión
 
 /* --- Rutas --- */

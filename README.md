@@ -23,11 +23,23 @@ Además del servicio de la app, hace falta:
    (`docker/entrypoint.sh` corre `tools/aplicar_esquema.php`, que aplica
    `storage/esquema.sql`) — no hay que entrar a phpMyAdmin ni importar nada
    a mano.
-3. **Cambiar la clave del panel**: por defecto viene la clave de pruebas
-   (`Enrisate2026*`, la misma de XAMPP). Antes de compartir el link real,
-   corre `php tools/generar_hash.php "TuNuevaClave"` y pega el resultado
-   como variable de entorno `ADMIN_HASH` en Railway (no hace falta tocar
-   el código ni volver a subir nada).
+3. **Ingreso al panel (verificación en dos pasos)**: cada persona entra con su
+   usuario, su contraseña y el código de 6 dígitos de Google Authenticator (o
+   cualquier app autenticadora). Antes del primer despliegue, en la pestaña
+   "Variables" del servicio de la app:
+   - `ADMIN_HASH`: corre `php tools/generar_hash.php "TuClave"` y pega el
+     resultado. Con eso se crea la **primera** cuenta de administración
+     (usuario `admin`); al entrar por primera vez conecta su celular y recibe
+     10 códigos de respaldo. Sin esta variable el panel no abre en Railway (la
+     clave de pruebas `Enrisate2026*` solo sirve en un XAMPP local).
+   - `APP_SECRETO`: corre `php tools/generar_secreto.php` y pega el resultado.
+     Cifra los secretos de la verificación. Guárdala también en un lugar
+     seguro: si se pierde, todas las personas tienen que volver a conectar su
+     app.
+   Después, desde **Usuarios** en el panel, administración crea a las demás
+   personas (con una contraseña temporal que cambian al entrar). Deben quedar
+   siempre al menos dos administradores, para que uno pueda restablecer la
+   verificación del otro si pierde el celular.
 4. **Fotos de producto**: se guardan como archivos en
    `assets/img/productos/`. Sin nada más, cualquier foto que se suba desde
    el panel *en Railway* se perdería en el próximo despliegue (el

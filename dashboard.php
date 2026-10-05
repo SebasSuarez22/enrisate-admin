@@ -42,6 +42,21 @@ $modulos = [
         '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
     ],
 ];
+if (es_admin()) {
+    $modulos[] = [
+        'Usuarios', 'usuarios.php',
+        '<path d="M12 3l7 3v6c0 4.4-3 7.8-7 9-4-1.2-7-4.6-7-9V6z"/><circle cx="12" cy="10" r="2.6"/><path d="M8 16.5c.9-1.8 2.3-2.7 4-2.7s3.1.9 4 2.7"/>',
+    ];
+}
+$modulos[] = [
+    'Mi cuenta', 'mi-cuenta.php',
+    '<rect x="4" y="10.5" width="16" height="10.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/><circle cx="12" cy="15.5" r="1.4" fill="currentColor" stroke="none"/>',
+];
+
+// Avisos de seguridad: pocos códigos de respaldo (lo deja verificar.php) y, para
+// administración, si queda un solo administrador activo.
+$avisoRespaldos = isset($_SESSION['aviso_respaldos']) ? (int) $_SESSION['aviso_respaldos'] : null;
+$unSoloAdmin    = es_admin() && contar_admins_activos() < ADMINS_MINIMOS;
 
 $tituloPagina = 'Panel';
 require __DIR__ . '/includes/cabecera.php';
@@ -51,8 +66,22 @@ require __DIR__ . '/includes/cabecera.php';
   <h1 class="saludo"><?= e($saludo) ?>.</h1>
   <p class="subsaludo">Un vistazo rápido a cómo va el negocio. Abajo tienes cada módulo.</p>
 
-  <?php if ($r['cuotasVencidas'] > 0 || $pedidosPendientes > 0): ?>
+  <?php if ($r['cuotasVencidas'] > 0 || $pedidosPendientes > 0 || $avisoRespaldos !== null || $unSoloAdmin): ?>
     <div class="alertas">
+      <?php if ($avisoRespaldos !== null): ?>
+        <a class="alerta peligro" href="mi-cuenta.php">
+          <span class="alerta-punto"></span>
+          <span><strong>Te quedan <?= numero($avisoRespaldos) ?> código<?= $avisoRespaldos === 1 ? '' : 's' ?> de respaldo.</strong> Genera nuevos para no quedarte sin forma de entrar.</span>
+          <span class="alerta-ir">Mi cuenta →</span>
+        </a>
+      <?php endif; ?>
+      <?php if ($unSoloAdmin): ?>
+        <a class="alerta" href="usuarios.php">
+          <span class="alerta-punto"></span>
+          <span><strong>Solo hay un administrador.</strong> Agrega otro para que alguien pueda restablecer tu verificación si pierdes el celular.</span>
+          <span class="alerta-ir">Usuarios →</span>
+        </a>
+      <?php endif; ?>
       <?php if ($pedidosPendientes > 0): ?>
         <a class="alerta" href="pedidos.php">
           <span class="alerta-punto"></span>
