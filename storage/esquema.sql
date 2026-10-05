@@ -2,7 +2,7 @@
 -- ENRÍSATE · Panel de administración
 -- Esquema completo de la base de datos (MySQL / MariaDB)
 -- =========================================================
--- Crea la base "enrisate_admin" y sus 8 tablas si todavía no existen.
+-- Crea la base "enrisate_admin" y sus tablas si todavía no existen.
 -- No borra ni pisa nada: usa CREATE TABLE IF NOT EXISTS, así que se
 -- puede importar varias veces sin riesgo.
 --
@@ -141,4 +141,59 @@ CREATE TABLE IF NOT EXISTS `limite_pedidos` (
   PRIMARY KEY (`id`),
   KEY `ip_momento` (`ip_clave`,`momento`),
   KEY `momento` (`momento`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ---------------------------------------------------------
+-- Ingreso al panel: usuarios con verificación en dos pasos
+-- (contraseña + código de 6 dígitos de una app autenticadora).
+-- Ver includes/usuarios.php e includes/auth.php.
+-- ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `usuarios` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `usuario` varchar(40) NOT NULL,
+  `nombre` varchar(80) NOT NULL,
+  `rol` enum('admin','ventas') NOT NULL DEFAULT 'ventas',
+  `clave_hash` varchar(255) NOT NULL,
+  `cambiar_clave` tinyint(1) NOT NULL DEFAULT 0,
+  `totp_secreto` varchar(255) DEFAULT NULL,
+  `totp_activo` tinyint(1) NOT NULL DEFAULT 0,
+  `totp_ultimo_paso` bigint(20) NOT NULL DEFAULT 0,
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `sesion_version` int(10) unsigned NOT NULL DEFAULT 1,
+  `creado` datetime NOT NULL DEFAULT current_timestamp(),
+  `ultimo_ingreso` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `usuario` (`usuario`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `usuario_codigos_respaldo` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `usuario_id` int(10) unsigned NOT NULL,
+  `huella` char(64) NOT NULL,
+  `usado_el` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `usuario_id` (`usuario_id`),
+  CONSTRAINT `codigos_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `intentos_ingreso` (
+  `clave` varchar(120) NOT NULL,
+  `fallos` int(10) unsigned NOT NULL DEFAULT 0,
+  `bloqueado_hasta` int(10) unsigned NOT NULL DEFAULT 0,
+  `ultimo` int(10) unsigned NOT NULL DEFAULT 0,
+  PRIMARY KEY (`clave`),
+  KEY `ultimo` (`ultimo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `registro_seguridad` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `momento` datetime NOT NULL DEFAULT current_timestamp(),
+  `usuario_id` int(10) unsigned DEFAULT NULL,
+  `usuario` varchar(60) NOT NULL DEFAULT '',
+  `evento` varchar(40) NOT NULL,
+  `detalle` varchar(255) NOT NULL DEFAULT '',
+  `ip` varchar(64) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `momento` (`momento`),
+  KEY `usuario_id` (`usuario_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

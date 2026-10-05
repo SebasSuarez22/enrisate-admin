@@ -16,8 +16,8 @@ declare(strict_types=1);
    cree cuando la conexión viene del proxy. En un XAMPP local o una conexión
    directa se ignora. (OWASP ASVS V4 · CWE-348)
 
-   Nota: el login (includes/auth.php, ip_cliente()) todavía usa REMOTE_ADDR,
-   a propósito: el login quedó fuera de esta revisión.
+   La usan el formulario de pedidos del catálogo y el límite de intentos del
+   ingreso al panel (includes/usuarios.php, claves_limite()).
    ========================================================= */
 
 /** Rangos desde los que se acepta X-Real-IP: el proxy de Railway. */

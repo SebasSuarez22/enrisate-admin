@@ -33,10 +33,14 @@ $barraVolver  = $barraVolver ?? false;
 <header class="barra">
   <img src="assets/img/logo.svg" alt="">
   <span class="wordmark"><?= e(APP_NOMBRE) ?></span>
-  <span class="quien"><?= e($_SESSION['nombre'] ?? '') ?></span>
+  <a class="quien" href="mi-cuenta.php" title="Mi cuenta"><?= e($_SESSION['nombre'] ?? '') ?></a>
   <?php if ($barraVolver): ?>
     <a class="salir" href="dashboard.php">Volver al panel</a>
   <?php else: ?>
-    <a class="salir" href="logout.php">Cerrar sesión</a>
+    <!-- Cerrar sesión es un formulario (POST con token), no un enlace: ver logout.php -->
+    <form class="salir-form" method="post" action="logout.php">
+      <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+      <button type="submit" class="salir">Cerrar sesión</button>
+    </form>
   <?php endif; ?>
 </header>
