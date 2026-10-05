@@ -313,11 +313,21 @@ $logosPorMarca = [
 </footer>
 
 <!-- Botón flotante del carrito: cantidad + total + etiqueta -->
-<button type="button" class="cp-fab-carrito" id="fabCarrito" hidden aria-haspopup="dialog" aria-expanded="false" aria-controls="hojaCarrito">
-  <span class="cp-fab-insignia" id="fabInsignia">0</span>
-  <span class="cp-fab-total" id="fabTotal">$0</span>
-  <span>Ver pedido</span>
-</button>
+<!-- Botón flotante del pedido: un círculo con el carrito y el contador de productos. El total sale en
+     un "ticket" que asoma por detrás cuando se agrega algo (y al pasar el cursor o enfocar). -->
+<div class="cp-fab-zona" id="fabZona" hidden>
+  <span class="cp-fab-ticket" id="fabTicket" role="status">
+    <i>Total</i>
+    <b id="fabTotal">$0</b>
+    <small id="fabDto" hidden></small>
+  </span>
+  <button type="button" class="cp-fab-carrito" id="fabCarrito" aria-label="Ver pedido" aria-haspopup="dialog" aria-expanded="false" aria-controls="hojaCarrito">
+    <span class="cp-fab-disco">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle class="cp-fab-rueda" cx="8" cy="21" r="1.4"/><circle class="cp-fab-rueda" cx="19" cy="21" r="1.4"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+    </span>
+    <span class="cp-fab-insignia" id="fabInsignia" aria-hidden="true">0</span>
+  </button>
+</div>
 
 <!-- Fondo oscurecido detrás de la hoja de carrito -->
 <div class="cp-carrito-fondo" id="carritoFondo" hidden></div>
