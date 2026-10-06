@@ -1009,3 +1009,51 @@ function deshacer_revision_fotos(string $id): int
     rename($dir, PRODUCTOS_RESPALDOS_DIR . '/deshecha-' . $id);
     return $restauradas;
 }
+
+/* =========================================================
+   Ajustes puntuales de una foto (retoques hechos a mano)
+   =========================================================
+   El Volume de Railway no se pisa en los despliegues: la foto de la tienda es la
+   que ya está ahí. Para cambiar UNA foto con un retoque aprobado se usa esto:
+   reemplaza la foto solo si sigue siendo EXACTAMENTE la que se retocó (mismo
+   sha256). Si alguien subió otra foto desde el panel, esa se respeta. Antes de
+   reemplazar guarda la original en _respaldos/ajustes/. Correrlo de más no hace
+   nada (tools/ajustar_fotos_catalogo.php). */
+
+define('PRODUCTOS_AJUSTES_RESPALDO', PRODUCTOS_RESPALDOS_DIR . '/ajustes');
+
+/**
+ * @return string 'aplicado' | 'ya_aplicado' | 'distinta' | 'sin_foto' | 'error'
+ */
+function aplicar_ajuste_foto(string $sku, string $shaEsperada, string $archivoNuevo): string
+{
+    $actual = PRODUCTOS_IMG_DIR . '/' . $sku . '.webp';
+    if (!preg_match('/^[A-Z0-9\-_]+$/', $sku) || !is_file($archivoNuevo)) {
+        return 'error';
+    }
+    if (!is_file($actual)) {
+        return 'sin_foto';
+    }
+    $shaActual = hash_file('sha256', $actual);
+    if ($shaActual === hash_file('sha256', $archivoNuevo)) {
+        return 'ya_aplicado';
+    }
+    if ($shaActual !== strtolower($shaEsperada)) {
+        return 'distinta';
+    }
+    if (!is_dir(PRODUCTOS_AJUSTES_RESPALDO) && !mkdir(PRODUCTOS_AJUSTES_RESPALDO, 0775, true) && !is_dir(PRODUCTOS_AJUSTES_RESPALDO)) {
+        return 'error';
+    }
+    // Sin respaldo no se toca la foto.
+    if (!copy($actual, PRODUCTOS_AJUSTES_RESPALDO . '/' . $sku . '.' . date('Ymd-His') . '.webp')) {
+        return 'error';
+    }
+    $temporal = $actual . '.tmp';
+    if (!copy($archivoNuevo, $temporal) || !rename($temporal, $actual)) {
+        @unlink($temporal);
+        return 'error';
+    }
+    clearstatcache(true, $actual);
+    actualizar_version_tarjeta($sku);
+    return 'aplicado';
+}
