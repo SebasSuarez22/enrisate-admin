@@ -17,4 +17,5 @@ assets/img/productos/_respaldos/
 
 # Versiones mini y medidas que se generan solas a partir de cada foto
 assets/img/productos/*.mini.webp
+assets/img/productos/*.tarjeta.webp
 assets/img/productos/_cache/
