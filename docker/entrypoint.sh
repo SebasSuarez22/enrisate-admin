@@ -20,6 +20,12 @@ sed -ri "s/:80/:${PORT}/" /etc/apache2/sites-enabled/000-default.conf
 # seguro correrlo en cada arranque, no solo en el primero.
 mkdir -p assets/img/productos
 cp -rn assets/img/productos-semilla/. assets/img/productos/
+
+# Versiones livianas y medidas de las fotos para el catálogo público (ver
+# tools/preparar_fotos_catalogo.php). Si falla, el catálogo sigue funcionando
+# con las fotos normales: por eso no detiene el arranque.
+php tools/preparar_fotos_catalogo.php || echo "No se pudieron preparar las fotos del catálogo; se usan las normales." >&2
+
 chown -R www-data:www-data assets/img/productos
 
 # La base de datos (servicio aparte en Railway) puede tardar más de lo

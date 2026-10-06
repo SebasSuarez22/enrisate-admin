@@ -47,14 +47,27 @@ function cp_img_attrs(string $rutaRelativa): string {
 // --a = ancho/alto; --fh = qué parte de la altura disponible ocupa. Una botella alta y delgada
 // (a ≈ 0,45 o menos) la llena; un frasco ancho baja de forma suave (exponente 0,3) para que en
 // la rejilla todos se vean de la misma familia y ninguno parezca gigante o diminuto.
-function cp_foto_escala(string $rutaRelativa): string {
-    $dim = @getimagesize(__DIR__ . '/' . $rutaRelativa);
-    if (!$dim || $dim[0] < 1 || $dim[1] < 1) {
-        return '';
-    }
-    $a  = $dim[0] / $dim[1];
+// --pie = aire vacío bajo el producto (para la sombra de apoyo); lo mide el servidor una sola
+// vez por foto (medidas_foto()), antes lo medía el celular mientras la clienta hacía scroll.
+function cp_foto_escala(array $m): array {
+    $a  = $m['w'] / $m['h'];
     $fh = min(1.0, 1.09 * (0.35 / $a) ** 0.3);
-    return sprintf('; --a: %.3F; --fh: %.3F', $a, $fh);
+    $estilo = sprintf('; --a: %.3F; --fh: %.3F', $a, $fh);
+    if (isset($m['pie'])) {
+        $estilo .= sprintf('; --pie: %.4F', $m['pie']);
+    }
+    return [$a, $fh, $estilo];
+}
+
+// Ancho en que se dibuja la foto, para que el navegador elija entre la versión mini y la
+// normal (srcset). La foto ocupa min(84 %, a × fh × 89 %) del ancho de la tarjeta, y la
+// tarjeta mide lo que da la rejilla en cada tramo (2, 3, 4 columnas… ver "Rejilla por tramos"
+// en el CSS). Así una botella alta, que se dibuja angosta, no descarga más de lo que muestra.
+function cp_foto_sizes(float $a, float $fh): string {
+    $k = min(0.84, $a * $fh * 0.89);
+    $px = fn(float $ancho): string => (int) ceil($ancho * $k) . 'px';
+    $vw = fn(float $vw): string => sprintf('%.1Fvw', $vw * $k);
+    return '(min-width: 1024px) ' . $px(230) . ', (min-width: 768px) ' . $vw(23) . ', (min-width: 540px) ' . $vw(31) . ', ' . $vw(47);
 }
 
 // Nombres de marca mal escritos en la base. Arréglalos en MySQL cuando puedas
@@ -69,6 +82,14 @@ $nombreVisible = [
 // .webp del tamaño real en que se muestran (los .png originales medían hasta
 // 4500x970 para un logo que se ve a menos de 90px de alto). Los .png viejos
 // se retiraron del proyecto el 2026-10-01 (siguen en el historial de git).
+// El sello de marca de cada tarjeta mide 16 px de alto: usa la versión chica de
+// assets/img/marcas/mini/ (48 px de alto, nítida hasta en pantallas 3×; 2 a 6 KB en vez
+// de hasta 35 KB). Si una marca no tiene versión chica, se usa su logo normal.
+function cp_logo_sello(string $archivo): string {
+    $mini = 'assets/img/marcas/mini/' . pathinfo($archivo, PATHINFO_FILENAME) . '.webp';
+    return is_file(__DIR__ . '/' . $mini) ? $mini : 'assets/img/marcas/' . $archivo;
+}
+
 $logosPorMarca = [
     'Etniker'          => 'etniker.png',
     'Femme'            => 'femme.webp',
@@ -123,6 +144,9 @@ $logosPorMarca = [
 <meta name="theme-color" content="#6B4013">
 
 <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml">
+<!-- La letra del texto (Manrope) se pide de una vez, junto con la hoja de estilos: si llega
+     tarde, el texto ya pintado cambia de ancho y los chips de marca "saltan". -->
+<link rel="preload" href="assets/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/catalogo-publico.css?v=<?= filemtime(__DIR__ . '/assets/css/catalogo-publico.css') ?>">
 </head>
 <body>
@@ -170,7 +194,13 @@ $logosPorMarca = [
     // como og:image, porque WhatsApp arma la vista previa del enlace con él.
     $logoHeader = 'assets/img/logo-enrisate-header.webp';
   ?>
-  <p class="cp-marca"><img src="<?= e(cp_img_v($logoHeader)) ?>" alt="<?= e(APP_NOMBRE) ?>" class="cp-logo" <?= cp_img_attrs($logoHeader) ?> fetchpriority="high"></p>
+  <?php
+    // Versiones a la medida (130 px de alto en pantalla): un computador baja la de 9 KB en
+    // vez de la grande de 46 KB, que solo hace falta en celulares de pantalla 3×.
+    $logoHeader1x = 'assets/img/logo-enrisate-header-1x.webp';
+    $logoHeader2x = 'assets/img/logo-enrisate-header-2x.webp';
+  ?>
+  <p class="cp-marca"><img src="<?= e(cp_img_v($logoHeader1x)) ?>" srcset="<?= e(cp_img_v($logoHeader1x)) ?> 1x, <?= e(cp_img_v($logoHeader2x)) ?> 2x, <?= e(cp_img_v($logoHeader)) ?> 3x" alt="<?= e(APP_NOMBRE) ?>" class="cp-logo" <?= cp_img_attrs($logoHeader) ?> fetchpriority="high"></p>
   <h1 class="cp-tagline"><?= e(APP_TAGLINE) ?></h1>
   <p class="cp-instrucciones">Elige lo que quieras. Al final envías todo el pedido con un solo botón.</p>
 </header>
@@ -215,7 +245,16 @@ $logosPorMarca = [
             // En la rejilla va la versión liviana; la grande solo se descarga al abrir la ficha.
             $rutaFoto  = producto_ruta_foto_tarjeta($p['sku']);
             $rutaGrande = producto_ruta_foto($p['sku']);
-            $tieneFoto = $rutaFoto !== null;
+            $medidas   = $rutaFoto !== null ? medidas_foto($rutaFoto) : null;
+            $tieneFoto = $rutaFoto !== null && $medidas !== null && $medidas['w'] > 0 && $medidas['h'] > 0;
+            if ($tieneFoto) {
+                [$fotoA, $fotoFh, $fotoEstilo] = cp_foto_escala($medidas);
+                $rutaMini = producto_ruta_foto_mini($p['sku'], $rutaFoto);
+                $medidasMini = $rutaMini !== null ? @getimagesize(__DIR__ . '/' . $rutaMini) : false;
+                $srcset = $medidasMini
+                    ? cp_img_v($rutaMini) . ' ' . $medidasMini[0] . 'w, ' . cp_img_v($rutaFoto) . ' ' . $medidas['w'] . 'w'
+                    : '';
+            }
             $tieneLogo = isset($logosPorMarca[$marca]);
             [$tipoEtq, $tipoFondo, $tipoTinta, $tipoIcono] = categoria_estilo($p, $marcaVisible);
             $busca = mb_strtolower($p['nombre'] . ' ' . $marcaVisible . ' ' . $tipoEtq, 'UTF-8');
@@ -238,12 +277,12 @@ $logosPorMarca = [
                    data-cat-fondo="<?= e($tipoFondo) ?>"
                    data-cat-tinta="<?= e($tipoTinta) ?>"
                    data-busca="<?= e($busca) ?>">
-            <div class="cp-img-wrap <?= $tieneFoto ? 'cp-img-foto' : '' ?><?= $tieneFoto && $tieneLogo ? ' cp-con-logo' : '' ?>" style="--tipo-fondo: <?= $tipoFondo ?>; --tipo-tinta: <?= $tipoTinta ?><?= $tieneFoto ? cp_foto_escala($rutaFoto) : '' ?>">
+            <div class="cp-img-wrap <?= $tieneFoto ? 'cp-img-foto' : '' ?><?= $tieneFoto && $tieneLogo ? ' cp-con-logo' : '' ?>" style="--tipo-fondo: <?= $tipoFondo ?>; --tipo-tinta: <?= $tipoTinta ?><?= $tieneFoto ? $fotoEstilo : '' ?>">
               <?php if ($tieneFoto): ?>
-                <img class="cp-foto" src="<?= e(cp_img_v($rutaFoto)) ?>" data-grande="<?= e(cp_img_v($rutaGrande)) ?>" alt="<?= e($p['nombre']) ?> · <?= e($marcaVisible) ?>" <?= cp_img_attrs($rutaFoto) ?> loading="<?= $cpCarga ?>" <?= $cpPrioridadAttr ?> decoding="async">
+                <img class="cp-foto" src="<?= e(cp_img_v($rutaFoto)) ?>"<?php if ($srcset !== ''): ?> srcset="<?= e($srcset) ?>" sizes="<?= e(cp_foto_sizes($fotoA, $fotoFh)) ?>"<?php endif; ?> data-grande="<?= e(cp_img_v($rutaGrande)) ?>" alt="<?= e($p['nombre']) ?> · <?= e($marcaVisible) ?>" width="<?= (int) $medidas['w'] ?>" height="<?= (int) $medidas['h'] ?>" loading="<?= $cpCarga ?>" <?= $cpPrioridadAttr ?> decoding="async">
                 <?php if ($tieneLogo): ?>
-                  <?php $cpRutaLogo = 'assets/img/marcas/' . $logosPorMarca[$marca]; ?>
-                  <span class="cp-marca-logo"><img src="<?= e(cp_img_v($cpRutaLogo)) ?>" alt="<?= e($marcaVisible) ?>" <?= cp_img_attrs($cpRutaLogo) ?> loading="lazy"></span>
+                  <?php $cpRutaLogo = cp_logo_sello($logosPorMarca[$marca]); ?>
+                  <span class="cp-marca-logo"><img src="<?= e(cp_img_v($cpRutaLogo)) ?>" alt="<?= e($marcaVisible) ?>" <?= cp_img_attrs($cpRutaLogo) ?> loading="lazy" decoding="async"></span>
                 <?php endif; ?>
               <?php else: ?>
                 <?php if ($tieneLogo): ?>

@@ -252,8 +252,10 @@ body {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgba(251,246,240,.94);
-  backdrop-filter: blur(8px);
+  /* Opaca y sin backdrop-filter: el desenfoque de lo que pasaba por debajo había que
+     recalcularlo en cada cuadro del scroll (trababa celulares de gama media) y con 94 %
+     de opacidad ni se notaba. Mismo color que el fondo de la página. */
+  background: var(--crema);
   border-bottom: 1px solid var(--arena);
 }
 .cp-barra-interior { max-width: var(--ancho); margin: 0 auto; padding: var(--sp-3) var(--margen) 0; }
@@ -415,6 +417,10 @@ body {
   background: var(--halo);
   border-bottom: 1px solid var(--arena);
   overflow: hidden;
+  /* La foto se funde con el halo (mix-blend-mode) y sus sombras llevan filtros: así esa
+     mezcla se resuelve dentro de cada tarjeta y no contra toda la página en cada cuadro
+     del scroll. Se ve igual: lo único detrás de la foto es este mismo halo. */
+  isolation: isolate;
 }
 .cp-foto { width: 100%; height: 100%; object-fit: contain; }
 
