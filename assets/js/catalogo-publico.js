@@ -814,7 +814,11 @@ function medirPieFoto(img) {
   return null;
 }
 
+// El servidor ya manda --pie medido en cada tarjeta (medidas_foto() en PHP). Aquí solo se
+// mide una foto que llegue sin esa medida (p. ej. si el servidor no pudo leer el archivo):
+// medir con canvas mientras la clienta hace scroll trababa el desplazamiento.
 document.querySelectorAll('.cp-img-foto .cp-foto').forEach(img => {
+  if (img.closest('.cp-img-wrap').style.getPropertyValue('--pie')) return;
   const fijar = () => {
     const pie = medirPieFoto(img);
     if (pie !== null) img.closest('.cp-img-wrap').style.setProperty('--pie', pie.toFixed(4));
@@ -854,8 +858,10 @@ function pintarFotoFicha(tarjeta) {
     img.alt = fotoTarjeta.alt;
     img.decoding = 'async';
     img.addEventListener('load', () => {
-      const pie = medirPieFoto(img);                       // la versión grande, por si la de la tarjeta aún no se midió
-      if (pie !== null) productoEscena.dataset.pie = pie.toFixed(4);
+      if (!productoEscena.dataset.pie) {                   // solo si la tarjeta no traía la medida
+        const pie = medirPieFoto(img);
+        if (pie !== null) productoEscena.dataset.pie = pie.toFixed(4);
+      }
       encuadrarFotoFicha();
     });
     // Se muestra al instante la de la tarjeta (ya está en caché) y se cambia por la grande
@@ -1057,6 +1063,20 @@ if (cpChipsNav) {
   }, { passive: false });
 }
 
+/* Centra el chip activo moviendo SOLO la fila de chips. Antes era chip.scrollIntoView(),
+   que también puede mover la página: llamado mientras la clienta hace scroll, en el
+   celular frenaba o hacía saltar el desplazamiento cada vez que cambiaba de marca. */
+const cpSinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)');
+let cpChipCentrado = null;
+function centrarChip(chip) {
+  if (!cpChipsNav || chip === cpChipCentrado) return;
+  cpChipCentrado = chip;
+  const fila = cpChipsNav.getBoundingClientRect();
+  const caja = chip.getBoundingClientRect();
+  const destino = cpChipsNav.scrollLeft + (caja.left - fila.left) - (fila.width - caja.width) / 2;
+  cpChipsNav.scrollTo({ left: Math.max(0, destino), behavior: cpSinMovimiento.matches ? 'auto' : 'smooth' });
+}
+
 if (chips.length && gruposMarca.length) {
   const observador = new IntersectionObserver(entradas => {
     entradas.forEach(entrada => {
@@ -1068,7 +1088,7 @@ if (chips.length && gruposMarca.length) {
           // movía para mostrarlo — si estaba fuera de vista (como "Leche
           // pal pelo", casi siempre tapado a la derecha) parecía que el
           // carrusel no reaccionaba al bajar la página.
-          if (esActivo) chip.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+          if (esActivo) centrarChip(chip);
         });
       }
     });

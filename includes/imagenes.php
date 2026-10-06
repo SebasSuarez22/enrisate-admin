@@ -20,10 +20,18 @@ define('PRODUCTOS_IMG_WEB', 'assets/img/productos');
 //                       computador, el doble en pantallas de alta resolución).
 //   <SKU>.tarjeta.webp  hasta 640 px: la que carga la rejilla del catálogo
 //                       (tarjetas de ~280 px de ancho), liviana como antes.
+//   <SKU>.mini.webp     hasta 360 px: la misma foto, más liviana, para celulares
+//                       de pantalla 2× y computadores (el navegador elige con
+//                       srcset; los celulares 3× siguen bajando la de tarjeta).
 // Así la ficha se ve nítida sin que la página del catálogo pese más. Las fotos
 // de 640 px o menos no llevan versión de tarjeta: la misma sirve para todo.
 define('PRODUCTOS_IMG_MAX', 1200);
 define('PRODUCTOS_IMG_TARJETA', 640);
+define('PRODUCTOS_IMG_MINI', 360);
+// Medidas de cada foto (ancho, alto y "pie", ver medidas_foto()), calculadas una
+// vez en el servidor. Vive dentro del Volume, en una carpeta con "_" que el
+// .htaccess no sirve.
+define('PRODUCTOS_MEDIDAS', PRODUCTOS_IMG_DIR . '/_cache/medidas.json');
 define('PRODUCTOS_IMG_EXTS', ['webp', 'jpg', 'jpeg', 'png']);
 
 /**
@@ -542,37 +550,58 @@ function producto_ruta_foto_tarjeta(string $sku): ?string
     return producto_ruta_foto($sku);
 }
 
-/** Guarda (o borra, si la foto ya es pequeña) la versión de tarjeta de $img. */
+/** Guarda (o borra, si la foto ya es pequeña) las versiones de tarjeta y mini de $img. */
 function guardar_version_tarjeta(\GdImage $img, string $sku): void
 {
-    $destino = PRODUCTOS_IMG_DIR . '/' . $sku . '.tarjeta.webp';
+    guardar_version_reducida($img, PRODUCTOS_IMG_DIR . '/' . $sku . '.tarjeta.webp', PRODUCTOS_IMG_TARJETA);
+    guardar_version_reducida($img, PRODUCTOS_IMG_DIR . '/' . $sku . '.mini.webp', PRODUCTOS_IMG_MINI);
+}
+
+/** Guarda $img reducida a $lado px en $destino, o borra $destino si la foto ya es así de pequeña. */
+function guardar_version_reducida(\GdImage $img, string $destino, int $ladoMax): void
+{
     $w = imagesx($img);
     $h = imagesy($img);
     $lado = max($w, $h);
-    if ($lado <= PRODUCTOS_IMG_TARJETA) {
+    if ($lado <= $ladoMax) {
         if (is_file($destino)) {
             unlink($destino);
         }
         return;
     }
-    $factor = PRODUCTOS_IMG_TARJETA / $lado;
+    $factor = $ladoMax / $lado;
     $chica = imagecreatetruecolor(max(1, (int) round($w * $factor)), max(1, (int) round($h * $factor)));
     imagealphablending($chica, false);
     imagesavealpha($chica, true);
     imagecopyresampled($chica, $img, 0, 0, 0, 0, imagesx($chica), imagesy($chica), $w, $h);
-    imagewebp($chica, $destino, 82);
+    // Se escribe aparte y se renombra: quien pida la foto mientras tanto nunca recibe un archivo a medias.
+    $temporal = $destino . '.tmp';
+    if (imagewebp($chica, $temporal, 82)) {
+        rename($temporal, $destino);
+    } else {
+        @unlink($temporal);
+    }
     imagedestroy($chica);
 }
 
-/** Rehace la versión de tarjeta a partir de la foto que está en disco. */
-function actualizar_version_tarjeta(string $sku): void
+/**
+ * Ruta de la versión mini de un SKU, solo si existe y está al día con $rutaBase (la
+ * foto que muestra la tarjeta). Si la foto se cambió y la mini todavía no se rehízo,
+ * devuelve null y la tarjeta usa solo la foto normal: nunca se muestra una foto vieja.
+ */
+function producto_ruta_foto_mini(string $sku, string $rutaBase): ?string
 {
-    $ruta = producto_ruta_foto($sku);
-    if ($ruta === null) {
-        @unlink(PRODUCTOS_IMG_DIR . '/' . $sku . '.tarjeta.webp');
-        return;
+    $mini = PRODUCTOS_IMG_DIR . '/' . $sku . '.mini.webp';
+    $base = BASE_DIR . '/' . $rutaBase;
+    if (!is_file($mini) || !is_file($base) || filemtime($mini) < filemtime($base)) {
+        return null;
     }
-    $archivo = BASE_DIR . '/' . $ruta;
+    return PRODUCTOS_IMG_WEB . '/' . $sku . '.mini.webp';
+}
+
+/** Abre una foto con GD según su extensión (false si no se puede). */
+function abrir_foto(string $archivo): \GdImage|false
+{
     $img = match (strtolower(pathinfo($archivo, PATHINFO_EXTENSION))) {
         'webp'        => @imagecreatefromwebp($archivo),
         'png'         => @imagecreatefrompng($archivo),
@@ -582,6 +611,109 @@ function actualizar_version_tarjeta(string $sku): void
     if ($img) {
         imagepalettetotruecolor($img);
         imagesavealpha($img, true);
+    }
+    return $img;
+}
+
+/**
+ * Qué fracción del alto de la foto queda VACÍA bajo el producto (0 a ~0,06): la sombra
+ * de apoyo de la tarjeta se coloca con esta medida. Se reduce la foto a 96 px de ancho
+ * y se busca desde abajo la primera fila con algo que no sea blanco ni transparente.
+ * Antes lo calculaba el celular con un canvas, foto por foto, mientras la clienta hacía
+ * scroll (trababa el desplazamiento y la sombra se movía después de aparecer la foto).
+ */
+function medir_pie_foto(\GdImage $img): ?float
+{
+    $nw = imagesx($img);
+    $nh = imagesy($img);
+    $w = min($nw, 96);
+    $h = max(1, (int) round($w * $nh / $nw));
+    $chica = imagecreatetruecolor($w, $h);
+    imagealphablending($chica, false);
+    imagesavealpha($chica, true);
+    imagecopyresampled($chica, $img, 0, 0, 0, 0, $w, $h, $nw, $nh);
+    for ($y = $h - 1; $y >= 0; $y--) {
+        for ($x = 0; $x < $w; $x++) {
+            $c = imagecolorat($chica, $x, $y);
+            $alfa = ($c >> 24) & 0x7F;             // 0 = opaco … 127 = transparente
+            $minimo = min(($c >> 16) & 0xFF, ($c >> 8) & 0xFF, $c & 0xFF);
+            if ($alfa <= 107 && $minimo < 240) {   // mismo umbral que tenía el canvas (alfa > 40 de 255)
+                imagedestroy($chica);
+                return ($h - 1 - $y) / $h;
+            }
+        }
+    }
+    imagedestroy($chica);
+    return null;   // todo blanco o transparente: la tarjeta usa el valor por defecto del CSS
+}
+
+/**
+ * Medidas de una foto del catálogo: ['w' => ancho, 'h' => alto, 'pie' => fracción].
+ * Se guardan en PRODUCTOS_MEDIDAS por archivo y fecha de modificación: cambiar la foto
+ * invalida su medida sola. null si el archivo no existe o no se puede leer.
+ */
+function medidas_foto(string $rutaRelativa): ?array
+{
+    static $cache = null;
+    static $sucio = false;
+    if ($cache === null) {
+        $cache = [];
+        if (is_file(PRODUCTOS_MEDIDAS)) {
+            $leido = json_decode((string) file_get_contents(PRODUCTOS_MEDIDAS), true);
+            $cache = is_array($leido) ? $leido : [];
+        }
+        register_shutdown_function(function () use (&$cache, &$sucio): void {
+            if (!$sucio) {
+                return;
+            }
+            $dir = dirname(PRODUCTOS_MEDIDAS);
+            if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
+                return;
+            }
+            $temporal = PRODUCTOS_MEDIDAS . '.' . getmypid() . '.tmp';
+            if (@file_put_contents($temporal, json_encode($cache, JSON_UNESCAPED_SLASHES)) !== false) {
+                @rename($temporal, PRODUCTOS_MEDIDAS);
+            } else {
+                @unlink($temporal);
+            }
+        });
+    }
+
+    $archivo = BASE_DIR . '/' . $rutaRelativa;
+    $mtime = @filemtime($archivo);
+    if ($mtime === false) {
+        return null;
+    }
+    $clave = basename($rutaRelativa);
+    $guardado = $cache[$clave] ?? null;
+    if (is_array($guardado) && ($guardado['t'] ?? null) === $mtime) {
+        return $guardado;
+    }
+
+    $img = abrir_foto($archivo);
+    if (!$img) {
+        $dim = @getimagesize($archivo);
+        return $dim ? ['t' => $mtime, 'w' => $dim[0], 'h' => $dim[1], 'pie' => null] : null;
+    }
+    $pie = medir_pie_foto($img);
+    $medidas = ['t' => $mtime, 'w' => imagesx($img), 'h' => imagesy($img), 'pie' => $pie === null ? null : round($pie, 4)];
+    imagedestroy($img);
+    $cache[$clave] = $medidas;
+    $sucio = true;
+    return $medidas;
+}
+
+/** Rehace la versión de tarjeta a partir de la foto que está en disco. */
+function actualizar_version_tarjeta(string $sku): void
+{
+    $ruta = producto_ruta_foto($sku);
+    if ($ruta === null) {
+        @unlink(PRODUCTOS_IMG_DIR . '/' . $sku . '.tarjeta.webp');
+        @unlink(PRODUCTOS_IMG_DIR . '/' . $sku . '.mini.webp');
+        return;
+    }
+    $img = abrir_foto(BASE_DIR . '/' . $ruta);
+    if ($img) {
         guardar_version_tarjeta($img, $sku);
         imagedestroy($img);
     }
@@ -705,6 +837,7 @@ function quitar_imagen_producto(string $sku): bool
     }
     $borrado = false;
     @unlink(PRODUCTOS_IMG_DIR . '/' . $sku . '.tarjeta.webp');
+    @unlink(PRODUCTOS_IMG_DIR . '/' . $sku . '.mini.webp');
     foreach (PRODUCTOS_IMG_EXTS as $ext) {
         $ruta = PRODUCTOS_IMG_DIR . '/' . $sku . '.' . $ext;
         if (is_file($ruta)) {
@@ -824,7 +957,7 @@ function revisar_foto_producto(string $sku, string $id): array
         clearstatcache(true, $nueva);
         $fila['guardada'] = filemtime($nueva);
         guardar_version_tarjeta($img, $sku);
-    } elseif (!is_file(PRODUCTOS_IMG_DIR . '/' . $sku . '.tarjeta.webp')) {
+    } elseif (!is_file(PRODUCTOS_IMG_DIR . '/' . $sku . '.tarjeta.webp') || !is_file(PRODUCTOS_IMG_DIR . '/' . $sku . '.mini.webp')) {
         guardar_version_tarjeta($img, $sku);
     }
     imagedestroy($img);
