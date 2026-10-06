@@ -21,6 +21,11 @@ sed -ri "s/:80/:${PORT}/" /etc/apache2/sites-enabled/000-default.conf
 mkdir -p assets/img/productos
 cp -rn assets/img/productos-semilla/. assets/img/productos/
 
+# Retoques aprobados de fotos puntuales (ver tools/ajustar_fotos_catalogo.php). Solo
+# cambia una foto si sigue siendo la que se retocó, y deja respaldo de la original.
+# Si falla, la tienda sigue con la foto de siempre: por eso no detiene el arranque.
+php tools/ajustar_fotos_catalogo.php || echo "No se pudieron aplicar los ajustes de fotos; quedan las fotos de siempre." >&2
+
 # Versiones livianas y medidas de las fotos para el catálogo público (ver
 # tools/preparar_fotos_catalogo.php). Si falla, el catálogo sigue funcionando
 # con las fotos normales: por eso no detiene el arranque.

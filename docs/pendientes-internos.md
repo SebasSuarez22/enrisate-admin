@@ -2,6 +2,15 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 6 de octubre, 2026 (Sombra gris del sobre de Karsell)
+
+Sebastián pidió quitarle la "sombra de arriba" al producto Sobres de Karsell (ACC-08, Accesorios). Se mostraron 3 mockups con capturas reales (A suave, B limpio, C sin borde) y eligió **A**.
+- **Causa:** no era una sombra del CSS (las capas `::before/::after` solo van debajo): es el borde gris punteado del plástico del sobre, pintado en la foto.
+- **Arreglo:** retoque de la foto (difumina y aclara el punteado fuera del producto; el producto y el sobre quedan intactos). Misma medida (612×592) que la de la tienda, así el producto queda en el mismo lugar y tamaño en 8 tamaños (320–1920 px, celular acostado y tablet).
+- **Cómo llega a producción:** el Volume no se pisa en los despliegues, así que hay un reemplazo automático: `tools/ajustar_fotos_catalogo.php` (corre en `docker/entrypoint.sh`) usa `aplicar_ajuste_foto()` de `includes/imagenes.php`. Cambia la foto solo si sigue siendo EXACTAMENTE la de antes del retoque (sha256 `bcda07de…`), deja la original en `_respaldos/ajustes/ACC-08.<fecha>.webp` y rehace la mini. Si alguien subió otra foto desde el panel, la respeta. Una sola vez: después dice "ya estaba ajustada".
+- **Para otro retoque:** dejar la foto en `tools/fotos_ajustadas/<SKU>.webp` y sumar una línea en `AJUSTES` con el sha256 de la foto de antes. Prueba: `tests/ajuste_fotos_test.php` (14 comprobaciones); 20/20 archivos de prueba OK.
+- **Deshacer:** copiar el respaldo de `_respaldos/ajustes/` sobre `ACC-08.webp` (o subir otra foto desde Productos).
+
 ## 6 de octubre, 2026 (Velocidad del catálogo público y scroll fluido)
 
 Sebastián pidió que el catálogo cargue rápido, sin fotos rotas y sin efectos feos al hacer scroll. Medición antes/después en local con la versión anterior servida al lado (mismas fotos y base), 4G lento + CPU 4× para el celular.
