@@ -2,6 +2,13 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 6 de octubre, 2026 (Número de WhatsApp Business)
+
+Sebastián dio el WhatsApp Business de Enrísate: **+57 305 241 8417**. Reemplaza al número que se usaba antes (el de Gina).
+- **Dónde estaba:** solo en `APP_WHATSAPP` de `config.php`. El catálogo público lo lee y arma con él el botón "Enviar por WhatsApp" del pedido y el enlace "Pregúntanos por WhatsApp" de la ficha (`assets/js/catalogo-publico.js`). No había copias del número en otros archivos, pruebas ni base de datos; los "3001234567" son ejemplos de formulario y los "Gina Pertuz / Gina Pérez" son nombres de ejemplo.
+- **Probado en local:** la página manda `573052418417` a los dos enlaces. Falta confirmarlo en producción tras el deploy.
+- **Para n8n/API oficial:** este número debe quedar libre de WhatsApp personal si se conecta por la API de Meta (se decide cuando montemos n8n).
+
 ## 6 de octubre, 2026 (Sombra gris del sobre de Karsell)
 
 Sebastián pidió quitarle la "sombra de arriba" al producto Sobres de Karsell (ACC-08, Accesorios). Se mostraron 3 mockups con capturas reales (A suave, B limpio, C sin borde) y eligió **A**.

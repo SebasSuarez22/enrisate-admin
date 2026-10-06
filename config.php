@@ -37,8 +37,9 @@ define('ADMIN_HASH', getenv('ADMIN_HASH') ?: '$2y$12$050ePq4.ZgMGoIKURU/VouuVfJv
 
 /* --- Contacto --- */
 // Número al que llegan los pedidos del catálogo público (sin +, con indicativo).
-// Hoy es un número personal; cuando pasen a WhatsApp Business, cambia solo este valor.
-const APP_WHATSAPP = '573163770326';
+// Es el WhatsApp Business de Enrísate (+57 305 241 8417). Si algún día cambia,
+// cambia solo este valor: el catálogo arma todos sus enlaces a partir de aquí.
+const APP_WHATSAPP = '573052418417';
 
 // Usuario de Instagram, sin la @ y sin la URL: el catálogo público arma el
 // enlace con esto en el pie de página.
