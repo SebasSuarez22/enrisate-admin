@@ -2717,3 +2717,12 @@ a.chip:focus-visible { outline: 2px solid var(--brillo); outline-offset: 2px; }
   #formEnviado .boton { flex: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .msg-barra i { transition: none; } }
+
+/* Modo "de 5 en 5" (mensajes.php): puntos del grupo actual y botón de seguir. */
+.msg-grupo { display: flex; align-items: center; gap: 12px; margin: 0 0 var(--sp-3); font-size: 13px; color: var(--marfil-70); }
+.msg-grupo strong { color: var(--brillo); font-weight: 700; }
+.msg-pips { display: inline-flex; gap: 6px; }
+.msg-pips i { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid rgba(224, 184, 126, 0.5); transition: background 0.3s ease; }
+.msg-pips i.on { background: var(--champana); border-color: var(--champana); }
+.msg-destacado a.boton { text-align: center; line-height: 1.4; }
+@media (prefers-reduced-motion: reduce) { .msg-pips i { transition: none; } }

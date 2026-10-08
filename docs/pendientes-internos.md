@@ -12,7 +12,8 @@ Sebastián pidió un botón masivo para mandar la bienvenida del nuevo WhatsApp 
 - **Texto y enlace:** `mensaje_bienvenida()` toma el número de `APP_WHATSAPP` y el enlace de la nueva `APP_URL_CATALOGO` (config.php). Si hay dominio propio, se cambia solo ahí.
 - **Solo celulares válidos:** 10 dígitos que empiezan en 3. Fijos y números cortos salen en "Sin celular válido".
 - **Probado:** 21/21 archivos de pruebas OK; flujo completo en el navegador (abrir, ya la envié, saltar, Sí/No, deshacer, token falso → 403); 6 tamaños (360×640, 390×844, celular acostado, tablet, 1366×768, 1920×1080) sin desborde horizontal.
-- **Pendiente:** publicar en master (espera "Sí, llévalo a master"), actualizar la bitácora, y luego el envío automático por n8n cuando Meta deje entrar.
+- **Modo "de 5 en 5" (agregado después):** `MENSAJES_TAMANO_GRUPO = 5` en `includes/mensajes.php`. El grupo actual empieza en el momento guardado en `$_SESSION['mensajes_grupo'][campaña]` (al abrir la campaña, o al tocar "Seguir con otras N") y cuenta los `enviado` con `momento >=` ese instante (las saltadas no cuentan). Con 5 enviadas aparece el descanso ("Seguir con otras N" / "Terminar por hoy"). Al cerrar sesión o volver otro día, empieza un grupo nuevo. Acción POST `nuevo_grupo`. Pruebas: 6 más en `tests/mensajes_test.php`. Probado en 6 tamaños. **Falta publicarlo** (espera "Sí, llévalo a master") y sumarlo a la bitácora.
+- **Pendiente:** el módulo base ya está en master y en la bitácora; falta el envío automático por n8n cuando Meta deje entrar.
 
 ## 8 de octubre, 2026 (Login sin scroll vertical)
 
