@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'saltado'  => mensajes_marcar($campanaPost, $cliente, 'saltado', $quien),
             'deshacer' => mensajes_deshacer($campanaPost, $cliente),
             'permiso'  => mensajes_poner_permiso($cliente, (string) ($_POST['valor'] ?? '-'), $quien),
+            'nuevo_grupo' => mensajes_nuevo_grupo($campanaPost),
             default    => false,
         };
     }
@@ -114,6 +115,11 @@ require __DIR__ . '/includes/cabecera.php';
 <?php else:
     $nombreCampana = MENSAJES_CAMPANAS[$campana];
     $siguiente = $cola[0] ?? null;
+
+    // Modo "de 5 en 5": cuántos se enviaron en el grupo actual y si ya toca descansar.
+    $enGrupo    = min(MENSAJES_TAMANO_GRUPO, mensajes_enviadas_desde($campana, mensajes_grupo_desde($campana)));
+    $grupoLleno = $enGrupo >= MENSAJES_TAMANO_GRUPO && $siguiente !== null;
+    $proximas   = min(MENSAJES_TAMANO_GRUPO, count($cola));
     $porcentaje = $resumen['elegibles'] > 0 ? (int) round($resumen['atendidas'] / $resumen['elegibles'] * 100) : 100;
     $atendidas = array_values(array_filter($estado, static fn(array $c): bool => $c['envio'] !== '' || $c['permiso'] !== ''));
     $sinCelular = array_values(array_filter($estado, static fn(array $c): bool => !$c['valido']));
@@ -141,7 +147,20 @@ require __DIR__ . '/includes/cabecera.php';
     <small><?= numero($resumen['atendidas']) ?> de <?= numero($resumen['elegibles']) ?> atendidas</small>
   </div>
 
-  <?php if ($siguiente !== null): ?>
+  <p class="msg-grupo" aria-label="Grupo actual: <?= $enGrupo ?> de <?= MENSAJES_TAMANO_GRUPO ?> enviadas">
+    <span class="msg-pips" aria-hidden="true"><?php for ($i = 1; $i <= MENSAJES_TAMANO_GRUPO; $i++): ?><i<?= $i <= $enGrupo ? ' class="on"' : '' ?>></i><?php endfor; ?></span>
+    <span>Grupo de <?= MENSAJES_TAMANO_GRUPO ?>: <strong><?= $enGrupo ?></strong> de <?= MENSAJES_TAMANO_GRUPO ?></span>
+  </p>
+
+  <?php if ($grupoLleno): ?>
+    <section class="panel msg-destacado" aria-live="polite">
+      <span class="msg-chip listo">Grupo completo</span>
+      <h2 class="msg-titulo">Ya enviaste <?= MENSAJES_TAMANO_GRUPO ?> mensajes</h2>
+      <p class="msg-texto">Descansa un momento. Quedan <strong><?= numero(count($cola)) ?></strong> <?= count($cola) === 1 ? 'clienta' : 'clientas' ?> por escribir. Cuando quieras, sigues con otro grupo.</p>
+      <?= $accionForm('nuevo_grupo', '', 'Seguir con ' . ($proximas === 1 ? 'la última' : 'otras ' . $proximas), 'boton') ?>
+      <a class="boton fantasma" href="mensajes.php">Terminar por hoy</a>
+    </section>
+  <?php elseif ($siguiente !== null): ?>
     <section class="panel msg-destacado" aria-live="polite">
       <small class="msg-sigue">Sigue</small>
       <h2 class="msg-titulo"><?= e($siguiente['nombre']) ?></h2>

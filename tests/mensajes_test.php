@@ -67,6 +67,24 @@ verificar(!mensajes_marcar('bienvenida', $id['Ana Uno'], 'cualquiera'), 'un esta
 verificar(!mensajes_poner_permiso($id['Ana Uno'], 'quizás'), 'un permiso inválido se rechaza');
 verificar(!mensajes_poner_permiso('no-existe', 'si'), 'permiso para una clienta que no existe se rechaza');
 
+/* --- Modo "de 5 en 5": el grupo cuenta lo enviado desde que empezó --- */
+verificar(MENSAJES_TAMANO_GRUPO === 5, 'el grupo es de 5 mensajes');
+db()->exec('DELETE FROM mensajes_envios');
+for ($i = 1; $i <= 7; $i++) {
+    agregar_cliente('Grupo ' . $i, '30055500' . str_pad((string) $i, 2, '0', STR_PAD_LEFT), '');
+}
+$ids = array_column(array_filter(leer_clientes(), fn($c) => str_starts_with($c['nombre'], 'Grupo ')), 'id');
+foreach (array_slice($ids, 0, 3) as $cid) { mensajes_marcar('bienvenida', $cid, 'enviado', 'Gina'); }
+mensajes_marcar('bienvenida', $ids[3], 'saltado', 'Gina');
+$_SESSION = [];
+$desde = mensajes_grupo_desde('bienvenida');
+verificar($desde !== '' && mensajes_grupo_desde('bienvenida') === $desde, 'el grupo arranca una vez y no se mueve solo');
+verificar(mensajes_enviadas_desde('bienvenida', '2000-01-01T00:00:00-05:00') === 3, 'cuenta las 3 enviadas (la saltada no cuenta)');
+verificar(mensajes_enviadas_desde('bienvenida', '2999-01-01T00:00:00-05:00') === 0, 'un grupo que empieza después no cuenta las anteriores');
+verificar(mensajes_nuevo_grupo('bienvenida'), 'empezar un grupo nuevo funciona');
+verificar(!mensajes_nuevo_grupo('inventada'), 'no se puede empezar un grupo de una campaña que no existe');
+verificar(mensajes_enviadas_desde('bienvenida', date('c', time() + 3600)) === 0, 'al empezar un grupo nuevo el contador vuelve a cero');
+
 /* --- Borrar a la clienta limpia sus marcas --- */
 eliminar_clientes([$id['Ana Uno']]);
 $huerfanas = (int) db()->query("SELECT COUNT(*) FROM mensajes_envios WHERE cliente_id = " . db()->quote($id['Ana Uno']))->fetchColumn();

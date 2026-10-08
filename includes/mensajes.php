@@ -22,6 +22,11 @@ require_once __DIR__ . '/db.php';
 
 const MENSAJES_CAMPANAS = ['bienvenida' => 'Bienvenida'];
 
+/* Modo "de 5 en 5": después de enviar este número de mensajes la pantalla hace una
+   pausa y deja elegir entre seguir con otro grupo o terminar por hoy. Ir de a pocas
+   evita que WhatsApp tome por spam los primeros envíos de un número nuevo. */
+const MENSAJES_TAMANO_GRUPO = 5;
+
 /** Primer nombre para el saludo ("Valentina Gómez" → "Valentina"). */
 function mensajes_primer_nombre(string $nombre): string
 {
@@ -166,4 +171,38 @@ function mensajes_poner_permiso(string $clienteId, string $permiso, string $por 
          ON DUPLICATE KEY UPDATE permiso = VALUES(permiso), actualizado = VALUES(actualizado), por = VALUES(por)'
     )->execute([$clienteId, $permiso, date('c'), mb_substr($por, 0, 150)]);
     return true;
+}
+
+/* ---------------------------------------------------------
+   Grupos de 5 (por sesión de ingreso)
+   ---------------------------------------------------------
+   El grupo actual empieza en el momento guardado en la sesión y cuenta los mensajes
+   enviados desde entonces. Al cerrar sesión o volver otro día, empieza un grupo nuevo.
+   --------------------------------------------------------- */
+
+/** Momento (ISO) en que empezó el grupo actual; si no hay, empieza ahora. */
+function mensajes_grupo_desde(string $campana): string
+{
+    if (empty($_SESSION['mensajes_grupo'][$campana])) {
+        $_SESSION['mensajes_grupo'][$campana] = date('c');
+    }
+    return (string) $_SESSION['mensajes_grupo'][$campana];
+}
+
+/** Empieza un grupo nuevo (ahora). */
+function mensajes_nuevo_grupo(string $campana): bool
+{
+    if (!mensajes_campana_valida($campana)) {
+        return false;
+    }
+    $_SESSION['mensajes_grupo'][$campana] = date('c');
+    return true;
+}
+
+/** Cuántos mensajes se enviaron en esta campaña desde el momento $desde. */
+function mensajes_enviadas_desde(string $campana, string $desde): int
+{
+    $st = db()->prepare("SELECT COUNT(*) FROM mensajes_envios WHERE campana = ? AND estado = 'enviado' AND momento >= ?");
+    $st->execute([$campana, $desde]);
+    return (int) $st->fetchColumn();
 }
