@@ -2,6 +2,18 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 8 de octubre, 2026 (Módulo Mensajes: bienvenida por WhatsApp)
+
+Sebastián pidió un botón masivo para mandar la bienvenida del nuevo WhatsApp (+57 305 241 8417) a las clientas, con el enlace del catálogo y la pregunta de si quieren recibir mensajes automáticos de promociones y novedades. Se mostraron 3 ubicaciones (A tarjeta en Clientes, B botón en la barra, C módulo propio) y eligió **C**.
+- **Qué hay:** casilla "Mensajes" en el Inicio → `mensajes.php` (lista de campañas) → `mensajes.php?c=bienvenida` (cola de envío). Lógica en `includes/mensajes.php`; script `assets/js/mensajes.js`; estilos `.msg-*` al final de `enrisate.css`; 31 pruebas en `tests/mensajes_test.php`.
+- **Envío asistido, no automático:** Meta aún no deja conectar la API. Por cada clienta, "Abrir WhatsApp y enviar" abre `wa.me` con el texto escrito y, a la vez, la marca como enviada (fetch) y pasa a la siguiente. Sin JS queda "Ya la envié". "Enviada" significa "se abrió WhatsApp", no que WhatsApp confirmara la entrega.
+- **Permiso:** el texto pregunta "¿Quieres que te enviemos mensajes automáticos con promociones y otras novedades? Responde SÍ o NO". Gina anota la respuesta con "Dijo SÍ / Dijo NO"; a quien dice NO ya no se le escribe. Esto es lo que deberá respetar el envío automático de n8n.
+- **Datos:** dos tablas nuevas en `storage/esquema.sql` (`mensajes_permisos`, `mensajes_envios`), con `ON DELETE CASCADE` hacia `clientes`; el contenedor las crea solo al arrancar (CREATE IF NOT EXISTS). No se tocó ninguna tabla existente.
+- **Texto y enlace:** `mensaje_bienvenida()` toma el número de `APP_WHATSAPP` y el enlace de la nueva `APP_URL_CATALOGO` (config.php). Si hay dominio propio, se cambia solo ahí.
+- **Solo celulares válidos:** 10 dígitos que empiezan en 3. Fijos y números cortos salen en "Sin celular válido".
+- **Probado:** 21/21 archivos de pruebas OK; flujo completo en el navegador (abrir, ya la envié, saltar, Sí/No, deshacer, token falso → 403); 6 tamaños (360×640, 390×844, celular acostado, tablet, 1366×768, 1920×1080) sin desborde horizontal.
+- **Pendiente:** publicar en master (espera "Sí, llévalo a master"), actualizar la bitácora, y luego el envío automático por n8n cuando Meta deje entrar.
+
 ## 8 de octubre, 2026 (Login sin scroll vertical)
 
 Sebastián reportó que el formulario del login hacía scroll vertical y debía quedar fijo. Se mostraron 2 propuestas (A compacta, B dos columnas) con capturas reales y eligió **A**.

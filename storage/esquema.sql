@@ -144,6 +144,32 @@ CREATE TABLE IF NOT EXISTS `limite_pedidos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ---------------------------------------------------------
+-- Mensajes a las clientas (módulo "Mensajes", includes/mensajes.php).
+--  · mensajes_permisos: si la clienta dijo que SÍ o que NO quiere recibir
+--    mensajes automáticos de promociones y novedades. Sin fila = no ha respondido.
+--  · mensajes_envios: a quién ya se le atendió cada campaña (enviado o saltado),
+--    para no escribirle dos veces. Si se borra la clienta, se borran sus filas.
+-- ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mensajes_permisos` (
+  `cliente_id` varchar(64) NOT NULL,
+  `permiso` enum('si','no') NOT NULL,
+  `actualizado` varchar(40) NOT NULL DEFAULT '',
+  `por` varchar(150) NOT NULL DEFAULT '',
+  PRIMARY KEY (`cliente_id`),
+  CONSTRAINT `mensajes_permisos_cliente` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `mensajes_envios` (
+  `campana` varchar(40) NOT NULL,
+  `cliente_id` varchar(64) NOT NULL,
+  `estado` enum('enviado','saltado') NOT NULL,
+  `momento` varchar(40) NOT NULL DEFAULT '',
+  `por` varchar(150) NOT NULL DEFAULT '',
+  PRIMARY KEY (`campana`,`cliente_id`),
+  CONSTRAINT `mensajes_envios_cliente` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ---------------------------------------------------------
 -- Ingreso al panel: usuarios con verificación en dos pasos
 -- (contraseña + código de 6 dígitos de una app autenticadora).
 -- Ver includes/usuarios.php e includes/auth.php.

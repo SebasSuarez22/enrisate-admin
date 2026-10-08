@@ -41,6 +41,10 @@ define('ADMIN_HASH', getenv('ADMIN_HASH') ?: '$2y$12$050ePq4.ZgMGoIKURU/VouuVfJv
 // cambia solo este valor: el catálogo arma todos sus enlaces a partir de aquí.
 const APP_WHATSAPP = '573052418417';
 
+// Enlace oficial del catálogo público: es el que va en el mensaje de bienvenida
+// (módulo Mensajes). Cuando haya dominio propio, cambia solo este valor.
+const APP_URL_CATALOGO = 'https://enrisate-admin-production.up.railway.app/catalogo-publico.php';
+
 // Usuario de Instagram, sin la @ y sin la URL: el catálogo público arma el
 // enlace con esto en el pie de página.
 const APP_INSTAGRAM = 'enrisate';
