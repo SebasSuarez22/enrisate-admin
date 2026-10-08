@@ -2,6 +2,15 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 8 de octubre, 2026 (Login sin scroll vertical)
+
+Sebastián reportó que el formulario del login hacía scroll vertical y debía quedar fijo. Se mostraron 2 propuestas (A compacta, B dos columnas) con capturas reales y eligió **A**.
+- **Causa:** la tarjeta mide ~600 px y con márgenes pide ~660 px de alto. Con ventanas más bajas (portátil 1366×768 con barra del navegador ≈ 600-650 px, celulares pequeños y celulares acostados) la página se desplazaba: 6 de 10 tamaños probados.
+- **Arreglo (solo CSS, `assets/css/enrisate.css`, bloque "Ingreso en pantallas bajas"):** escalones por altura (≤700, ≤600, ≤480 y ≤400 px) que compactan logo, espacios, títulos y campos. Todo acotado a `.entrada` (solo las pantallas de ingreso) para no tocar `.campo` / `.boton` del panel. Ningún control baja de 38 px de alto. No cambia HTML, JS ni nada de seguridad (2FA, límites, sesiones, mensajes de error).
+- **Medido:** login, código, código de respaldo y contraseña nueva, sin scroll en 8-13 tamaños (320×568 a 1920×1080, celular acostado 667×375 y 844×390, 568×320, tablet y portátiles 1366×650 y 1280×600). 20/20 archivos de prueba OK.
+- **Pendiente:** la pantalla de "conectar el celular" (`configurar-verificacion.php`, con el QR) mide 585-747 px y sigue con scroll en pantallas bajas (portátil 1366×650 +86, celular acostado +215/+230). Es de una sola vez por persona; falta decidir cómo (por ejemplo, QR y clave lado a lado en pantallas anchas y bajas). Con mockup previo, por ser parte del login.
+- **Salvaguarda:** por debajo de ~320 px de alto o con zoom ≥ 200 % la página aún puede desplazarse, a propósito, para que ningún botón quede inalcanzable.
+
 ## 6 de octubre, 2026 (Número de WhatsApp Business)
 
 Sebastián dio el WhatsApp Business de Enrísate: **+57 305 241 8417**. Reemplaza al número que se usaba antes (el de Gina).

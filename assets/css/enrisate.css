@@ -1053,6 +1053,73 @@ button.salir { background: transparent; cursor: pointer; }
   .wordmark { font-size: 28px; }
 }
 
+/* ---------------------------------------------------------
+   Ingreso en pantallas bajas: la tarjeta se compacta para que la página
+   no se desplace.
+   La tarjeta mide unos 600px y con sus márgenes pide unos 660px de alto;
+   en portátiles con la barra del navegador (1366×768 deja unos 600-650px),
+   celulares pequeños y celulares acostados, la página hacía scroll. Mismo
+   diseño de una sola columna, por escalones de altura. Todo va acotado a
+   .entrada (solo las pantallas de ingreso) para no tocar los formularios
+   del panel, que comparten .campo y .boton. Ningún control baja de 38px
+   de alto. Si la pantalla es aún más baja o se amplía al 200 %, la página
+   se puede desplazar: así nada queda inalcanzable.
+   --------------------------------------------------------- */
+@media (max-height: 700px) {
+  .entrada { padding: 16px 20px; }
+  .entrada .tarjeta { padding: 26px 30px 18px; }
+  .entrada .marca:not(.marca-mini) { gap: 8px; margin-bottom: 18px; }
+  .entrada .marca:not(.marca-mini) img { width: 38px; height: 38px; }
+  .entrada .marca:not(.marca-mini) .wordmark { font-size: 28px; }
+  .entrada .marca-mini { margin-bottom: 14px; }
+  .entrada .pasos-ingreso { margin-bottom: 16px; }
+  .entrada .campo { margin-bottom: 12px; }
+  .entrada .campo label { margin-bottom: 5px; }
+  .entrada .campo input:not(.codigo-grande) { min-height: 42px; padding-block: 9px; }
+  .entrada .boton { min-height: 42px; margin-top: 4px; }
+  .entrada .nota-ingreso { margin-top: 9px; }
+}
+@media (max-height: 600px) {
+  .entrada .tagline { display: none; }
+  .entrada .tarjeta { padding: 20px 26px 14px; }
+  .entrada .marca:not(.marca-mini) { gap: 6px; margin-bottom: 14px; }
+  .entrada .marca:not(.marca-mini) img { width: 32px; height: 32px; }
+  .entrada .marca:not(.marca-mini) .wordmark { font-size: 24px; }
+  .entrada .pasos-ingreso { margin-bottom: 12px; }
+  .entrada .campo { margin-bottom: 10px; }
+}
+@media (max-height: 480px) {
+  .entrada { padding: 10px 20px; }
+  .entrada .tarjeta { padding: 14px 24px 12px; }
+  .entrada .marca:not(.marca-mini) { display: flex; flex-direction: row; justify-content: center; gap: 10px; margin-bottom: 10px; }
+  .entrada .marca:not(.marca-mini) img { width: 24px; height: 24px; }
+  .entrada .marca:not(.marca-mini) .wordmark { font-size: 19px; }
+  .entrada .marca-mini { margin-bottom: 10px; }
+  .entrada .pasos-ingreso { margin-bottom: 8px; gap: 5px; }
+  .entrada .pasos-ingreso li { gap: 4px; }
+  .entrada .campo { margin-bottom: 7px; }
+  .entrada .campo label { margin-bottom: 3px; }
+  .entrada .campo input:not(.codigo-grande) { min-height: 38px; padding-block: 7px; }
+  .entrada .boton { min-height: 40px; margin-top: 2px; padding-block: 8px; }
+  .entrada .nota-ingreso { margin-top: 6px; }
+  .entrada .tarjeta .pie { display: none; }
+  /* Pantallas de código, respaldo y contraseña nueva: más texto que el login */
+  .entrada .titulo-ingreso { font-size: 18px; margin-bottom: 2px; }
+  .entrada .sub-ingreso { font-size: 12.5px; line-height: 1.35; margin-bottom: 8px; }
+  .entrada input.codigo-grande.compacto,
+  .entrada input.codigo-grande { min-height: 44px; font-size: 22px; }
+  .entrada .reloj { margin-block: 6px; }
+  .entrada .enlace-ingreso { margin-top: 4px; padding-block: 3px; }
+  .entrada .otras-opciones { margin-top: 8px; }
+}
+@media (max-height: 400px) {
+  .entrada { padding: 6px 20px; }
+  .entrada .tarjeta { padding: 12px 24px 10px; }
+  .entrada .marca-mini { margin-bottom: 6px; }
+  .entrada .pasos-ingreso { margin-bottom: 6px; }
+  .entrada .nota-ingreso { margin-top: 4px; font-size: 11.5px; line-height: 1.35; }
+}
+
 /* =========================================================
    Facturación
    ========================================================= */
