@@ -101,7 +101,7 @@ $token = csrf_token();
 vista_ingreso_abrir('Conecta tu celular', pasos_primera_vez(), count(pasos_primera_vez()) - 1, $rechazo);
 ?>
     <h1 class="titulo-ingreso">Conecta tu celular</h1>
-    <p class="sub-ingreso">Solo esta vez. Instala <strong>Google Authenticator</strong> (gratis, en Play Store o App Store) y agrega tu cuenta.</p>
+    <p class="sub-ingreso sub-conectar">Solo esta vez. Instala <strong>Google Authenticator</strong> (gratis, en Play Store o App Store) y agrega tu cuenta.</p>
     <?php vista_aviso($error); ?>
 
     <!-- En el celular: botón que abre la app con la cuenta ya cargada -->
@@ -117,13 +117,17 @@ vista_ingreso_abrir('Conecta tu celular', pasos_primera_vez(), count(pasos_prime
       <p>En la app toca <strong>“+”</strong> → <strong>“Escanear un código QR”</strong> y apunta a este código.</p>
     </div>
 
-    <div class="clave-config">
-      <span class="clave-titulo">¿No puedes escanear? Escribe o pega esta clave en la app (“+” → “Ingresar clave de configuración”):</span>
-      <div class="clave-fila">
-        <code id="claveConfig"><?= e(totp_clave_legible($b32)) ?></code>
-        <button type="button" class="salir" data-copiar="claveConfig" data-valor="<?= e($b32) ?>">Copiar</button>
+    <!-- La clave sigue disponible para quien no puede escanear; va plegada para que la pantalla quepa sin scroll -->
+    <details class="clave-plegable">
+      <summary>¿No puedes escanear? Usa la clave</summary>
+      <div class="clave-config">
+        <span class="clave-titulo">Escribe o pega esta clave en la app (“+” → “Ingresar clave de configuración”):</span>
+        <div class="clave-fila">
+          <code id="claveConfig"><?= e(totp_clave_legible($b32)) ?></code>
+          <button type="button" class="salir" data-copiar="claveConfig" data-valor="<?= e($b32) ?>">Copiar</button>
+        </div>
       </div>
-    </div>
+    </details>
 
     <form method="post" action="configurar-verificacion.php" novalidate data-codigo>
       <input type="hidden" name="csrf" value="<?= e($token) ?>">
