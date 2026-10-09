@@ -67,6 +67,41 @@ function api_autorizado(string $recibido, string $esperado): bool
     return $esperado !== '' && $recibido !== '' && hash_equals($esperado, $recibido);
 }
 
+/**
+ * Responde en JSON y termina. Lo usan los endpoints api-*.php.
+ * Sin JSON_UNESCAPED_SLASHES las direcciones de las fotos saldrían con "\/".
+ */
+function api_responder(int $codigo, array $cuerpo): never
+{
+    http_response_code($codigo);
+    echo json_encode($cuerpo, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+/**
+ * Lo primero que hace cada endpoint de la API: respuesta JSON sin copia
+ * guardada, solo GET y llave válida. Si algo no cumple, responde y termina.
+ */
+function api_proteger(): void
+{
+    header('Content-Type: application/json; charset=utf-8');
+    // Precios, compras y saldos cambian: ni el navegador ni un proxy guardan copia.
+    header('Cache-Control: no-store');
+
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+        header('Allow: GET');
+        api_responder(405, ['ok' => false, 'error' => 'Método no permitido. Usa GET.']);
+    }
+
+    $esperado = api_token_configurado();
+    if ($esperado === '') {
+        api_responder(503, ['ok' => false, 'error' => 'La API no está activada en este servidor.']);
+    }
+    if (!api_autorizado(api_token_de_peticion($_SERVER), $esperado)) {
+        api_responder(401, ['ok' => false, 'error' => 'Falta la llave de la API o no es válida.']);
+    }
+}
+
 /** Texto para comparar sin mayúsculas, tildes ni espacios de más ("Champú  Rizos" → "champu rizos"). */
 function api_normalizar(string $s): string
 {
