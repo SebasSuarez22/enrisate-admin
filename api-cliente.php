@@ -8,8 +8,10 @@ require_once __DIR__ . '/includes/pedidos.php';
 /* =========================================================
    API de una clienta (solo lectura) · la consulta el bot de WhatsApp en n8n
    =========================================================
-   GET api-cliente.php?telefono=whatsapp:+573001234567
-   Cabecera obligatoria: X-Api-Key: <API_TOKEN>  (o Authorization: Bearer <API_TOKEN>)
+   GET api-cliente.php
+   Cabeceras: X-Api-Key: <API_TOKEN>  (o Authorization: Bearer <API_TOKEN>)
+              X-Cliente-Telefono: whatsapp:+573001234567
+   (también acepta ?telefono=…, pero así el número queda en el registro de visitas)
 
    Devuelve lo que esa clienta compra y cada cuánto: historial, producto
    favorito, si ya le toca reponer, lo que debe en cuotas y su saldo a favor.
@@ -21,8 +23,7 @@ require_once __DIR__ . '/includes/pedidos.php';
 
 api_proteger();
 
-$crudo    = is_string($_GET['telefono'] ?? null) ? $_GET['telefono'] : '';
-$telefono = api_telefono($crudo);
+$telefono = api_telefono(api_telefono_de_peticion($_SERVER, $_GET));
 if ($telefono === '') {
     api_responder(400, ['ok' => false, 'error' => 'Falta el teléfono de la clienta o no es válido.']);
 }
