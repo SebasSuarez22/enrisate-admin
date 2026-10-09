@@ -68,13 +68,21 @@ function api_autorizado(string $recibido, string $esperado): bool
 }
 
 /**
- * Responde en JSON y termina. Lo usan los endpoints api-*.php.
- * Sin JSON_UNESCAPED_SLASHES las direcciones de las fotos saldrían con "\/".
+ * El JSON de una respuesta. Sin JSON_UNESCAPED_SLASHES las direcciones de las
+ * fotos saldrían con "\/". Con JSON_INVALID_UTF8_SUBSTITUTE, un nombre con un
+ * carácter dañado (pegado de otro programa) sale con "�" en vez de tumbar toda
+ * la respuesta: sin eso json_encode devolvía false y el bot recibía un 200 vacío.
  */
+function api_json(array $cuerpo): string
+{
+    return (string) json_encode($cuerpo, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+}
+
+/** Responde en JSON y termina. Lo usan los endpoints api-*.php. */
 function api_responder(int $codigo, array $cuerpo): never
 {
     http_response_code($codigo);
-    echo json_encode($cuerpo, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo api_json($cuerpo);
     exit;
 }
 
@@ -102,32 +110,87 @@ function api_proteger(): void
     }
 }
 
-/** Texto para comparar sin mayúsculas, tildes ni espacios de más ("Champú  Rizos" → "champu rizos"). */
+/**
+ * Texto para comparar sin mayúsculas, tildes, signos ni espacios de más
+ * ("¿Champú,  Rizos?" → "champu rizos"; "ET-01" → "et 01"). Se aplica igual a
+ * lo que se busca y a donde se busca, así los dos lados quedan parejos.
+ */
 function api_normalizar(string $s): string
 {
-    $s = mb_strtolower(trim($s), 'UTF-8');
+    $s = mb_strtolower($s, 'UTF-8');
     $s = strtr($s, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n']);
-    return (string) preg_replace('/\s+/u', ' ', $s);
+    $s = (string) preg_replace('/[^\p{L}\p{N}]+/u', ' ', $s);
+    return trim($s);
+}
+
+/**
+ * Palabras que no dicen qué producto se busca. El bot pasa lo que escribe la
+ * clienta ("hola, ¿tienen shampoo para rizos?"): sin quitarlas, "tienen" y
+ * "para" tendrían que aparecer en el producto y no saldría nada.
+ */
+const API_PALABRAS_VACIAS = [
+    'a', 'al', 'algo', 'algun', 'alguna', 'alguno', 'buenas', 'buenos', 'busco', 'como', 'con', 'cual', 'cuales',
+    'cuanto', 'cuesta', 'cuestan', 'de', 'del', 'dias', 'el', 'en', 'es', 'esta', 'este', 'favor', 'hay', 'hola',
+    'la', 'las', 'le', 'les', 'lo', 'los', 'mas', 'me', 'mi', 'mis', 'muy', 'necesito', 'noches', 'o', 'para',
+    'por', 'porfa', 'precio', 'precios', 'que', 'quiero', 'quisiera', 'se', 'si', 'sin', 'son', 'su', 'sus',
+    'tardes', 'te', 'tendran', 'tengo', 'tiene', 'tienen', 'tienes', 'tu', 'tus', 'un', 'una', 'unas', 'unos',
+    'vale', 'valen', 'vende', 'venden', 'y', 'ya',
+];
+
+/**
+ * Las palabras útiles de una búsqueda: normalizadas, sin palabras vacías, sin
+ * repetir y en singular aproximado ("shampoos" → "shampoo", "acondicionadores"
+ * → "acondicionador", "cremas" → "crema"). Como después se busca por
+ * pedazo de texto, recortar el plural solo puede encontrar más, nunca menos.
+ */
+function api_palabras_busqueda(string $q): array
+{
+    $palabras = [];
+    foreach (explode(' ', api_normalizar($q)) as $p) {
+        if ($p === '' || in_array($p, API_PALABRAS_VACIAS, true)) {
+            continue;
+        }
+        if (strlen($p) >= 4 && !ctype_digit($p)) {
+            if (str_ends_with($p, 'es') && strlen($p) >= 6) {
+                $p = substr($p, 0, -2);
+            } elseif (str_ends_with($p, 's')) {
+                $p = substr($p, 0, -1);
+            }
+        }
+        if (!in_array($p, $palabras, true)) {
+            $palabras[] = $p;
+        }
+    }
+    // Lista y no claves de un arreglo: array_keys() convierte "3" en el número 3, y con
+    // strict_types str_contains() se caía con TypeError en cualquier búsqueda con números.
+    return $palabras;
 }
 
 /**
  * Filtra el catálogo. Filtros (todos opcionales, se combinan):
- *   q           palabras a buscar en marca, nombre, categoría, descripción y SKU;
- *               deben aparecer TODAS ("shampoo rizos" no trae acondicionadores)
+ *   q           lo que se busca, en marca, nombre, categoría, descripción y SKU
  *   sku         SKU exacto (sin importar mayúsculas)
  *   marca       marca exacta (sin importar mayúsculas ni tildes)
  *   categoria   categoría exacta (la guardada o, si no tiene, la deducida del nombre)
- * Devuelve los productos ordenados por marca y nombre.
+ * $modo 'todas': cada palabra útil de q debe aparecer ("shampoo rizos" no trae
+ * acondicionadores). 'algunas': basta una, y salen primero los que tienen más.
+ * Una q que no tiene ninguna palabra útil ("hola") no encuentra nada (sin q, todo).
+ * Devuelve los productos ordenados por marca y nombre (en 'algunas', antes por coincidencias).
  */
-function api_buscar_productos(array $productos, array $filtros): array
+function api_buscar_productos(array $productos, array $filtros, string $modo = 'todas'): array
 {
-    $q         = api_normalizar((string) ($filtros['q'] ?? ''));
-    $palabras  = $q === '' ? [] : explode(' ', $q);
+    $q         = trim((string) ($filtros['q'] ?? ''));
+    $palabras  = $q === '' ? [] : api_palabras_busqueda($q);
     $sku       = strtoupper(trim((string) ($filtros['sku'] ?? '')));
     $marca     = api_normalizar((string) ($filtros['marca'] ?? ''));
     $categoria = api_normalizar((string) ($filtros['categoria'] ?? ''));
 
+    if ($q !== '' && !$palabras) {
+        return [];
+    }
+
     $encontrados = [];
+    $aciertos    = [];
     foreach ($productos as $p) {
         $cat = categoria_de($p);
         if ($sku !== '' && strtoupper((string) $p['sku']) !== $sku) {
@@ -139,20 +202,26 @@ function api_buscar_productos(array $productos, array $filtros): array
         if ($categoria !== '' && api_normalizar($cat) !== $categoria) {
             continue;
         }
+        $n = 0;
         if ($palabras) {
             $texto = api_normalizar(implode(' ', [
                 $p['marca'], $p['nombre'], $cat, $p['descripcion'] ?? '', $p['sku'],
             ]));
             foreach ($palabras as $palabra) {
-                if (!str_contains($texto, $palabra)) {
-                    continue 2;
+                if (str_contains($texto, $palabra)) {
+                    $n++;
                 }
             }
+            if ($n === 0 || ($modo === 'todas' && $n < count($palabras))) {
+                continue;
+            }
         }
+        $aciertos[(string) $p['sku']] = $n;
         $encontrados[] = $p;
     }
 
-    usort($encontrados, fn($a, $b) => strcasecmp($a['marca'], $b['marca']) ?: strcasecmp($a['nombre'], $b['nombre']));
+    usort($encontrados, fn($a, $b) => ($modo === 'algunas' ? $aciertos[(string) $b['sku']] <=> $aciertos[(string) $a['sku']] : 0)
+        ?: strcasecmp($a['marca'], $b['marca']) ?: strcasecmp($a['nombre'], $b['nombre']));
     return $encontrados;
 }
 
@@ -205,15 +274,29 @@ function api_promo(): array
     ];
 }
 
-/** La respuesta completa de una consulta al catálogo. */
+/**
+ * La respuesta completa de una consulta al catálogo. Primero busca productos
+ * que tengan TODAS las palabras; si no hay ninguno, los que tienen ALGUNA
+ * (ordenados por cuántas tienen). `coincidencia` le dice al bot cuál pasó,
+ * para que diga "no tengo justo eso, pero mira estos" en vez de afirmar.
+ */
 function api_respuesta_catalogo(array $productos, array $filtros, string $base): array
 {
-    $encontrados = api_buscar_productos($productos, $filtros);
-    $limite      = api_limite($filtros['limite'] ?? null);
-    $mostrados   = array_slice($encontrados, 0, $limite);
+    $coincidencia = 'todas';
+    $encontrados  = api_buscar_productos($productos, $filtros, 'todas');
+    if (!$encontrados && count(api_palabras_busqueda((string) ($filtros['q'] ?? ''))) > 1) {
+        $encontrados  = api_buscar_productos($productos, $filtros, 'algunas');
+        $coincidencia = 'algunas';
+    }
+    if (!$encontrados) {
+        $coincidencia = 'ninguna';
+    }
+    $limite    = api_limite($filtros['limite'] ?? null);
+    $mostrados = array_slice($encontrados, 0, $limite);
 
     return [
         'ok'           => true,
+        'coincidencia' => $coincidencia,
         'total'        => count($encontrados),
         'mostrados'    => count($mostrados),
         'productos'    => array_map(

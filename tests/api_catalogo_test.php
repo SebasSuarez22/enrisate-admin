@@ -56,6 +56,36 @@ verificar($skus(api_buscar_productos($catalogo, ['marca' => 'la pocion'])) === [
 verificar($skus(api_buscar_productos($catalogo, ['categoria' => 'shampoo'])) === ['ETN-01', 'ORB-03'], 'categoría exacta');
 verificar($skus(api_buscar_productos($catalogo, ['categoria' => 'Crema'])) === ['POC-07'], 'categoría deducida del nombre cuenta');
 
+/* --- Lo que escribe una clienta de verdad (el bot pasa su mensaje tal cual) --- */
+verificar($skus(api_buscar_productos($catalogo, ['q' => '¿Tienen shampoo para rizos?'])) === ['ETN-01'],
+    'una frase con signos y palabras vacías ("tienen", "para") encuentra el producto');
+verificar($skus(api_buscar_productos($catalogo, ['q' => 'shampoos'])) === ['ETN-01', 'ORB-03'], 'el plural encuentra el singular (shampoos)');
+verificar($skus(api_buscar_productos($catalogo, ['q' => 'acondicionadores'])) === ['ETN-02'], 'plural en -es (acondicionadores)');
+verificar($skus(api_buscar_productos($catalogo, ['q' => 'cremas'])) === ['POC-07'], 'plural en -s (cremas)');
+verificar($skus(api_buscar_productos($catalogo, ['q' => 'etn-01'])) === ['ETN-01'], 'el SKU con guion también se encuentra escrito en la frase');
+verificar(api_buscar_productos($catalogo, ['q' => 'hola, buenas tardes']) === [], 'un saludo sin producto no trae todo el catálogo: no trae nada');
+verificar(api_palabras_busqueda('Hola ¿cuánto cuestan los Shampoos?') === ['shampoo'], 'solo quedan las palabras útiles, en singular');
+verificar(api_palabras_busqueda('kit 3 en 1') === ['kit', '3', '1'], 'los números quedan como texto y no se recortan');
+$conNumero = [['sku' => 'KIT-1', 'marca' => 'M', 'nombre' => 'Kit 3 en 1 de 450 ml', 'categoria' => 'Kit', 'descripcion' => '', 'precio' => 1, 'costo' => 1, 'stock' => 0]];
+verificar(count(api_buscar_productos($conNumero, ['q' => 'kit 3 en 1'])) === 1 && count(api_buscar_productos($conNumero, ['q' => '450 ml'])) === 1,
+    'buscar con números no se cae (antes: TypeError → error 500) y los encuentra');
+
+$r = api_respuesta_catalogo($catalogo, ['q' => 'shampoo rizos'], 'https://x.test');
+verificar($r['coincidencia'] === 'todas' && $r['total'] === 1, 'con todas las palabras: coincidencia "todas"');
+$r = api_respuesta_catalogo($catalogo, ['q' => 'acondicionador de coco'], 'https://x.test');
+verificar($r['coincidencia'] === 'algunas' && array_column($r['productos'], 'sku') === ['ETN-02', 'POC-07'],
+    'sin un producto con todo, trae los que tienen alguna palabra (coincidencia "algunas")');
+$r = api_respuesta_catalogo($catalogo, ['q' => 'gelatina'], 'https://x.test');
+verificar($r['coincidencia'] === 'ninguna' && $r['total'] === 0 && $r['productos'] === [], 'sin nada parecido: coincidencia "ninguna"');
+$r = api_respuesta_catalogo($catalogo, [], 'https://x.test');
+verificar($r['coincidencia'] === 'todas' && $r['total'] === 4, 'sin búsqueda: todo el catálogo');
+
+/* --- JSON a prueba de caracteres dañados --- */
+$roto = api_json(['nombre' => "Crema \xB1 rota"]);
+verificar($roto !== '' && json_decode($roto, true)['nombre'] === "Crema \u{FFFD} rota",
+    'un nombre con UTF-8 dañado no deja la respuesta vacía: sale con �');
+verificar(api_json(['foto' => 'https://a.b/c.webp']) === '{"foto":"https://a.b/c.webp"}', 'las direcciones salen sin \\/');
+
 /* --- Límite --- */
 verificar(api_limite(null) === API_LIMITE_DEFECTO, 'sin límite: el de defecto');
 verificar(api_limite('abc') === API_LIMITE_DEFECTO, 'límite que no es número: el de defecto');

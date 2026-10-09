@@ -45,6 +45,21 @@ function api_telefono(string $crudo): string
     return strlen($t) >= 7 && strlen($t) <= 15 ? $t : '';
 }
 
+/**
+ * El teléfono que manda quien consulta: cabecera X-Cliente-Telefono (la
+ * recomendada) o ?telefono= en la dirección. La cabecera es mejor porque la
+ * dirección completa queda en el registro de visitas de Railway, y ahí no
+ * deberían quedar los celulares de las clientas.
+ */
+function api_telefono_de_peticion(array $server, array $get): string
+{
+    $cabecera = trim((string) ($server['HTTP_X_CLIENTE_TELEFONO'] ?? ''));
+    if ($cabecera !== '') {
+        return $cabecera;
+    }
+    return is_string($get['telefono'] ?? null) ? $get['telefono'] : '';
+}
+
 /** Fecha (Y-m-d) de una factura o pedido a partir de su marca de tiempo guardada. */
 function api_fecha(string $marca): string
 {
@@ -152,16 +167,21 @@ function api_productos_de_clienta(array $facturas, int $limite): array
             $clave = (string) $l['sku'] !== '' ? (string) $l['sku'] : 'n:' . mb_strtolower((string) $l['nombre']);
             $por[$clave] ??= [
                 'sku' => (string) $l['sku'], 'nombre' => (string) $l['nombre'], 'marca' => (string) $l['marca'],
-                'unidades' => 0, 'veces' => 0, 'ultima_vez' => '',
+                'unidades' => 0, 'veces' => 0, 'ultima_vez' => '', '_facturas' => [],
             ];
             $por[$clave]['unidades'] += (int) $l['cant'];
-            $por[$clave]['veces']++;
+            // "veces" = en cuántas compras lo llevó: el mismo producto en dos líneas de una factura cuenta una.
+            $por[$clave]['_facturas'][(string) $f['numero']] = true;
+            $por[$clave]['veces'] = count($por[$clave]['_facturas']);
             if (strcmp($fecha, $por[$clave]['ultima_vez']) > 0) {
                 $por[$clave]['ultima_vez'] = $fecha;
             }
         }
     }
-    $lista = array_values($por);
+    $lista = array_map(function (array $r): array {
+        unset($r['_facturas']);
+        return $r;
+    }, array_values($por));
     usort($lista, fn($a, $b) => $b['unidades'] <=> $a['unidades']
         ?: strcmp($b['ultima_vez'], $a['ultima_vez'])
         ?: strcmp($a['nombre'], $b['nombre']));
@@ -223,7 +243,8 @@ function api_resumen_clienta(string $telefono, array $facturas, array $clientes,
             'frecuencia_dias'  => $frecuencia !== null && $frecuencia >= 1 ? $frecuencia : null,
             'le_toca_reponer'  => $frecuencia !== null && $frecuencia >= 1 ? $dias >= $frecuencia : null,
         ];
-        $favorito = $stats['favorito'];
+        // (string): el favorito es una clave de arreglo, y un nombre hecho solo de números llegaría como número.
+        $favorito = $stats['favorito'] === null ? null : (string) $stats['favorito'];
     }
 
     $nombre = $nombre === '' ? null : $nombre;
@@ -257,11 +278,20 @@ function api_consumo_top(mixed $pedido): int
     return is_numeric($pedido) ? max(1, min(API_CONSUMO_TOP_MAX, (int) $pedido)) : API_CONSUMO_TOP_DEFECTO;
 }
 
-/** Quién es quién en las facturas: el teléfono, o el nombre si la factura no tiene teléfono. */
+/**
+ * Quién es quién en las facturas: el teléfono, o el nombre si la factura no
+ * tiene teléfono. '' si no tiene ninguno de los dos: esa factura cuenta para
+ * los productos, pero no como clienta (si no, todas las facturas sin datos se
+ * juntarían en una "clienta" inventada que compra seguido).
+ */
 function api_clave_clienta(array $f): string
 {
     $t = normalizar_telefono((string) ($f['telefono'] ?? ''));
-    return $t !== '' ? 't:' . $t : 'n:' . mb_strtolower(trim((string) ($f['cliente'] ?? '')));
+    if ($t !== '') {
+        return 't:' . $t;
+    }
+    $nombre = mb_strtolower(trim((string) ($f['cliente'] ?? '')));
+    return $nombre !== '' ? 'n:' . $nombre : '';
 }
 
 /**
@@ -293,7 +323,10 @@ function api_consumo(array $facturas, array $productos, int $dias, int $top, str
             continue;
         }
         $facturasPeriodo++;
-        $compradoras[api_clave_clienta($f)] = true;
+        $quien = api_clave_clienta($f);
+        if ($quien !== '') {
+            $compradoras[$quien] = true;
+        }
         foreach ($f['lineas'] as $l) {
             $cant = (int) $l['cant'];
             $sku  = (string) $l['sku'];
@@ -304,7 +337,9 @@ function api_consumo(array $facturas, array $productos, int $dias, int $top, str
                 'unidades' => 0, '_quienes' => [],
             ];
             $porProducto[$clave]['unidades'] += $cant;
-            $porProducto[$clave]['_quienes'][api_clave_clienta($f)] = true;
+            if ($quien !== '') {
+                $porProducto[$clave]['_quienes'][$quien] = true;
+            }
             $unidades += $cant;
 
             $cat = $porProducto[$clave]['categoria'];
@@ -329,7 +364,10 @@ function api_consumo(array $facturas, array $productos, int $dias, int $top, str
     // --- Frecuencia: todo el historial, una cuenta por clienta ---
     $grupos = [];
     foreach ($vivas as $f) {
-        $grupos[api_clave_clienta($f)][] = $f;
+        $quien = api_clave_clienta($f);
+        if ($quien !== '') {
+            $grupos[$quien][] = $f;
+        }
     }
     $conHistorial = count($grupos);
     $repiten = 0;

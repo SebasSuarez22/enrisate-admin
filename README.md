@@ -67,9 +67,15 @@ inventario.
     (deben estar todas; no importan mayúsculas ni tildes)
   - `sku`, `marca`, `categoria`: filtros exactos
   - `limite`: de 1 a 100 (20 si no se pide)
-- **Respuesta**: `total`, `mostrados`, `productos` (sku, marca, nombre,
-  categoria, descripcion, precio, precio_texto, foto), `promo` y
-  `catalogo_url`.
+  - `q` acepta el mensaje tal como lo escribe la clienta ("¿tienen shampoos
+    para rizos?"): se ignoran signos y palabras como "tienen" o "para", y el
+    plural encuentra el singular.
+- **Respuesta**: `coincidencia`, `total`, `mostrados`, `productos` (sku, marca,
+  nombre, categoria, descripcion, precio, precio_texto, foto), `promo` y
+  `catalogo_url`. `coincidencia` es `todas` (los productos tienen todas las
+  palabras), `algunas` (ninguno las tenía todas; salen los que tienen alguna,
+  los más parecidos primero) o `ninguna`. Con `algunas`, el bot debería decir
+  "no tengo justo eso, pero mira estos" en vez de afirmar que lo hay.
 - Respuestas de error: 401 (llave mala o ausente), 405 (no es GET) y
   503 (`API_TOKEN` sin configurar).
 
@@ -77,9 +83,11 @@ inventario.
 
 Con la misma llave hay dos consultas más (lógica en `includes/api_clientes.php`):
 
-- **`GET /api-cliente.php?telefono=…`**: lo que compra UNA clienta y cada
-  cuánto. El teléfono puede venir en cualquier formato (también con el
-  `whatsapp:+57…` que manda Twilio). Devuelve `conocida`, `nombre`,
+- **`GET /api-cliente.php`** con la cabecera `X-Cliente-Telefono`: lo que
+  compra UNA clienta y cada cuánto. El teléfono puede venir en cualquier
+  formato (también con el `whatsapp:+57…` que manda Twilio). También acepta
+  `?telefono=…`, pero así el número queda guardado en el registro de visitas
+  de Railway: mejor la cabecera. Devuelve `conocida`, `nombre`,
   `compras` (total, unidades, primera y última compra, `dias_desde_ultima`,
   `frecuencia_dias`, `le_toca_reponer`), `favorito`, `productos` (los más
   comprados, con unidades y veces), `ultimas_compras`, `cartera` (lo que debe
@@ -103,6 +111,14 @@ que se llaman igual.
 **En n8n:** el bot debe consultar **solo el número de quien le está
 escribiendo** (`{{ $json.body.From }}`). Como la llave abre los datos de
 cualquier clienta, nunca armes el teléfono con texto que escriba la persona.
+
+**Antes de que el bot conteste con datos de una clienta** (deuda, compras),
+el webhook de n8n debe comprobar la firma `X-Twilio-Signature` de cada
+mensaje. Sin eso, cualquiera que conozca la dirección del webhook puede
+mandarle un `From` falso con el número de otra clienta y el bot le
+respondería con los datos de ella. Mientras no esté esa comprobación, usa
+`api-cliente.php` solo para saludar por el nombre y recomendar productos,
+no para hablar de saldos.
 
 ## Base de datos (MySQL / XAMPP)
 

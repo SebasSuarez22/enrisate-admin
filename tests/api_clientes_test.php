@@ -128,15 +128,28 @@ verificar($x['ok'] === true && $x['conocida'] === false && $x['nombre'] === null
 verificar(api_facturas_de_telefono($facturas, '') === [], 'teléfono vacío: no trae las facturas sin teléfono');
 verificar(array_column(api_facturas_de_telefono($facturas, '3001112233'), 'numero') === ['A1', 'A2', 'A3'], 'por teléfono: los tres formatos distintos de Ana');
 
+/* --- "veces" cuenta compras, no líneas --- */
+$doble = [fa('Z1', '2026-10-01', 'Zoe', '3011111111', [['SH-1', 'Shampoo Rizos', 1], ['SH-1', 'Shampoo Rizos', 2]], 1)];
+$pz = api_productos_de_clienta($doble, 5);
+verificar($pz[0]['veces'] === 1 && $pz[0]['unidades'] === 3, 'el mismo producto en dos líneas de una factura: 1 vez, 3 unidades');
+verificar(!array_key_exists('_facturas', $pz[0]), 'no se escapa el dato interno de productos');
+
+/* --- El teléfono: cabecera primero, luego la dirección --- */
+verificar(api_telefono_de_peticion(['HTTP_X_CLIENTE_TELEFONO' => ' whatsapp:+573001112233 '], ['telefono' => '3109998877']) === 'whatsapp:+573001112233',
+    'la cabecera X-Cliente-Telefono gana sobre ?telefono=');
+verificar(api_telefono_de_peticion([], ['telefono' => '3109998877']) === '3109998877', 'sin cabecera, se usa ?telefono=');
+verificar(api_telefono_de_peticion([], ['telefono' => ['3109998877']]) === '', '?telefono[]= (un arreglo) no se acepta');
+verificar(api_telefono_de_peticion([], []) === '', 'sin ninguno: vacío');
+
 /* --- Consumo general --- */
 $g = api_consumo($facturas, $productos, 30, 10, $HOY);
 verificar($g['ok'] === true && $g['periodo'] === ['dias' => 30, 'desde' => '2026-09-10', 'hasta' => '2026-10-09'], 'período de 30 días terminando hoy');
 verificar($g['compras']['facturas'] === 8, 'facturas del período: 8 (sin la anulada ni las anteriores al 10 de septiembre)');
-verificar($g['compras']['clientas_distintas'] === 5, 'clientas distintas del período: Ana(X1 es otra), Beto, Cira, Dani y la sin datos');
+verificar($g['compras']['clientas_distintas'] === 4, 'clientas distintas del período: la otra Ana (X1), Beto, Cira y Dani (la factura sin datos no es nadie)');
 
 $top = $g['productos_mas_comprados'];
 verificar($top[0]['sku'] === 'SH-2' && $top[0]['unidades'] === 5, 'el más comprado del período: Shampoo Anti (1 + 3 + 1)');
-verificar($top[0]['compradoras'] === 3 && $top[0]['categoria'] === 'Shampoo', 'cuántas clientas lo compraron y su categoría');
+verificar($top[0]['compradoras'] === 2 && $top[0]['categoria'] === 'Shampoo', 'cuántas clientas lo compraron (la otra Ana y Cira; la factura sin datos no cuenta) y su categoría');
 verificar(!isset($top[0]['_quienes']), 'no se escapa el dato interno');
 verificar($g['categorias_mas_compradas'][0]['categoria'] === 'Shampoo', 'la categoría más comprada');
 verificar(in_array('Crema', array_column($g['categorias_mas_compradas'], 'categoria'), true), 'la categoría vacía se deduce del nombre ("Crema")');
@@ -145,8 +158,8 @@ $topUno = api_consumo($facturas, $productos, 30, 1, $HOY);
 verificar(count($topUno['productos_mas_comprados']) === 1 && count($topUno['categorias_mas_compradas']) === 1, 'el límite recorta los dos rankings');
 
 $f = $g['frecuencia'];
-verificar($f['clientas_con_compras'] === 6, 'con historial: Ana, la otra Ana, Beto, Cira, Dani y la sin datos');
-verificar($f['repiten'] === 2 && $f['una_sola_compra'] === 4, 'repiten Ana y Dani; las otras 4 no tienen frecuencia');
+verificar($f['clientas_con_compras'] === 5, 'con historial: Ana, la otra Ana, Beto, Cira y Dani');
+verificar($f['repiten'] === 2 && $f['una_sola_compra'] === 3, 'repiten Ana y Dani; las otras 3 no tienen frecuencia');
 verificar($f['promedio_dias'] === 20 && $f['mediana_dias'] === 20, 'promedio y mediana de (30 + 10) / 2 = 20 días');
 verificar($f['cada']['hasta_30_dias'] === 2 && $f['cada']['de_31_a_60_dias'] === 0, 'Ana (30) y Dani (10) caen en "hasta 30 días"');
 verificar($f['les_toca_reponer'] === 1, 'solo a Ana ya le toca reponer');
@@ -159,6 +172,18 @@ verificar(!str_contains($json, '3001112233') && !str_contains($json, 'Ana') && !
     'el consumo general no trae nombres ni teléfonos');
 verificar(!str_contains($json, '99999') && !str_contains($json, '88888') && !str_contains($json, 'total'),
     'ni costos, ni márgenes, ni dinero');
+
+/* --- Facturas sin nombre ni teléfono: cuentan productos, no clientas --- */
+$anon = [];
+foreach (['2026-08-01', '2026-09-01', '2026-10-01'] as $i => $dia) {
+    $anon[] = fa("S$i", $dia, '', '', [['SH-1', 'Shampoo Rizos', 1]], 1);
+}
+$an = api_consumo($anon, $productos, 90, 10, $HOY);
+verificar($an['compras']['facturas'] === 3 && $an['productos_mas_comprados'][0]['unidades'] === 3, 'sin datos de clienta: los productos sí cuentan');
+verificar($an['compras']['clientas_distintas'] === 0 && $an['productos_mas_comprados'][0]['compradoras'] === 0,
+    'pero no se inventa una clienta');
+verificar($an['frecuencia']['clientas_con_compras'] === 0 && $an['frecuencia']['repiten'] === 0 && $an['frecuencia']['promedio_dias'] === null,
+    'ni una frecuencia: tres facturas sin datos no son "una clienta que compra cada mes"');
 
 $vacio = api_consumo([], $productos, 30, 10, $HOY);
 verificar($vacio['compras']['facturas'] === 0 && $vacio['productos_mas_comprados'] === [] && $vacio['frecuencia']['promedio_dias'] === null,
