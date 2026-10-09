@@ -47,6 +47,31 @@ Además del servicio de la app, hace falta:
    queden guardadas de verdad, hay que agregarle al servicio un
    **Volume** de Railway montado en esa misma carpeta
    (`/var/www/html/assets/img/productos`).
+5. **API del catálogo para el bot de WhatsApp** (opcional): corre
+   `php tools/generar_token_api.php` y pega el resultado en la variable
+   `API_TOKEN`. Sin esa variable la API responde "no activada" (ver la
+   sección siguiente).
+
+## API del catálogo (bot de WhatsApp en n8n)
+
+`api-catalogo.php` deja que el bot consulte productos y precios. Es de **solo
+lectura** y entrega lo mismo que ya muestra el catálogo público: nunca el
+costo ni el margen. No dice si hay unidades, porque el panel no lleva el
+inventario.
+
+- **Llave**: cabecera `X-Api-Key: <API_TOKEN>` (o `Authorization: Bearer
+  <API_TOKEN>`). En n8n: nodo **HTTP Request** → Authentication *Generic
+  Credential Type* → *Header Auth*, con Name `X-Api-Key` y Value la llave.
+- **Consulta**: `GET /api-catalogo.php?q=shampoo rizos&limite=5`
+  - `q`: palabras a buscar en marca, nombre, categoría, descripción y SKU
+    (deben estar todas; no importan mayúsculas ni tildes)
+  - `sku`, `marca`, `categoria`: filtros exactos
+  - `limite`: de 1 a 100 (20 si no se pide)
+- **Respuesta**: `total`, `mostrados`, `productos` (sku, marca, nombre,
+  categoria, descripcion, precio, precio_texto, foto), `promo` y
+  `catalogo_url`.
+- Respuestas de error: 401 (llave mala o ausente), 405 (no es GET) y
+  503 (`API_TOKEN` sin configurar).
 
 ## Base de datos (MySQL / XAMPP)
 
@@ -212,6 +237,8 @@ includes/facturas.php        operaciones de las facturas: crear, abonar, descuen
 includes/facturas_almacen.php leer y guardar facturas en MySQL (lectura consistente, guardado de una factura, candado, número que sigue)
 includes/cuotas.php           cuánto se pagó y cuánto falta de una cuota o factura (funciones puras, sin base de datos)
 includes/catalogo.php         productos: leer, guardar de a uno, caché por petición
+includes/api.php              API del catálogo para el bot: llave, búsqueda y qué se muestra de cada producto
+api-catalogo.php              endpoint de esa API (GET, JSON, protegido con API_TOKEN)
 includes/formato.php          escape para HTML (e), teléfono, pesos, fechas en español, enlaces de WhatsApp (sin base de datos ni sesión)
 includes/clientes.php clientas (ahora en MySQL)
 includes/pedidos.php  pedidos del catálogo público (ahora en MySQL)
