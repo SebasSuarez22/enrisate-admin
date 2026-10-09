@@ -2,6 +2,19 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 9 de octubre, 2026 (API para el bot de WhatsApp en n8n)
+
+En master (`83d9c59`, `4e890a9`, `f463759`) y desplegado en Railway (SUCCESS). Las tres consultas responden 503 "no activada" hasta crear `API_TOKEN`.
+- **Qué hay:** `api-catalogo.php` (productos, búsqueda en lenguaje natural, `coincidencia` todas/algunas/ninguna), `api-cliente.php` (una clienta por teléfono: compras, frecuencia, favorito, `le_toca_reponer`, cartera, saldo a favor, pedidos pendientes, `acepta_promociones`) y `api-consumo.php` (ranking de productos y categorías y frecuencia general, sin datos personales ni dinero). Lógica en `includes/api.php` e `includes/api_clientes.php`; pruebas en `tests/api_catalogo_test.php` y `tests/api_clientes_test.php`. Documentado en el README.
+- **Llave:** `X-Api-Key: <API_TOKEN>` (o `Authorization: Bearer`). Generar con `php tools/generar_token_api.php`. El teléfono va mejor en la cabecera `X-Cliente-Telefono` (si va en `?telefono=` queda en los logs de Railway).
+- **Frecuencia:** misma cuenta del panel Clientes; se extrajo `estadisticas_de_facturas()` de `estadisticas_compra_cliente()` en `includes/clientes.php`. La API cruza **solo por teléfono**, no por nombre.
+- **Decisión:** no hay campo de disponibilidad: el panel no lleva inventario (`stock` siempre 0) y el bot diría que todo está agotado.
+- **Pendientes:**
+  1. Crear `API_TOKEN` en Railway (servicio enrisate-admin, proyecto poetic-reflection) y la credencial Header Auth `X-Api-Key` en n8n (proyecto zucchini-victory).
+  2. En n8n, verificar `X-Twilio-Signature` antes de que el bot hable de saldos o deudas (sin eso, un `From` falsificado expone los datos de otra clienta).
+  3. El bot de prueba (Webhook + Respond to Webhook con TwiML) no respondía: revisar Executions en n8n y Logs del sandbox de Twilio.
+  4. `assets/img/productos/POC-01.webp` (La Poción · Shampoo) sigue solo en la rama `claude/tender-babbage-hggtl9`; decidir si pasa a master. La nota interna del 2 de octubre (IP real validada) también está solo en la rama.
+
 ## 8 de octubre, 2026 (Módulo Mensajes: bienvenida por WhatsApp)
 
 Sebastián pidió un botón masivo para mandar la bienvenida del nuevo WhatsApp (+57 305 241 8417) a las clientas, con el enlace del catálogo y la pregunta de si quieren recibir mensajes automáticos de promociones y novedades. Se mostraron 3 ubicaciones (A tarjeta en Clientes, B botón en la barra, C módulo propio) y eligió **C**.
