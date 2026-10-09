@@ -12,29 +12,7 @@ require_once __DIR__ . '/includes/api.php';
    La lógica y lo que se muestra de cada producto están en includes/api.php.
    ========================================================= */
 
-header('Content-Type: application/json; charset=utf-8');
-// Los precios cambian: ni el navegador ni un proxy guardan copia de la respuesta.
-header('Cache-Control: no-store');
-
-function api_responder(int $codigo, array $cuerpo): never
-{
-    http_response_code($codigo);
-    echo json_encode($cuerpo, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    header('Allow: GET');
-    api_responder(405, ['ok' => false, 'error' => 'Método no permitido. Usa GET.']);
-}
-
-$esperado = api_token_configurado();
-if ($esperado === '') {
-    api_responder(503, ['ok' => false, 'error' => 'La API no está activada en este servidor.']);
-}
-if (!api_autorizado(api_token_de_peticion($_SERVER), $esperado)) {
-    api_responder(401, ['ok' => false, 'error' => 'Falta la llave de la API o no es válida.']);
-}
+api_proteger();
 
 $filtros = [
     'q'         => is_string($_GET['q'] ?? null) ? $_GET['q'] : '',

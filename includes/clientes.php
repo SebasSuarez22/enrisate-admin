@@ -255,6 +255,17 @@ function estadisticas_compra_cliente(array $cliente, array $facturas): ?array
         return strcasecmp(trim((string) ($f['cliente'] ?? '')), $nombre) === 0;
     }));
 
+    return estadisticas_de_facturas($propias);
+}
+
+/**
+ * El cálculo de estadisticas_compra_cliente() sobre facturas que YA son de la
+ * clienta (sin anular). Aparte para que la API del bot, que identifica a la
+ * clienta solo por teléfono, use exactamente la misma cuenta que el panel.
+ * Devuelve null si no hay facturas.
+ */
+function estadisticas_de_facturas(array $propias): ?array
+{
     if (!$propias) {
         return null;
     }

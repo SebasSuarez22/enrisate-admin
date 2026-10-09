@@ -73,6 +73,37 @@ inventario.
 - Respuestas de error: 401 (llave mala o ausente), 405 (no es GET) y
   503 (`API_TOKEN` sin configurar).
 
+### Consumo y frecuencia de las clientas
+
+Con la misma llave hay dos consultas más (lógica en `includes/api_clientes.php`):
+
+- **`GET /api-cliente.php?telefono=…`**: lo que compra UNA clienta y cada
+  cuánto. El teléfono puede venir en cualquier formato (también con el
+  `whatsapp:+57…` que manda Twilio). Devuelve `conocida`, `nombre`,
+  `compras` (total, unidades, primera y última compra, `dias_desde_ultima`,
+  `frecuencia_dias`, `le_toca_reponer`), `favorito`, `productos` (los más
+  comprados, con unidades y veces), `ultimas_compras`, `cartera` (lo que debe
+  en cuotas, lo vencido y la próxima cuota), `saldo_a_favor`,
+  `pedidos_pendientes` y `acepta_promociones` (`si`, `no` o `sin_respuesta`).
+  Un número que no conocemos responde `conocida: false` con todo vacío.
+- **`GET /api-consumo.php?dias=30&limite=10`**: lo que consumen las clientas
+  en conjunto, **sin nombres, teléfonos ni dinero**: productos y categorías más
+  comprados en los últimos `dias` días (1 a 730) y la frecuencia con que
+  repiten (`promedio_dias`, `mediana_dias`, cuántas compran cada ≤30, 31–60,
+  61–90 o más de 90 días, y a cuántas ya les toca reponer).
+
+La frecuencia es la misma cuenta del panel Clientes: días promedio entre sus
+compras (con una sola compra, o varias el mismo día, no hay frecuencia: `null`).
+
+**Qué nunca sale:** el costo, el margen, las notas internas de cada clienta, y
+ninguna lista de clientas (solo se consulta una, por su teléfono exacto).
+Se cruza **solo por teléfono**, no por nombre, para no mezclar a dos personas
+que se llaman igual.
+
+**En n8n:** el bot debe consultar **solo el número de quien le está
+escribiendo** (`{{ $json.body.From }}`). Como la llave abre los datos de
+cualquier clienta, nunca armes el teléfono con texto que escriba la persona.
+
 ## Base de datos (MySQL / XAMPP)
 
 Este proyecto guarda los datos en MySQL (antes eran `storage/*.json`; esa
@@ -239,6 +270,9 @@ includes/cuotas.php           cuánto se pagó y cuánto falta de una cuota o fa
 includes/catalogo.php         productos: leer, guardar de a uno, caché por petición
 includes/api.php              API del catálogo para el bot: llave, búsqueda y qué se muestra de cada producto
 api-catalogo.php              endpoint de esa API (GET, JSON, protegido con API_TOKEN)
+includes/api_clientes.php      cuentas de consumo y frecuencia de las clientas (funciones puras, probadas sin MySQL)
+api-cliente.php               endpoint: historial, favorito y frecuencia de UNA clienta, por teléfono
+api-consumo.php               endpoint: qué consumen las clientas en conjunto, sin datos personales
 includes/formato.php          escape para HTML (e), teléfono, pesos, fechas en español, enlaces de WhatsApp (sin base de datos ni sesión)
 includes/clientes.php clientas (ahora en MySQL)
 includes/pedidos.php  pedidos del catálogo público (ahora en MySQL)
