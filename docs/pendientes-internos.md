@@ -2,6 +2,14 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 10 de octubre, 2026 (Bot de WhatsApp en n8n: etapa 1 lista)
+
+Guía completa para armarlo desde el PC en `docs/guia-bot-n8n.md` (pasos, código de los nodos y comandos).
+- **Hecho:** recorrido WhatsApp → Twilio → n8n → Twilio → WhatsApp probado con la plantilla de ejemplo (`ContentSid=HXfe5ab5f00277942d4d4200328b4d403c`). Nodo Code "cerebro" (saludo / catalogo / cuenta / producto) probado en n8n y con 12 casos locales.
+- **Hallazgo:** la cuenta de prueba de Twilio solo envía plantillas; el texto libre (API y TwiML) no sale. Para un bot conversacional hace falta número aprobado por Meta.
+- **Estado de n8n:** el nodo HTTP Request de envío quedó **apagado** (ahorra mensajes; había 91 gratis). Hay que volver a encenderlo para una prueba real.
+- **Pendientes:** crear `API_TOKEN` (Sebastián lo hará desde el PC, no se lo pasa a Claude); etapa 2 (buscar productos con `api-catalogo.php`); verificar `X-Twilio-Signature`; usar la cuenta de Facebook con normalidad para poder crear la cuenta de negocio de Meta.
+
 ## 9 de octubre, 2026 (API para el bot de WhatsApp en n8n)
 
 En master (`83d9c59`, `4e890a9`, `f463759`) y desplegado en Railway (SUCCESS). Las tres consultas responden 503 "no activada" hasta crear `API_TOKEN`.
