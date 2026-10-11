@@ -2,6 +2,12 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 11 de octubre, 2026 (Bot en n8n: etapa 2 lista; número de WhatsApp por decidir)
+
+- **Hecho:** `API_TOKEN` creada por Sebastián (Railway + credencial Header Auth "API Enrísate" en n8n, dominio permitido limitado a la app). Etapa 2 probada con `shampoo para rizos`: devuelve 3 productos reales con precio. El nodo de envío de Twilio sigue **apagado**.
+- **Número del bot:** el 305 241 8417 sigue en la app WhatsApp Business. Twilio normal exige eliminar la cuenta de WhatsApp del número; Coexistence (app + API) no está confirmada para Colombia ni para Twilio. Opciones, investigación y preguntas listas para soporte en `docs/guia-bot-n8n.md` (sección "El número de WhatsApp del bot"). Sebastián abriría la app a diario, lo que cumple la regla de actividad de Coexistence.
+- **Pendientes:** enviar las preguntas a Twilio y a un proveedor (360dialog, Respond.io, Infobip) o conseguir una línea nueva; verificar `X-Twilio-Signature` antes de etapa 3 (cuenta de la clienta); opcional: ordenar resultados con el nombre primero (cambio en `includes/api.php`, requiere "Sí, llévalo a master").
+
 ## 10 de octubre, 2026 (Bot de WhatsApp en n8n: etapa 1 lista)
 
 Guía completa para armarlo desde el PC en `docs/guia-bot-n8n.md` (pasos, código de los nodos y comandos).

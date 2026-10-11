@@ -8,7 +8,8 @@ _Para armarlo desde el PC, paso a paso. Nada de aquí contiene llaves ni contras
 - **n8n** (proyecto zucchini-victory en Railway): `https://n8n-production-3e78.up.railway.app`. Workflow activo con estos nodos: **Webhook → Code → HTTP Request → Respond to Webhook**.
 - **Code** ("el cerebro", etapa 1): ya decide si el mensaje es saludo, catálogo, cuenta o producto. Probado.
 - **HTTP Request** (envío): está **apagado** para no gastar mensajes de prueba. Manda la plantilla de ejemplo de Twilio (`ContentSid`). Con la cuenta de prueba **solo se pueden enviar plantillas**, no texto libre; el texto libre necesita un número aprobado por Meta.
-- **La API de Enrísate** (catálogo, clienta, consumo) ya está publicada en Railway, pero cerrada hasta crear `API_TOKEN`.
+- **La API de Enrísate** (catálogo, clienta, consumo) está publicada en Railway y **abierta con `API_TOKEN`** (creada el 10 de oct; la llave vive solo en Railway y en la credencial "API Enrísate" de n8n).
+- **Etapa 2 hecha y probada:** `shampoo para rizos` → If (true) → HTTP Request1 (api-catalogo) → Armar Respuesta. Devuelve productos reales con precio. Nombres de nodos tal como están: "Code in JavaScript", "If", "HTTP Request1", "Armar Respuesta", "HTTP Request" (envío, apagado), "Respond to Webhook".
 
 ## Paso 1 · Crear la llave (en el PC)
 
@@ -68,10 +69,45 @@ Cuando `intencion = cuenta`, se consulta `api-cliente.php` con la cabecera `X-Cl
 2. Cambia `From` por el número nuevo.
 3. Respeta a quien dijo NO a las promociones (`acepta_promociones` de la API) antes de mandar mensajes que no pidió.
 
+## El número de WhatsApp del bot (decisión pendiente)
+
+**Idea de Sebastián:** el 305 241 8417 ya está en la app WhatsApp Business. Si el bot se queda corto, una persona toma el chat desde la app y supervisa el trabajo del bot todos los días.
+
+**Lo que se investigó (11 de oct, 2026).** Fuentes: principalmente proveedores, no Meta; no se pudieron abrir las páginas oficiales. Confirmar antes de decidir.
+- **Twilio normal no permite compartir el número.** Su guía de migración pide **eliminar la cuenta de WhatsApp** del número antes de registrarlo como remitente. Después no se puede seguir usando en WhatsApp ni en la app Business. Consecuencia: Gina dejaría de ver el 305 en el celular y los pedidos del catálogo (que van a ese número) le llegarían al bot.
+- **Coexistence** (función de Meta) sí permite app + API en el mismo número. Se conecta con Embedded Signup ("conectar cuenta existente de WhatsApp Business", con un código que sale en la app) y la hacen intermediarios autorizados de Meta (360dialog, Infobip, Respond.io, Wati, etc.).
+- **Dudas sin resolver:** ¿está disponible para Colombia (+57)? Meta no publica lista; la elegibilidad se revisa por número al registrarlo. ¿Twilio la soporta? No hay documentación; un blog de la competencia dice que no.
+- **Límites** (según proveedores, pueden variar): abrir la app al menos cada 13 o 14 días (Sebastián la abriría a diario, así que no es problema); no sirven mensajes temporales ni de vista única; los grupos no se sincronizan con la API; las listas de difusión quedan limitadas; el historial se comparte hasta unos 6 meses si se autoriza; si se desinstala la app, se desconecta; tope de 20 mensajes por segundo.
+
+**Dos caminos:**
+1. **Número nuevo para el bot + entrega a una persona (el más seguro).** El bot usa una línea nueva (prepago, que no esté en WhatsApp) con Twilio. Cuando no puede ayudar, responde con un enlace `https://wa.me/573052418417?text=...` y Gina atiende en la app del 305. El 305 no se toca.
+2. **Coexistence en el 305** con un proveedor que lo soporte. Implica cambiar de proveedor (no Twilio, salvo que confirme) y rehacer el nodo de envío.
+
+**Preguntas listas para enviar**
+
+_A Twilio (soporte o chat de ventas; la cuenta de prueba puede tener soporte limitado):_
+> Hello, we want to use our existing WhatsApp Business app number, +57 305 241 8417 (Colombia), with the WhatsApp Business Platform through Twilio, while continuing to use the WhatsApp Business app on the same number (WhatsApp Business app coexistence).
+> 1. Does Twilio support coexistence today?
+> 2. If yes, is it available for Colombian (+57) numbers, and how do we onboard (Self Sign-up or Embedded Signup)?
+> 3. If not, is it planned? Is there any way to keep the app active on the same number?
+> 4. Which Twilio plan or upgrade is required?
+> Thank you.
+
+_A un proveedor alternativo (360dialog, Respond.io, Infobip…):_
+> Hello, we have a WhatsApp Business app number in Colombia (+57 305 241 8417) and want to connect it to the API using coexistence, keeping the app in use. Please confirm:
+> 1. Is coexistence available for +57 numbers?
+> 2. What are the setup steps and the monthly cost?
+> 3. Can we receive messages through a webhook and reply with free-form text (inside the 24-hour window) from n8n?
+> 4. What happens to our existing chats and contacts?
+
+**La forma más rápida de saberlo:** muchos proveedores tienen prueba gratis. Al empezar el registro del 305, Meta indica en el momento si el número es elegible para Coexistence.
+
 ## Pendientes
 
-- [ ] Crear `API_TOKEN` (Paso 1).
-- [ ] Etapa 2: buscar productos.
+- [x] Crear `API_TOKEN` (Paso 1).
+- [x] Etapa 2: buscar productos.
+- [ ] Decidir el número del bot (ver la sección anterior): preguntar a Twilio y a un proveedor por Coexistence en el 305, o conseguir una línea nueva.
+- [ ] Opcional: que en la búsqueda salgan primero los productos con la palabra en el **nombre** (hoy salen por orden alfabético de marca).
 - [ ] Verificar la firma de Twilio.
 - [ ] Facebook / Meta: usar la cuenta con normalidad desde el celular unos días y después crear la cuenta de negocio.
 - [ ] Encender de nuevo el nodo de envío cuando se quiera probar con un mensaje real.
