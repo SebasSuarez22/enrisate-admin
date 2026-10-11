@@ -100,13 +100,31 @@ _A un proveedor alternativo (360dialog, Respond.io, Infobip…):_
 > 3. Can we receive messages through a webhook and reply with free-form text (inside the 24-hour window) from n8n?
 > 4. What happens to our existing chats and contacts?
 
+**Respuesta de Twilio (11 de oct, 2026; parece automática, un agente humano debería confirmarla por escrito antes de tocar el 305):**
+- Coexistence **no está soportada**: al registrar el número en la API, la app WhatsApp Business deja de funcionar en él. Sin fecha prevista.
+- Los números de Colombia (+57) **sí** se pueden registrar para la API. Hay Self Sign-up y Embedded Signup.
+- Precio: pago por uso, desde US$0,005 por mensaje más las tarifas de Meta. Dicen que no hace falta un plan especial (ojo: la cuenta de prueba solo dejó enviar la plantilla de ejemplo; confirmarlo al registrar).
+- Dicen que ningún proveedor permite mantener la app. Esto **contradice** la documentación de 360dialog, Infobip y Respond.io, que sí describen Coexistence.
+
+**Candidata: 360dialog** (revisión del 11 de oct; confirmar todo en su página).
+- **Coexistence documentado.** En el registro se elige "conectar tu cuenta existente de WhatsApp Business" y se escanea un QR que llega a la app. Pide la versión más reciente de la app, un celular con cámara, y datos del negocio (nombre legal, dirección, sitio web).
+- **El Business Manager debe ser el de la empresa y no se puede cambiar después** de registrar el número. Usar el correcto.
+- Abrir la app al menos cada 13 días. El historial de chats se conserva. Para escribirle primero a una clienta (fuera de las 24 h) hace falta plantilla aprobada.
+- **Colombia no se menciona** (solo excluyen Nigeria y Sudáfrica). Sigue sin confirmar.
+- **Costo:** planes por número y por mes, más las tarifas de Meta por mensaje. En su página: Regular €49, Premium €99, Scale €500; otra página dice desde US$59. Hay fuentes que hablan de un recargo de US$0,005 por mensaje y ellos dicen que no hay recargo. Dato fijo mensual, a diferencia de Twilio.
+- **n8n:** soportado (nodo de comunidad "360Dialog" con una API key, o nodos HTTP normales con POST a `waba-v2.360dialog.io`). El webhook de entrada debe ser HTTPS y responder 200 de inmediato.
+- **Cambios en el bot si se usa 360dialog:** (1) el Webhook recibe el formato de Meta, no el de Twilio: el texto y el teléfono vienen en `entry[0].changes[0].value.messages[0]` (`text.body` y `from`); hay que ajustar el nodo "Code in JavaScript". (2) El nodo de envío pasa de Twilio a 360dialog con texto libre (`"type": "text"`), no `ContentSid`. (3) "Respond to Webhook" devuelve un 200 vacío en vez de TwiML.
+- **Prueba gratis:** no se encontró una para un número de cliente (el sandbox que documentan es para partners).
+
+**Pasos para decidir:** (1) enviar las preguntas de arriba a 360dialog y pedir el precio exacto; (2) pedir a Twilio que un agente humano confirme la respuesta; (3) comparar costo mensual y decidir entre número nuevo con Twilio o el 305 con 360dialog.
+
 **La forma más rápida de saberlo:** muchos proveedores tienen prueba gratis. Al empezar el registro del 305, Meta indica en el momento si el número es elegible para Coexistence.
 
 ## Pendientes
 
 - [x] Crear `API_TOKEN` (Paso 1).
 - [x] Etapa 2: buscar productos.
-- [ ] Decidir el número del bot (ver la sección anterior): preguntar a Twilio y a un proveedor por Coexistence en el 305, o conseguir una línea nueva.
+- [ ] Decidir el número del bot (ver la sección anterior): Twilio ya respondió que NO hay Coexistence; falta preguntarle a 360dialog (Colombia + precio exacto) o conseguir una línea nueva.
 - [ ] Opcional: que en la búsqueda salgan primero los productos con la palabra en el **nombre** (hoy salen por orden alfabético de marca).
 - [ ] Verificar la firma de Twilio.
 - [ ] Facebook / Meta: usar la cuenta con normalidad desde el celular unos días y después crear la cuenta de negocio.
