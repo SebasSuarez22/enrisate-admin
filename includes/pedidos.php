@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/red.php';
+require_once __DIR__ . '/formato.php';
 
 /* =========================================================
    Pedidos pendientes · lo que llega del catálogo público
@@ -33,6 +34,86 @@ function descuento_promo(int $subtotal, int $unidades): int
         return 0;
     }
     return (int) round($subtotal * PROMO_PORCENTAJE / 100);
+}
+
+/**
+ * La fecha de pago que pidió la clienta en "1 cuota con plazo", o null si no vale.
+ * Vale una fecha real "AAAA-MM-DD" desde mañana hasta PLAZO_MAX_DIAS_PUBLICO días
+ * (hoy y el pasado no). $hoy solo se pasa en las pruebas.
+ */
+function fecha_pago_preferida_valida(mixed $valor, ?string $hoy = null): ?string
+{
+    if (!is_string($valor) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor)) {
+        return null;
+    }
+    $fecha = DateTimeImmutable::createFromFormat('!Y-m-d', $valor);
+    if (!$fecha || $fecha->format('Y-m-d') !== $valor) {
+        return null; // por ejemplo 2026-02-31
+    }
+    $base = DateTimeImmutable::createFromFormat('!Y-m-d', $hoy ?? date('Y-m-d'));
+    $dias = (int) $base->diff($fecha)->format('%r%a');
+
+    return ($dias >= 1 && $dias <= PLAZO_MAX_DIAS_PUBLICO) ? $valor : null;
+}
+
+/** Lo que pidió la clienta, en una frase para las pantallas del panel. */
+function texto_plan_pedido(array $p): string
+{
+    if (($p['plan'] ?? 'contado') !== 'cuotas') {
+        return 'De contado';
+    }
+    $n = (int) ($p['num_cuotas_preferido'] ?? 2);
+    if ($n === 1) {
+        $fecha = (string) ($p['fecha_pago_preferida'] ?? '');
+        return $fecha !== '' ? 'Paga todo el ' . fecha_larga($fecha) : 'Paga todo en 1 cuota';
+    }
+    return 'Prefiere ' . numero($n) . ' cuotas';
+}
+
+/** La línea de abajo del plan: qué falta por acordar con ella. */
+function nota_plan_pedido(array $p): string
+{
+    if (($p['plan'] ?? 'contado') !== 'cuotas') {
+        return '';
+    }
+    return (int) ($p['num_cuotas_preferido'] ?? 2) === 1
+        ? 'Fecha que ella escogió: confírmala por WhatsApp'
+        : 'Montos y fechas: por definir con ella';
+}
+
+/**
+ * ¿La tabla pedidos ya tiene `fecha_pago_preferida`? Si falta (una base que aún no
+ * recibió el esquema nuevo), la agrega. Si no se puede, devuelve false y el pedido se
+ * guarda igual, sin la fecha: nunca se pierde un pedido por esto. No usar dentro de una
+ * transacción (ALTER TABLE cierra la que esté abierta).
+ */
+function asegurar_esquema_pedidos(): bool
+{
+    static $tiene = null;
+    if ($tiene === true) {
+        return true;
+    }
+
+    try {
+        $pdo   = db();
+        $tiene = (bool) $pdo->query("SHOW COLUMNS FROM pedidos LIKE 'fecha_pago_preferida'")->fetch();
+        if (!$tiene) {
+            try {
+                $pdo->exec('ALTER TABLE pedidos ADD COLUMN fecha_pago_preferida VARCHAR(10) DEFAULT NULL AFTER num_cuotas_preferido');
+            } catch (PDOException $e) {
+                // Otra petición la agregó justo antes (error 1060, columna duplicada): está bien.
+                if (($e->errorInfo[1] ?? 0) !== 1060) {
+                    throw $e;
+                }
+            }
+            $tiene = true;
+        }
+    } catch (Throwable $e) {
+        error_log('[enrisate] no se pudo preparar pedidos.fecha_pago_preferida: ' . $e->getMessage());
+        $tiene = false;
+    }
+
+    return $tiene;
 }
 
 function leer_pedidos(): array
@@ -114,6 +195,9 @@ function leer_pedidos_donde(?string $numero, ?string $estado): array
         if ($p['num_cuotas_preferido'] !== null) {
             $fila['num_cuotas_preferido'] = (int) $p['num_cuotas_preferido'];
         }
+        if (($p['fecha_pago_preferida'] ?? null) !== null) {
+            $fila['fecha_pago_preferida'] = (string) $p['fecha_pago_preferida'];
+        }
         if ($p['factura_numero'] !== null) {
             $fila['factura_numero'] = (string) $p['factura_numero'];
         }
@@ -181,20 +265,38 @@ function insertar_lineas_pedido(PDO $pdo, string $numero, array $lineas): void
  */
 function guardar_pedido(array $p, bool $esNuevo): void
 {
-    en_transaccion(function () use ($p, $esNuevo): void {
+    // Solo un pedido nuevo lleva la fecha de pago (nunca cambia después), y solo si la
+    // base ya tiene la columna. Se prepara aquí, afuera de la transacción.
+    $conFecha = $esNuevo && asegurar_esquema_pedidos();
+
+    en_transaccion(function () use ($p, $esNuevo, $conFecha): void {
         $pdo    = db();
         $params = pedido_a_parametros($p);
 
         if ($esNuevo) {
-            $pdo->prepare(
-                'INSERT INTO pedidos
-                    (numero, cliente, telefono, subtotal, total, plan, num_cuotas_preferido,
-                     estado, factura_numero, creado, confirmado_el, descartado_el, motivo_descartado)
-                 VALUES
-                    (:numero, :cliente, :telefono, :subtotal, :total, :plan, :num_cuotas_preferido,
-                     :estado, :factura_numero, :creado, :confirmado_el, :descartado_el, :motivo_descartado)'
-            )->execute($params);
+            if ($conFecha) {
+                $params[':fecha_pago_preferida'] = !empty($p['fecha_pago_preferida']) ? (string) $p['fecha_pago_preferida'] : null;
+                $pdo->prepare(
+                    'INSERT INTO pedidos
+                        (numero, cliente, telefono, subtotal, total, plan, num_cuotas_preferido, fecha_pago_preferida,
+                         estado, factura_numero, creado, confirmado_el, descartado_el, motivo_descartado)
+                     VALUES
+                        (:numero, :cliente, :telefono, :subtotal, :total, :plan, :num_cuotas_preferido, :fecha_pago_preferida,
+                         :estado, :factura_numero, :creado, :confirmado_el, :descartado_el, :motivo_descartado)'
+                )->execute($params);
+            } else {
+                $pdo->prepare(
+                    'INSERT INTO pedidos
+                        (numero, cliente, telefono, subtotal, total, plan, num_cuotas_preferido,
+                         estado, factura_numero, creado, confirmado_el, descartado_el, motivo_descartado)
+                     VALUES
+                        (:numero, :cliente, :telefono, :subtotal, :total, :plan, :num_cuotas_preferido,
+                         :estado, :factura_numero, :creado, :confirmado_el, :descartado_el, :motivo_descartado)'
+                )->execute($params);
+            }
         } else {
+            // La fecha de pago no se toca al actualizar (confirmar, descartar): así esto
+            // funciona aunque la base todavía no tenga esa columna.
             $pdo->prepare(
                 'UPDATE pedidos SET
                     cliente = :cliente, telefono = :telefono, subtotal = :subtotal, total = :total,

@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS `pedidos` (
   `total` int(11) NOT NULL DEFAULT 0,
   `plan` varchar(20) NOT NULL DEFAULT 'contado',
   `num_cuotas_preferido` int(11) DEFAULT NULL,
+  `fecha_pago_preferida` varchar(10) DEFAULT NULL,
   `estado` varchar(20) NOT NULL DEFAULT 'pendiente',
   `factura_numero` varchar(40) DEFAULT NULL,
   `creado` varchar(40) NOT NULL,

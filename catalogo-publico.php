@@ -437,13 +437,41 @@ $logosPorMarca = [
             </label>
           </div>
           <div class="cp-form-campo" id="cpBloqueNumCuotas" hidden>
-            <label for="cpNumCuotas">Número de cuotas</label>
-            <select id="cpNumCuotas">
-              <option value="2" selected>2 cuotas</option>
-              <option value="3">3 cuotas</option>
-              <option value="4">4 cuotas</option>
-            </select>
-            <p class="cp-form-pista">Gina te confirma los montos y las fechas exactas por WhatsApp.</p>
+            <span class="cp-form-etiqueta" id="cpEtiquetaCuotas">Número de cuotas</span>
+            <div class="cp-fichas" role="group" aria-labelledby="cpEtiquetaCuotas">
+              <button type="button" class="cp-ficha cp-ficha-nueva" data-n="1" aria-pressed="false"><b>1</b><small>con plazo</small></button>
+              <button type="button" class="cp-ficha" data-n="2" aria-pressed="true"><b>2</b><small>cuotas</small></button>
+              <button type="button" class="cp-ficha" data-n="3" aria-pressed="false"><b>3</b><small>cuotas</small></button>
+              <button type="button" class="cp-ficha" data-n="4" aria-pressed="false"><b>4</b><small>cuotas</small></button>
+            </div>
+            <input type="hidden" id="cpNumCuotas" value="2">
+
+            <!-- Solo con "1 cuota con plazo": paga todo en una fecha, de mañana a PLAZO_MAX_DIAS_PUBLICO días. -->
+            <div class="cp-plazo" id="cpBloquePlazo" hidden>
+              <p class="cp-aviso-plazo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+                <span>Esta opción está habilitada para un <b>plazo no mayor a <?= (int) PLAZO_MAX_DIAS_PUBLICO ?> días</b>. Selecciona en el calendario tu fecha de pago.</span>
+              </p>
+              <div>
+                <span class="cp-form-etiqueta" id="cpEtiquetaAtajos">Elige rápido</span>
+                <div class="cp-atajos" role="group" aria-labelledby="cpEtiquetaAtajos">
+                  <button type="button" class="cp-atajo" data-dias="7" aria-pressed="false">En 7 días</button>
+                  <button type="button" class="cp-atajo" data-dias="15" aria-pressed="true">En 15 días</button>
+                  <button type="button" class="cp-atajo" data-dias="<?= (int) PLAZO_MAX_DIAS_PUBLICO ?>" aria-pressed="false">En <?= (int) PLAZO_MAX_DIAS_PUBLICO ?> días</button>
+                </div>
+              </div>
+              <div class="cp-form-campo cp-plazo-fecha">
+                <label for="cpFechaPago">O escoge otra fecha en el calendario</label>
+                <input type="date" id="cpFechaPago">
+              </div>
+              <div class="cp-plazo-resumen" role="status" aria-live="polite">
+                <span>Pagas todo el</span>
+                <strong id="cpPlazoTexto"></strong>
+              </div>
+            </div>
+
+            <p class="cp-form-pista" id="cpPistaCuotas">Gina te confirma los montos y las fechas exactas por WhatsApp.</p>
+            <p class="cp-form-pista" id="cpPistaPlazo" hidden>Gina te confirma el monto y la fecha por WhatsApp.</p>
           </div>
         </div>
 
@@ -551,6 +579,8 @@ $logosPorMarca = [
 const WHATSAPP = '<?= e(APP_WHATSAPP) ?>';
 const NOMBRE_NEGOCIO = '<?= e(APP_NOMBRE) ?>';
 const UMBRAL_CUOTAS = <?= (int) UMBRAL_CUOTAS_PUBLICO ?>;
+const PLAZO_MAX_DIAS = <?= (int) PLAZO_MAX_DIAS_PUBLICO ?>;   // "1 cuota con plazo": de mañana a este número de días
+const HOY_ISO = '<?= e(date('Y-m-d')) ?>';                       // hoy en la hora de Colombia, la misma que usa el servidor
 const PROMO_MIN = <?= (int) PROMO_MINIMO_UNIDADES ?>;   // unidades para el descuento (ver descuento_promo() en includes/pedidos.php)
 const PROMO_PCT = <?= (int) PROMO_PORCENTAJE ?>;
 const TOTAL_PRODUCTOS = <?= $totalProductos ?>;

@@ -94,11 +94,21 @@ if ($plan === 'cuotas' && $total < UMBRAL_CUOTAS_PUBLICO) {
 }
 
 // Solo se guarda la PREFERENCIA de la clienta (en cuántas cuotas le gustaría
-// pagar) — nunca montos ni fechas. Esos se negocian de verdad por WhatsApp
-// después del pedido, y Gina los define al confirmar en facturar.php.
-$numCuotasPreferido = $plan === 'cuotas'
-    ? max(2, min(4, (int) ($datos['num_cuotas'] ?? 2)))
-    : null;
+// pagar) — nunca montos. Esos se negocian de verdad por WhatsApp después del
+// pedido, y Gina los define al confirmar en facturar.php. La única fecha que se
+// guarda es la de "1 cuota con plazo", que la clienta escoge en el calendario
+// (de mañana a PLAZO_MAX_DIAS_PUBLICO días).
+$numCuotasPreferido = null;
+$fechaPagoPreferida = null;
+if ($plan === 'cuotas') {
+    $numCuotasPreferido = max(1, min(4, (int) ($datos['num_cuotas'] ?? 2)));
+    if ($numCuotasPreferido === 1) {
+        $fechaPagoPreferida = fecha_pago_preferida_valida($datos['fecha_pago'] ?? null);
+        if ($fechaPagoPreferida === null) {
+            responder(400, ['ok' => false, 'error' => 'Escoge una fecha de pago entre mañana y los próximos ' . PLAZO_MAX_DIAS_PUBLICO . ' días.']);
+        }
+    }
+}
 
 $numero = crear_pedido([
     'cliente'              => $cliente,
@@ -108,15 +118,18 @@ $numero = crear_pedido([
     'total'                => $total,
     'plan'                 => $plan,
     'num_cuotas_preferido' => $numCuotasPreferido,
+    'fecha_pago_preferida' => $fechaPagoPreferida,
 ]);
 
 registrar_pedido_ip();
 
 responder(200, [
-    'ok'        => true,
-    'numero'    => $numero,
-    'plan'      => $plan,
-    'subtotal'  => $subtotal,
-    'descuento' => $descuento,
-    'total'     => $total,
+    'ok'         => true,
+    'numero'     => $numero,
+    'plan'       => $plan,
+    'num_cuotas' => $numCuotasPreferido,
+    'fecha_pago' => $fechaPagoPreferida,
+    'subtotal'   => $subtotal,
+    'descuento'  => $descuento,
+    'total'      => $total,
 ]);

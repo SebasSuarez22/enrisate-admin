@@ -620,6 +620,12 @@ if (PEDIDO_DESDE) {
       document.getElementById('bloqueContado').hidden = true;
       numCuotasSel.value = String(nPreferido);
       pintarFilasCuotas();
+      // "1 cuota con plazo": la fecha que ella escogió en el catálogo queda como la fecha
+      // de pago (el monto es el total; la fecha se puede ajustar si acordaron otra).
+      if (nPreferido === 1 && PEDIDO_DESDE.fecha_pago_preferida) {
+        const campoFecha = filasCuotas.querySelector('.venceCuota');
+        if (campoFecha) campoFecha.value = PEDIDO_DESDE.fecha_pago_preferida;
+      }
     }
     calcular();
   }

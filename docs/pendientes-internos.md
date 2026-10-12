@@ -2,6 +2,14 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 12 de octubre, 2026 (Carrito público: "1 cuota con plazo", solo en la rama)
+
+- **Hecho en la rama `claude/tender-babbage-hggtl9`, NO en master:** propuesta 2 aprobada (fichas 1-4, atajos de 7/15/30 días y fecha en el calendario). `catalogo-publico.php`, `assets/js/catalogo-publico.js`, `assets/css/catalogo-publico.css`; servidor en `pedido-publico.php` (valida mañana a `PLAZO_MAX_DIAS_PUBLICO` = 30 días con `fecha_pago_preferida_valida()` en `includes/pedidos.php`).
+- **Base de datos:** columna nueva `pedidos.fecha_pago_preferida` (varchar 10). `storage/esquema.sql` la trae; en bases existentes la agrega `tools/aplicar_esquema.php` al arrancar el contenedor y, si faltara, `crear_pedido()` la agrega sola (`asegurar_esquema_pedidos()`); si no se puede, el pedido se guarda igual sin la fecha.
+- **Panel:** `pedidos.php` dice "Paga todo el 27 de octubre de 2026" (`texto_plan_pedido()`); `facturar.php` precarga esa fecha como fecha de pago de la única cuota.
+- **Pruebas:** `tests/pedido_plazo_test.php` (nueva) y toda la suite OK; recorrido en navegador en 10 tamaños (celular de pie y acostado, tablet, portátil, escritorio) sin desbordes ni errores de JavaScript.
+- **Pendiente:** "Sí, llévalo a master"; al desplegar, esperar SUCCESS en Railway, revisar que el arranque agregó la columna y actualizar la bitácora. El distintivo "Nuevo" de la ficha 1 se puede quitar cuando deje de ser novedad.
+
 ## 12 de octubre, 2026 (Cartera: mensaje de mora general; Meta bloqueada)
 
 - **Hecho (en master `3cc6558`, Railway `e621b5c2` SUCCESS):** `mensaje_mora()` en `includes/mensajes.php`, usado por los dos botones de cobro de `cartera.php` (fila y panel Cobrar). Texto general sin cuota ni monto; 7 pruebas nuevas en `tests/mensajes_test.php`. El recordatorio de cuota no vencida no cambió.

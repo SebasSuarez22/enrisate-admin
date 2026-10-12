@@ -75,12 +75,97 @@ const cpTelefono        = document.getElementById('cpTelefono');
 const cpSitioWeb        = document.getElementById('cpSitioWeb');
 const cpBloquePlan      = document.getElementById('cpBloquePlan');
 const cpBloqueNumCuotas = document.getElementById('cpBloqueNumCuotas');
-const cpNumCuotas       = document.getElementById('cpNumCuotas');
+const cpNumCuotas       = document.getElementById('cpNumCuotas');   // campo oculto: lo llenan las fichas 1-4
+const cpFichas          = document.querySelectorAll('.cp-ficha');
+const cpBloquePlazo     = document.getElementById('cpBloquePlazo');
+const cpAtajos          = document.querySelectorAll('.cp-atajo');
+const cpFechaPago       = document.getElementById('cpFechaPago');
+const cpPlazoTexto      = document.getElementById('cpPlazoTexto');
+const cpPistaCuotas     = document.getElementById('cpPistaCuotas');
+const cpPistaPlazo      = document.getElementById('cpPistaPlazo');
 const cpFormError       = document.getElementById('cpFormError');
 const cpConfirmar       = document.getElementById('cpConfirmarPedido');
 const cpEnviarTexto     = document.getElementById('cpEnviarTexto');
 
 let ultimoFoco = null;
+
+/* --- "1 cuota con plazo": paga todo en una sola fecha, de mañana a PLAZO_MAX_DIAS días.
+       Las fechas se calculan desde HOY_ISO (hoy en Colombia, la hora que usa el servidor, que
+       valida otra vez) y se manejan como día local, sin horas, para que nunca corran un día. --- */
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+function fechaDeIso(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  if (!m) return null;
+  const f = new Date(+m[1], +m[2] - 1, +m[3]);
+  return f.getMonth() === +m[2] - 1 ? f : null;   // descarta 2026-02-31
+}
+function isoDeFecha(f) {
+  return f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + String(f.getDate()).padStart(2, '0');
+}
+function masDias(f, n) { return new Date(f.getFullYear(), f.getMonth(), f.getDate() + n); }
+function diasEntre(a, b) { return Math.round((b - a) / 86400000); }
+
+const PLAZO_HOY    = fechaDeIso(HOY_ISO) || masDias(new Date(), 0);
+const PLAZO_PRIMER = masDias(PLAZO_HOY, 1);
+const PLAZO_ULTIMO = masDias(PLAZO_HOY, PLAZO_MAX_DIAS);
+let fechaPago = masDias(PLAZO_HOY, Math.min(15, PLAZO_MAX_DIAS));   // la que se propone al abrir "1 cuota con plazo"
+
+/* "jueves 12 de noviembre" (con la primera letra en mayúscula si se pide). */
+function fechaLarga(f, conSemana = true) {
+  return (conSemana ? DIAS_SEMANA[f.getDay()] + ' ' : '') + f.getDate() + ' de ' + MESES[f.getMonth()];
+}
+function mayuscula(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+function textoPlazo(f) {
+  const n = diasEntre(PLAZO_HOY, f);
+  return n === 1 ? 'mañana' : 'en ' + n + ' días';
+}
+
+function cuotasElegidas() { return parseInt(cpNumCuotas.value, 10) || 2; }
+function esUnaCuota() { return planElegido() === 'cuotas' && !cpBloquePlan.hidden && cuotasElegidas() === 1; }
+
+function pintarPlazo() {
+  const n = cuotasElegidas();
+  cpFichas.forEach(f => f.setAttribute('aria-pressed', Number(f.dataset.n) === n ? 'true' : 'false'));
+  cpBloquePlazo.hidden = n !== 1;
+  cpPistaPlazo.hidden  = n !== 1;
+  cpPistaCuotas.hidden = n === 1;
+
+  cpFechaPago.min = isoDeFecha(PLAZO_PRIMER);
+  cpFechaPago.max = isoDeFecha(PLAZO_ULTIMO);
+  cpFechaPago.value = fechaPago ? isoDeFecha(fechaPago) : '';
+  const dias = fechaPago ? diasEntre(PLAZO_HOY, fechaPago) : 0;
+  cpAtajos.forEach(a => a.setAttribute('aria-pressed', Number(a.dataset.dias) === dias ? 'true' : 'false'));
+  cpPlazoTexto.innerHTML = '';
+  if (fechaPago) {
+    cpPlazoTexto.textContent = mayuscula(fechaLarga(fechaPago)) + ' ';
+    const chico = document.createElement('small');
+    chico.textContent = textoPlazo(fechaPago);
+    cpPlazoTexto.appendChild(chico);
+  } else {
+    cpPlazoTexto.textContent = 'Escoge una fecha';
+  }
+}
+
+cpFichas.forEach(f => f.addEventListener('click', () => {
+  cpNumCuotas.value = f.dataset.n;
+  cpFormError.hidden = true;
+  pintarPlazo();
+}));
+cpAtajos.forEach(a => a.addEventListener('click', () => {
+  fechaPago = masDias(PLAZO_HOY, Number(a.dataset.dias));
+  cpFormError.hidden = true;
+  pintarPlazo();
+}));
+cpFechaPago.addEventListener('change', () => {
+  const f = fechaDeIso(cpFechaPago.value);
+  // Una fecha fuera del plazo (escrita a mano) se lleva al límite más cercano: nunca queda una inválida.
+  fechaPago = f ? (f < PLAZO_PRIMER ? PLAZO_PRIMER : f > PLAZO_ULTIMO ? PLAZO_ULTIMO : f) : null;
+  cpFormError.hidden = true;
+  pintarPlazo();
+});
+pintarPlazo();
 
 function subtotalPedido() {
   return pedido.reduce((s, i) => s + i.precio * i.cant, 0);
@@ -412,8 +497,14 @@ function datosContacto() {
   return { cliente: cpNombre.value.trim(), telefono: cpTelefono.value.replace(/\D+/g, '') };
 }
 
-/* Revisa nombre y WhatsApp; si falta algo, deja el aviso en el paso 2 y devuelve false. */
+/* Revisa la fecha de pago (si pidió 1 cuota con plazo), el nombre y el WhatsApp; si falta algo,
+   deja el aviso en el paso 2 y devuelve false. */
 function contactoValido() {
+  if (esUnaCuota() && !fechaPago) {
+    mostrarErrorForm('Escoge tu fecha de pago: de mañana a ' + PLAZO_MAX_DIAS + ' días.');
+    cpFechaPago.focus();
+    return false;
+  }
   const { cliente, telefono } = datosContacto();
   if (!cliente) { mostrarErrorForm('Escribe tu nombre.'); cpNombre.focus(); return false; }
   if (telefono.length < 7) { mostrarErrorForm('Escribe un WhatsApp válido.'); cpTelefono.focus(); return false; }
@@ -446,9 +537,11 @@ function renderRevision() {
   revDescuento.textContent = '−' + cop(desc);
   revTotal.textContent = cop(totalPedido());
   const { cliente, telefono } = datosContacto();
-  revPago.textContent = planElegido() === 'cuotas' && !cpBloquePlan.hidden
-    ? 'A cuotas (' + (parseInt(cpNumCuotas.value, 10) || 2) + ')'
-    : 'De contado';
+  revPago.textContent = esUnaCuota() && fechaPago
+    ? 'Una cuota, el ' + fechaLarga(fechaPago, false)
+    : planElegido() === 'cuotas' && !cpBloquePlan.hidden
+      ? 'A cuotas (' + cuotasElegidas() + ')'
+      : 'De contado';
   revNombre.textContent = cliente || '—';
   revTelefono.textContent = telefono || '—';
 }
@@ -500,7 +593,7 @@ document.querySelectorAll('.cp-paso-tab, .cp-cambiar').forEach(b =>
   if (e.key === 'Enter') { e.preventDefault(); irAPaso(PASOS); }
 }));
 
-function mensajePedido(numero, plan) {
+function mensajePedido(numero, plan, numCuotas, fechaIso) {
   let msg = 'Hola! Quiero pedir esto de ' + NOMBRE_NEGOCIO + ':\n\n';
   pedido.forEach(i => {
     msg += '• ' + i.cant + ' x ' + i.nombre + ' — ' + cop(i.precio * i.cant) + '\n';
@@ -511,7 +604,12 @@ function mensajePedido(numero, plan) {
     msg += 'Descuento ' + PROMO_PCT + ' % (' + PROMO_MIN + ' o más productos): −' + cop(desc) + '\n';
   }
   msg += (desc > 0 ? '' : '\n') + 'Total aproximado: ' + cop(totalPedido()) + '\n';
-  msg += plan === 'cuotas' ? 'Prefiero pagar a cuotas.\n' : 'Prefiero pagar de contado.\n';
+  const fechaUna = fechaDeIso(fechaIso);
+  if (plan === 'cuotas' && numCuotas === 1 && fechaUna) {
+    msg += 'Prefiero pagar todo en una sola cuota, el ' + fechaLarga(fechaUna) + '.\n';
+  } else {
+    msg += plan === 'cuotas' ? 'Prefiero pagar a cuotas.\n' : 'Prefiero pagar de contado.\n';
+  }
   if (numero) msg += '\nPedido ' + numero + ' (este es mi pedido, todavía no he pagado nada)';
   return msg;
 }
@@ -563,7 +661,8 @@ cpConfirmar.addEventListener('click', async () => {
         cliente,
         telefono,
         plan,
-        num_cuotas: parseInt(cpNumCuotas.value, 10) || 2,
+        num_cuotas: cuotasElegidas(),
+        fecha_pago: esUnaCuota() && fechaPago ? isoDeFecha(fechaPago) : '',
         items: pedido.map(i => ({ sku: i.sku, cant: i.cant })),
         sitio_web: cpSitioWeb.value,
       }),
@@ -576,7 +675,7 @@ cpConfirmar.addEventListener('click', async () => {
       return;
     }
 
-    const msg = mensajePedido(data.numero, data.plan);
+    const msg = mensajePedido(data.numero, data.plan, data.num_cuotas, data.fecha_pago);
     window.open('https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent(msg), '_blank', 'noopener');
 
     pedido.length = 0;
