@@ -2,6 +2,17 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 12 de octubre, 2026 (Cartera: ventana "Reprogramar", solo en la rama)
+
+- **Hecho en la rama `claude/tender-babbage-hggtl9`, NO en master:** propuesta 3 aprobada. Cambia la fecha de una cuota y corre las siguientes los mismos días, con calendario, "esta y las siguientes / solo esta", vista previa y aviso por WhatsApp.
+- **Regla (una sola, en PHP):** `reprogramar_cuotas()` en `includes/cuotas.php`: pagada y anteriores no se mueven; fecha nueva desde mañana y después de la cuota anterior; sin correr, no pasa de la fecha de la siguiente; no vale la misma fecha. `assets/js/cartera-reprogramar.js` la repite solo para la vista previa (si se cambia una, cambiar la otra).
+- **Guardado:** `reprogramar_cuota()` en `includes/facturas.php` (con candado y transacción). Historial en tabla nueva `factura_reprogramaciones` (`storage/esquema.sql`; la crea el arranque del contenedor). Si la tabla faltara, la fecha se cambia igual y solo se avisa en el registro de errores.
+- **Pantalla:** `cartera.php` (acción `reprogramar`, `<dialog id="reprogramar">`, datos en `<script id="datos-reprogramar">`), CSS al final de `enrisate.css` ("ventana Reprogramar"). Entradas: la fecha de la fila (≥960px) y un botón de calendario en las acciones (tablet y celular). En celular sube como hoja desde abajo.
+- **WhatsApp:** tras guardar sale el botón "Avisar el cambio de fecha por WhatsApp" (igual que con abonos y descuentos); no se abre solo porque el navegador bloquea ventanas que no vienen de un toque. Texto en `mensaje_reprogramacion()` (`includes/mensajes.php`).
+- **Ojo (ya corregido):** una variable `$lista` de la página se pisaba y rompía "Detalle por SKU" cuando había historial; ahora se llama `$cambiosCuota`.
+- **Pruebas:** `tests/reprogramar_cuota_test.php` (nueva; regla, guardado, historial, tabla ausente, WhatsApp) y toda la suite OK; recorrido en navegador en 10 tamaños y flujo completo (elegir, guardar, aviso, reabrir) sin errores.
+- **Pendiente:** "Sí, llévalo a master"; al desplegar, esperar SUCCESS, confirmar que el arranque creó la tabla y actualizar la bitácora. Probar en el celular de Sebastián con una cuota real.
+
 ## 12 de octubre, 2026 (Carrito público: "1 cuota con plazo", solo en la rama)
 
 - **Hecho en la rama `claude/tender-babbage-hggtl9`, NO en master:** propuesta 2 aprobada (fichas 1-4, atajos de 7/15/30 días y fecha en el calendario). `catalogo-publico.php`, `assets/js/catalogo-publico.js`, `assets/css/catalogo-publico.css`; servidor en `pedido-publico.php` (valida mañana a `PLAZO_MAX_DIAS_PUBLICO` = 30 días con `fecha_pago_preferida_valida()` en `includes/pedidos.php`).

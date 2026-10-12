@@ -101,6 +101,20 @@ CREATE TABLE IF NOT EXISTS `factura_abonos` (
   CONSTRAINT `factura_abonos_ibfk_1` FOREIGN KEY (`cuota_id`) REFERENCES `factura_cuotas` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE IF NOT EXISTS `factura_reprogramaciones` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `factura_numero` varchar(40) NOT NULL,
+  `cuota_orden` int(11) NOT NULL DEFAULT 0,
+  `fecha_anterior` varchar(10) NOT NULL DEFAULT '',
+  `fecha_nueva` varchar(10) NOT NULL DEFAULT '',
+  `alcance` varchar(12) NOT NULL DEFAULT 'siguientes',
+  `usuario` varchar(150) NOT NULL DEFAULT '',
+  `creado` varchar(40) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `factura_numero` (`factura_numero`),
+  CONSTRAINT `factura_reprogramaciones_ibfk_1` FOREIGN KEY (`factura_numero`) REFERENCES `facturas` (`numero`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS `pedidos` (
   `numero` varchar(40) NOT NULL,
   `cliente` varchar(150) NOT NULL,
