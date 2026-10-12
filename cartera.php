@@ -36,6 +36,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = trim($motivo) === ''
             ? 'Escribe el motivo del descuento.'
             : 'No pude aplicar ese descuento. Revisa que el monto no supere lo pendiente.';
+    } elseif (($_POST['accion'] ?? '') === 'reprogramar') {
+        // Cambiar la fecha de una cuota y (si se pide) correr las siguientes. La regla vive en
+        // reprogramar_cuotas() (includes/cuotas.php); la ventana del navegador solo la repite
+        // para mostrar la vista previa.
+        $numero = (string) ($_POST['numero'] ?? '');
+        $idx    = (int) ($_POST['cuota_idx'] ?? -1);
+        $correr = ($_POST['alcance'] ?? 'siguientes') !== 'sola';
+        $r = reprogramar_cuota($numero, $idx, (string) ($_POST['fecha'] ?? ''), $correr, (string) (usuario_actual()['nombre'] ?? ''));
+        if ($r['ok']) {
+            header('Location: cartera.php?ok=reprogramada&numero=' . urlencode($numero) . '&cuota=' . $idx
+                . '&mueve=' . (int) $r['movidas'] . (!empty($_POST['avisar']) ? '&avisar=1' : ''));
+            exit;
+        }
+        $error = $r['error'];
     } else {
         $numero = (string) ($_POST['numero'] ?? '');
         $idx    = (int) ($_POST['cuota_idx'] ?? -1);
@@ -50,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $waAbono     = null;
 $waDescuento = null;
+$waReprog    = null;
 
 if (($_GET['ok'] ?? '') === 'abono') {
     $ok     = 'Abono registrado.';
@@ -95,6 +110,28 @@ if (($_GET['ok'] ?? '') === 'abono') {
             : "Con esto, esa cuota queda al día. ¡Gracias por tu confianza!\n";
 
         $waDescuento = enlace_whatsapp($fDescto['telefono'], $msg);
+    }
+} elseif (($_GET['ok'] ?? '') === 'reprogramada') {
+    $ok     = 'Fecha cambiada.';
+    $fNum   = (string) ($_GET['numero'] ?? '');
+    $idx    = (int) ($_GET['cuota'] ?? -1);
+    $mueve  = max(0, (int) ($_GET['mueve'] ?? 0));
+    $fReprog = $fNum !== '' ? factura_por_numero($fNum) : null;
+
+    if ($fReprog && !empty($_GET['avisar']) && $fReprog['telefono'] !== '' && isset($fReprog['cuotas'][$idx])) {
+        // Las cuotas siguientes que se corrieron: las próximas sin pagar, tantas como se movieron.
+        $siguientes = [];
+        foreach ($fReprog['cuotas'] as $i => $cuotaSig) {
+            if ($i > $idx && count($siguientes) < $mueve && !cuota_esta_pagada($cuotaSig)) {
+                $siguientes[] = ['rotulo' => rotulo_cuota($i, count($fReprog['cuotas'])), 'vence' => $cuotaSig['vence']];
+            }
+        }
+        $waReprog = enlace_whatsapp($fReprog['telefono'], mensaje_reprogramacion(
+            (string) $fReprog['cliente'],
+            lcfirst(rotulo_cuota($idx, count($fReprog['cuotas']))),
+            (string) $fReprog['cuotas'][$idx]['vence'],
+            $siguientes
+        ));
     }
 } elseif (($_GET['ok'] ?? '') === 'anulada') {
     $ok = 'Factura anulada. Ya no cuenta en los reportes ni en la cartera.';
@@ -218,6 +255,32 @@ $maxTotal = $top ? $top[0]['total'] : 0;
 
 $token = csrf_token();
 
+// Lo que necesita la ventana "Reprogramar": por cada factura con cuotas pendientes, sus cuotas
+// (para mostrar cómo queda cada una) y los cambios de fecha que ya tuvo.
+$datosReprogramar = [];
+foreach ($pendientes as $p) {
+    $f = $p['factura'];
+    if (isset($datosReprogramar[$f['numero']])) {
+        continue;
+    }
+    $filas = [];
+    foreach ($f['cuotas'] as $i => $c) {
+        $filas[] = [
+            'r'      => rotulo_cuota($i, count($f['cuotas'])),
+            'monto'  => (int) $c['monto'],
+            'vence'  => substr((string) $c['vence'], 0, 10),
+            'pagada' => cuota_esta_pagada($c),
+            'pendiente' => cuota_pendiente($c),
+        ];
+    }
+    $datosReprogramar[$f['numero']] = ['cliente' => (string) $f['cliente'], 'telefono' => (string) $f['telefono'], 'cuotas' => $filas, 'cambios' => []];
+}
+foreach (reprogramaciones_por_cuota(array_keys($datosReprogramar)) as $numeroF => $porCuota) {
+    foreach ($porCuota as $orden => $cambiosCuota) {
+        $datosReprogramar[$numeroF]['cambios'][$orden] = ['veces' => count($cambiosCuota), 'antes' => $cambiosCuota[count($cambiosCuota) - 1]['fecha_anterior']];
+    }
+}
+
 $tituloPagina = 'Cartera y reportes';
 $barraVolver  = true;
 require __DIR__ . '/includes/cabecera.php';
@@ -241,6 +304,12 @@ require __DIR__ . '/includes/cabecera.php';
   <?php if ($waDescuento): ?>
     <p class="aviso neutro">
       <a class="boton mini verde" href="<?= e($waDescuento) ?>" target="_blank" rel="noopener">Avisar el descuento por WhatsApp</a>
+    </p>
+  <?php endif; ?>
+
+  <?php if ($waReprog): ?>
+    <p class="aviso neutro">
+      <a class="boton mini verde" href="<?= e($waReprog) ?>" target="_blank" rel="noopener">Avisar el cambio de fecha por WhatsApp</a>
     </p>
   <?php endif; ?>
 
@@ -354,6 +423,10 @@ require __DIR__ . '/includes/cabecera.php';
                   title="Aplicar descuento" aria-label="Aplicar descuento">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19 19 5M7.5 8.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm9 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>
           </button>
+          <button type="button" class="boton-icono fantasma btn-reprogramar" data-numero="<?= e($f['numero']) ?>" data-idx="<?= (int) $p['idx'] ?>"
+                  title="Cambiar la fecha de vencimiento" aria-label="Cambiar la fecha de vencimiento de <?= e($f['cliente']) ?>, <?= e($p['rotulo']) ?>">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+          </button>
           <?php
           $acciones = ob_get_clean();
 
@@ -409,7 +482,11 @@ require __DIR__ . '/includes/cabecera.php';
                 <!-- Escritorio (≥960px): fecha corta en dos líneas fijas + estado en su sitio,
                      para que un mes largo (septiembre, diciembre) no empuje nada. -->
                 <div class="vence-nueva">
-                  <span class="vence-fecha"><b><?= e($venceDia) ?></b><small><?= e($venceAnio) ?></small></span>
+                  <button type="button" class="vence-editar btn-reprogramar" data-numero="<?= e($f['numero']) ?>" data-idx="<?= (int) $p['idx'] ?>"
+                          title="Cambiar la fecha de vencimiento" aria-label="Cambiar la fecha de vencimiento de <?= e($f['cliente']) ?>, <?= e($p['rotulo']) ?> (hoy: <?= e($venceCorta) ?>)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+                    <span class="vence-fecha"><b><?= e($venceDia) ?></b><small><?= e($venceAnio) ?></small></span>
+                  </button>
                   <span class="vence-estado"><?= $vencida ? '<span class="etiqueta vencida">Vencida</span>' : '<span class="etiqueta pendiente">Pendiente</span>' ?></span>
                 </div>
               </td>
@@ -813,6 +890,82 @@ require __DIR__ . '/includes/cabecera.php';
   <?php endif; ?>
 
 </main>
+
+<?php if ($datosReprogramar): ?>
+<!-- Ventana "Reprogramar": cambia la fecha de una cuota y, si se pide, corre las siguientes.
+     Una sola para toda la página; assets/js/cartera-reprogramar.js la llena con la cuota que se
+     toca. En escritorio y tablet es una ventana centrada; en celular sube como hoja desde abajo. -->
+<script type="application/json" id="datos-reprogramar"><?= json_encode($datosReprogramar, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+<dialog class="rp" id="reprogramar" aria-labelledby="rp-titulo"
+        data-hoy="<?= e(date('Y-m-d')) ?>" data-negocio="<?= e(APP_NOMBRE) ?>">
+  <form method="post" action="cartera.php" class="rp-form" id="rp-form">
+    <input type="hidden" name="csrf" value="<?= e($token) ?>">
+    <input type="hidden" name="accion" value="reprogramar">
+    <input type="hidden" name="numero" value="">
+    <input type="hidden" name="cuota_idx" value="">
+    <input type="hidden" name="fecha" value="">
+    <div class="rp-agarre" aria-hidden="true"></div>
+    <header class="rp-cab">
+      <div>
+        <h2 class="rp-titulo" id="rp-titulo">Reprogramar cuota</h2>
+        <p class="rp-sub" id="rp-sub"></p>
+        <p class="rp-previo" id="rp-previo" hidden></p>
+      </div>
+      <button type="button" class="rp-cerrar" id="rp-cerrar" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </header>
+
+    <div class="rp-cuerpo" id="rp-cuerpo">
+      <div class="rp-izq">
+        <div class="rp-cal">
+          <div class="rp-cal-cab">
+            <button type="button" class="rp-nav" id="rp-ant" aria-label="Mes anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+            <span class="rp-mes" id="rp-mes" aria-live="polite"></span>
+            <button type="button" class="rp-nav" id="rp-sig" aria-label="Mes siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+          </div>
+          <div class="rp-sem" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+          <div class="rp-rej" id="rp-rej"></div>
+          <div class="rp-ley">
+            <span><i class="antes"></i>Fecha actual</span>
+            <span><i class="nueva"></i>Fecha nueva</span>
+            <span><i class="mueve"></i>Otra cuota que se corre</span>
+          </div>
+        </div>
+        <p class="rp-error" id="rp-error" role="alert"></p>
+      </div>
+
+      <div class="rp-der">
+        <fieldset class="rp-alcance" id="rp-alcance">
+          <legend>Qué cuotas se mueven</legend>
+          <label class="rp-opcion">
+            <input type="radio" name="alcance" value="siguientes" checked>
+            <span><b>Esta y las siguientes</b><small>Las demás pasan el mismo número de días.</small></span>
+          </label>
+          <label class="rp-opcion">
+            <input type="radio" name="alcance" value="sola">
+            <span><b>Solo esta cuota</b><small>Las demás quedan en su fecha.</small></span>
+          </label>
+        </fieldset>
+        <ul class="rp-lista" id="rp-lista" aria-label="Cómo queda cada cuota"></ul>
+        <div class="rp-wa" id="rp-wa">
+          <label><input type="checkbox" name="avisar" value="1" id="rp-avisar" checked><span id="rp-avisar-txt">Avisar por WhatsApp</span></label>
+          <p class="rp-msg" id="rp-msg"></p>
+        </div>
+      </div>
+    </div>
+
+    <footer class="rp-pie">
+      <button type="button" class="rp-cancelar" id="rp-cancelar">Cancelar</button>
+      <button type="submit" class="rp-guardar" id="rp-guardar" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l4.5 4.5L20 6"/></svg>
+        <span id="rp-guardar-txt">Guardar y avisar</span>
+      </button>
+    </footer>
+  </form>
+</dialog>
+<script src="assets/js/cartera-reprogramar.js?v=<?= filemtime(__DIR__ . '/assets/js/cartera-reprogramar.js') ?>" defer></script>
+<?php endif; ?>
 
 <script>
 document.querySelectorAll('.btn-mostrar-descuento').forEach(btn => {

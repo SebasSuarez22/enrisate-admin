@@ -66,6 +66,33 @@ function mensaje_mora(string $nombreCompleto): string
         . 'Si ya lo hiciste, cuéntanos para actualizar tu cuenta. ¡Gracias!';
 }
 
+/**
+ * Texto del WhatsApp para avisar que cambió la fecha de una cuota. $rotuloCuota va en minúscula
+ * ("segunda cuota"); $siguientes son las cuotas que también se corrieron, en orden:
+ * [['rotulo' => 'Tercera cuota', 'vence' => '2026-11-24'], ...]. Sin año si es el año de hoy.
+ */
+function mensaje_reprogramacion(string $nombreCompleto, string $rotuloCuota, string $venceNueva, array $siguientes = []): string
+{
+    $nombre = mensajes_primer_nombre($nombreCompleto);
+    $fecha  = function (string $iso): string {
+        $meses = nombres_meses();
+        $t = strtotime($iso);
+        return date('j', $t) . ' de ' . $meses[(int) date('n', $t)] . (date('Y', $t) !== date('Y') ? ' de ' . date('Y', $t) : '');
+    };
+
+    $texto = 'Hola' . ($nombre !== '' ? ' ' . $nombre : '') . " 💛 Quedó anotado el cambio: tu "
+        . $rotuloCuota . ' de ' . APP_NOMBRE . ' ahora vence el ' . $fecha($venceNueva) . '.';
+    if ($siguientes) {
+        $partes = array_map(
+            fn(array $c): string => 'la ' . lcfirst(str_replace(' cuota', '', (string) $c['rotulo'])) . ' el ' . $fecha((string) $c['vence']),
+            $siguientes
+        );
+        $ultima = array_pop($partes);
+        $texto .= ' Las siguientes quedan así: ' . ($partes ? implode(', ', $partes) . ' y ' : '') . $ultima . '.';
+    }
+    return $texto . ' ¡Gracias!';
+}
+
 /** true si es un celular colombiano de 10 dígitos (empieza en 3), con o sin +57. */
 function telefono_whatsapp_valido(string $telefono): bool
 {

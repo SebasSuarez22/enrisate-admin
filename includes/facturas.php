@@ -143,6 +143,68 @@ function aplicar_descuento_cuota(string $numero, int $indiceCuota, int $monto, s
 }
 
 /**
+ * Reprograma una cuota pendiente: le cambia la fecha de vencimiento y, si $correr, corre las
+ * siguientes los mismos días (la regla vive en reprogramar_cuotas()). Queda anotado qué fecha
+ * tenía cada cuota antes y quién lo hizo. Devuelve el resultado de reprogramar_cuotas() más
+ * 'movidas' (cuántas cuotas siguientes se corrieron), o ['ok' => false, 'error' => texto].
+ */
+function reprogramar_cuota(string $numero, int $indiceCuota, string $nuevaFecha, bool $correr, string $usuario = ''): array
+{
+    return con_bloqueo_facturas(function () use ($numero, $indiceCuota, $nuevaFecha, $correr, $usuario) {
+        $f = factura_por_numero($numero);
+        if (!$f || !empty($f['anulada']) || ($f['plan'] ?? '') !== 'cuotas') {
+            return ['ok' => false, 'error' => 'No encontré esa factura a cuotas.'];
+        }
+        $r = reprogramar_cuotas($f['cuotas'], $indiceCuota, $nuevaFecha, $correr);
+        if (!$r['ok']) {
+            return $r;
+        }
+
+        en_transaccion(function () use ($numero, $f, $r, $correr, $usuario, $indiceCuota): void {
+            actualizar_factura($numero, ['cuotas' => $r['cuotas'], 'pagado' => total_pagado_cuotas($f)]);
+            // El historial es un apunte: si la tabla aún no existe, la fecha se cambia igual.
+            try {
+                $st = db()->prepare(
+                    'INSERT INTO factura_reprogramaciones (factura_numero, cuota_orden, fecha_anterior, fecha_nueva, alcance, usuario, creado)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)'
+                );
+                foreach ($r['cambios'] as $c) {
+                    $st->execute([$numero, $c['orden'], $c['antes'], $c['despues'], $correr ? 'siguientes' : 'sola', mb_substr($usuario, 0, 150), date('c')]);
+                }
+            } catch (PDOException $e) {
+                error_log('[enrisate] no se pudo anotar la reprogramación de ' . $numero . ': ' . $e->getMessage());
+            }
+        });
+
+        $r['movidas'] = max(0, count($r['cambios']) - 1);
+        return $r;
+    });
+}
+
+/** Cambios de fecha ya hechos, por factura y cuota: [numero][orden] => lista (la más reciente primero). */
+function reprogramaciones_por_cuota(array $numeros): array
+{
+    $numeros = array_values(array_unique(array_map('strval', $numeros)));
+    if (!$numeros) {
+        return [];
+    }
+    try {
+        $st = db()->prepare(
+            'SELECT factura_numero, cuota_orden, fecha_anterior, fecha_nueva, creado FROM factura_reprogramaciones
+              WHERE factura_numero IN (' . implode(',', array_fill(0, count($numeros), '?')) . ') ORDER BY id DESC'
+        );
+        $st->execute($numeros);
+    } catch (PDOException $e) {
+        return []; // la tabla todavía no existe: no hay historial que mostrar
+    }
+    $por = [];
+    foreach ($st->fetchAll() as $fila) {
+        $por[$fila['factura_numero']][(int) $fila['cuota_orden']][] = $fila;
+    }
+    return $por;
+}
+
+/**
  * Agrega uno o más productos a una factura ya existente — la clienta pidió
  * algo más días después y no hace falta una factura aparte. Lo agregado
  * queda como una cuota pendiente nueva (con su propia fecha de
