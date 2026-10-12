@@ -97,8 +97,8 @@ require __DIR__ . '/includes/cabecera.php';
               </td>
               <td class="col-plan">
                 <?php if (($p['plan'] ?? 'contado') === 'cuotas'): ?>
-                  Prefiere <?= numero((int) ($p['num_cuotas_preferido'] ?? 2)) ?> cuotas
-                  <br><span class="sku">Montos y fechas: por definir con ella</span>
+                  <?= e(texto_plan_pedido($p)) ?>
+                  <br><span class="sku"><?= e(nota_plan_pedido($p)) ?></span>
                 <?php else: ?>
                   De contado
                 <?php endif; ?>
@@ -135,7 +135,7 @@ require __DIR__ . '/includes/cabecera.php';
                 </p>
               </div>
               <span class="ped-plan<?= $cuotas ? ' es-cuotas' : '' ?>">
-                <?= $cuotas ? 'Prefiere ' . numero((int) ($p['num_cuotas_preferido'] ?? 2)) . ' cuotas' : 'De contado' ?>
+                <?= e(texto_plan_pedido($p)) ?>
               </span>
               <span class="ped-total"><?= pesos((int) ($p['total'] ?? 0)) ?></span>
               <div class="acciones-pedido ped-acciones"><?= $accionesPedido($p) ?></div>
@@ -198,8 +198,8 @@ require __DIR__ . '/includes/cabecera.php';
               <div class="campo-detalle">
                 <strong>Plan propuesto</strong>
                 <?php if (($p['plan'] ?? 'contado') === 'cuotas'): ?>
-                  Prefiere <?= numero((int) ($p['num_cuotas_preferido'] ?? 2)) ?> cuotas
-                  <br>Montos y fechas: por definir con ella
+                  <?= e(texto_plan_pedido($p)) ?>
+                  <br><?= e(nota_plan_pedido($p)) ?>
                 <?php else: ?>
                   De contado
                 <?php endif; ?>

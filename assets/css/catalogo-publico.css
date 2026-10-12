@@ -1291,6 +1291,66 @@ body.cp-con-carrito .cp-pie {
 }
 .cp-form-opcion:has(input:checked) { background: var(--cacao); border-color: var(--cacao); color: #fff; }
 .cp-form-pista { margin: var(--sp-2) 0 0; font-size: var(--t-xs); color: var(--gris); }
+.cp-form-pista[hidden] { display: none; }
+
+/* --- A cuotas: fichas 1-4 y "1 cuota con plazo" (paga todo en una fecha, de mañana a 30 días) --- */
+#cpBloqueNumCuotas { margin-top: var(--sp-3); }
+.cp-fichas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); margin-top: 10px; }
+.cp-ficha {
+  position: relative; min-height: 64px; min-width: 0;
+  display: grid; place-content: center; text-align: center; padding: 6px 4px;
+  font: inherit; color: var(--tinta);
+  background: var(--crema); border: 1px solid var(--arena); border-radius: var(--radio);
+  cursor: pointer;
+}
+.cp-ficha b { font-family: Fraunces, Georgia, serif; font-size: var(--t-lg); font-weight: 600; line-height: 1.1; }
+.cp-ficha small { font-size: 0.6875rem; font-weight: 600; line-height: 1.3; color: var(--gris); }
+.cp-ficha[aria-pressed="true"] { background: var(--cacao); border-color: var(--cacao); color: #fff; }
+.cp-ficha[aria-pressed="true"] small { color: #fff; opacity: .85; }
+.cp-ficha-nueva::after {
+  content: "Nuevo"; position: absolute; top: -9px; right: -2px;
+  padding: 2px 7px; border-radius: 99px;
+  font-size: 0.625rem; font-weight: 800; line-height: 1.3; letter-spacing: .02em;
+  color: #fff; background: var(--rosa);
+}
+.cp-plazo { display: grid; gap: var(--sp-3); margin-top: var(--sp-3); }
+.cp-plazo[hidden] { display: none; }
+.cp-aviso-plazo {
+  margin: 0; padding: 11px 14px; border-radius: var(--radio);
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: var(--t-xs); font-weight: 600; line-height: 1.4;
+  color: var(--cacao); background: var(--escena);
+}
+.cp-aviso-plazo svg { flex: none; width: 18px; height: 18px; margin-top: 1px; color: var(--rosa); }
+.cp-aviso-plazo b { font-weight: 800; color: var(--tinta); }
+.cp-atajos { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.cp-atajo {
+  flex: 1 1 auto; min-height: 44px; padding: 0 12px;
+  font: inherit; font-size: var(--t-sm); font-weight: 700; color: var(--tinta);
+  background: var(--papel); border: 1px solid var(--arena); border-radius: 99px;
+  cursor: pointer;
+}
+.cp-atajo[aria-pressed="true"] { background: var(--cacao); border-color: var(--cacao); color: #fff; }
+.cp-plazo-fecha { margin-bottom: 0; }
+.cp-form-campo input[type="date"] {
+  display: block; width: 100%; min-width: 0; min-height: 48px;
+  padding: 10px 14px; text-align: left;
+  font: inherit; font-size: var(--t-base); color: var(--tinta);
+  background: var(--crema); border: 1px solid var(--arena); border-radius: var(--radio);
+  -webkit-appearance: none; appearance: none;
+}
+.cp-plazo-resumen {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--sp-3);
+  padding: 12px 14px; border-radius: var(--radio);
+  background: var(--crema); border: 1px solid var(--arena);
+}
+.cp-plazo-resumen span { font-size: var(--t-xs); color: var(--gris); }
+.cp-plazo-resumen strong { font-family: Fraunces, Georgia, serif; font-size: var(--t-md); font-weight: 600; color: var(--cacao); }
+.cp-plazo-resumen strong small { margin-left: 6px; font-family: Manrope, sans-serif; font-size: var(--t-xs); font-weight: 700; color: var(--rosa); }
+@media (max-width: 359px) {
+  .cp-fichas { gap: 6px; }
+  .cp-atajo { padding: 0 8px; font-size: var(--t-xs); }
+}
 .cp-form-error {
   margin: 0 0 var(--sp-3);
   padding: 10px 14px;
@@ -1552,6 +1612,13 @@ body.cp-con-carrito .cp-pie {
   .cp-form-campo { margin-bottom: var(--sp-2); }
   .cp-form-campo input[type="text"], .cp-form-campo input[type="tel"], .cp-form-campo select { min-height: 42px; padding: 8px 12px; }
   .cp-form-opcion { min-height: 42px; }
+  .cp-ficha { min-height: 52px; padding: 4px; }
+  .cp-ficha b { font-size: var(--t-md); }
+  .cp-plazo { gap: var(--sp-2); margin-top: var(--sp-2); }
+  .cp-aviso-plazo { padding: 8px 12px; }
+  .cp-atajo { min-height: 38px; }
+  .cp-form-campo input[type="date"] { min-height: 42px; padding: 8px 12px; }
+  .cp-plazo-resumen { padding: 8px 12px; }
   .cp-rev-linea { padding: 3px 0; font-size: var(--t-xs); }
   .cp-revision-datos { margin-top: var(--sp-2); }
   .cp-revision-datos > div { padding: 5px 0; font-size: var(--t-xs); }

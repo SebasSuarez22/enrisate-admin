@@ -53,6 +53,9 @@ const APP_INSTAGRAM = 'enrisate';
 // Total mínimo del carrito para que el catálogo público le ofrezca a la
 // clienta pagar a cuotas (por debajo de esto, solo ve "de contado").
 const UMBRAL_CUOTAS_PUBLICO = 70000;
+// "1 cuota con plazo": la clienta paga todo en una sola fecha que ella escoge, de mañana
+// a este número de días (el catálogo y pedido-publico.php usan el mismo límite).
+const PLAZO_MAX_DIAS_PUBLICO = 30;
 // Cuántos pedidos como máximo puede mandar la misma IP en una hora
 // (protección simple contra spam/bots en el formulario público).
 const MAX_PEDIDOS_POR_HORA = 8;

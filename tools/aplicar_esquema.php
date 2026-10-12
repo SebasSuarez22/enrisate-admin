@@ -16,6 +16,7 @@ if (PHP_SAPI !== 'cli') {
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/pedidos.php';
 
 $ruta = __DIR__ . '/../storage/esquema.sql';
 $sql  = file_get_contents($ruta);
@@ -39,6 +40,11 @@ foreach ($sentencias as $sentencia) {
         continue;
     }
     $pdo->exec($sentencia);
+}
+
+// Columnas nuevas en tablas que ya existían (CREATE TABLE IF NOT EXISTS no las agrega).
+if (!asegurar_esquema_pedidos()) {
+    fwrite(STDERR, "Aviso: no se pudo agregar pedidos.fecha_pago_preferida; los pedidos se guardan sin esa fecha.\n");
 }
 
 echo "Esquema aplicado (" . count($sentencias) . " sentencias).\n";
