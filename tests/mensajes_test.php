@@ -23,6 +23,16 @@ verificar(str_contains($m, 'mensajes automáticos con promociones y otras noveda
 verificar(str_contains($m, 'Responde *SÍ* o *NO*'), 'pide responder SÍ o NO');
 verificar(str_starts_with(mensaje_bienvenida(''), 'Hola 🌿'), 'sin nombre, saluda sin inventar uno');
 
+/* --- El cobro de un pago vencido --- */
+$mora = mensaje_mora('Valentina Gómez');
+verificar(str_starts_with($mora, 'Hola Valentina 💛'), 'el cobro saluda con el primer nombre');
+verificar(str_contains($mora, 'Te escribimos de ' . APP_NOMBRE . ' porque tienes un pago pendiente que ya venció'), 'dice que hay un pago vencido, de parte de Enrísate');
+verificar(str_contains($mora, 'Nos encantaría que te pongas al día'), 'pide ponerse al día');
+verificar(str_contains($mora, 'Si ya lo hiciste, cuéntanos para actualizar tu cuenta. ¡Gracias!'), 'cubre a quien ya pagó y agradece');
+verificar(!str_contains($mora, '$') && !preg_match('/\d/', $mora), 'general: sin monto, cuota ni fecha (ningún número ni signo de pesos)');
+verificar(str_starts_with(mensaje_mora(''), 'Hola 💛'), 'sin nombre, saluda sin inventar uno');
+verificar(str_starts_with(mensaje_mora('  Ana  María Pérez '), 'Hola Ana 💛'), 'con espacios de más, toma bien el primer nombre');
+
 /* --- Celulares válidos --- */
 verificar(telefono_whatsapp_valido('3001234567'), 'celular de 10 dígitos válido');
 verificar(telefono_whatsapp_valido('+57 300 123 4567'), 'celular con +57 y espacios válido');
