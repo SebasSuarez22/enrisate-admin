@@ -2,6 +2,13 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 12 de octubre, 2026 (Cartera: mensaje de mora general; Meta bloqueada)
+
+- **Hecho (en master `3cc6558`, Railway `e621b5c2` SUCCESS):** `mensaje_mora()` en `includes/mensajes.php`, usado por los dos botones de cobro de `cartera.php` (fila y panel Cobrar). Texto general sin cuota ni monto; 7 pruebas nuevas en `tests/mensajes_test.php`. El recordatorio de cuota no vencida no cambió.
+- **Bitácora:** actualizada (versión 48) con este cambio y el avance del bot.
+- **Meta:** el número de prueba da error 131031 ("Business Account locked"). Falta: completar info y sitio del negocio, pedir revisión en Business Support Home, verificación del negocio (paso 3) o ticket a Meta. **Regenerar el token temporal que se pegó en el chat.**
+- **Pendientes:** decidir número del bot (360dialog / línea nueva / Meta directo); `X-Twilio-Signature` antes de la etapa 3; probar el botón de mora con una clienta real vencida.
+
 ## 11 de octubre, 2026 (Bot en n8n: etapa 2 lista; número de WhatsApp por decidir)
 
 - **Hecho:** `API_TOKEN` creada por Sebastián (Railway + credencial Header Auth "API Enrísate" en n8n, dominio permitido limitado a la app). Etapa 2 probada con `shampoo para rizos`: devuelve 3 productos reales con precio. El nodo de envío de Twilio sigue **apagado**.
