@@ -51,6 +51,21 @@ function mensaje_bienvenida(string $nombreCompleto): string
         . "Responde *SÍ* o *NO*. Puedes cambiar de opinión cuando quieras.";
 }
 
+/**
+ * Texto del WhatsApp de cobro para una clienta con un pago vencido (el botón de mora de
+ * Cartera). General a propósito: sin cuota, monto ni fecha, así sirve igual para cualquier
+ * pago pendiente, y cubre a quien ya pagó ("cuéntanos para actualizar tu cuenta").
+ */
+function mensaje_mora(string $nombreCompleto): string
+{
+    $nombre = mensajes_primer_nombre($nombreCompleto);
+
+    return 'Hola' . ($nombre !== '' ? ' ' . $nombre : '') . " 💛 Esperamos que estés muy bien.\n"
+        . 'Te escribimos de ' . APP_NOMBRE . ' porque tienes un pago pendiente que ya venció. '
+        . "Nos encantaría que te pongas al día.\n"
+        . 'Si ya lo hiciste, cuéntanos para actualizar tu cuenta. ¡Gracias!';
+}
+
 /** true si es un celular colombiano de 10 dígitos (empieza en 3), con o sin +57. */
 function telefono_whatsapp_valido(string $telefono): bool
 {

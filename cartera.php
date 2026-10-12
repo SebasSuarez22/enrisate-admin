@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/facturas.php';
+require_once __DIR__ . '/includes/mensajes.php';
 
 requerir_sesion();
 
@@ -322,11 +323,7 @@ require __DIR__ . '/includes/cabecera.php';
           $waPanel = null;
           if ($f['telefono'] !== '') {
               if ($vencida) {
-                  $msgMora = "Hola " . $f['cliente'] . " 💛\n"
-                      . "Notamos que tu " . lcfirst($p['rotulo']) . " de " . pesos($p['pendiente'])
-                      . " venció el " . fecha_larga($p['vence']) . " y sigue pendiente.\n"
-                      . "¿Nos ayudas poniéndote al día?";
-                  $waMora = $waPanel = enlace_whatsapp($f['telefono'], $msgMora);
+                  $waMora = $waPanel = enlace_whatsapp($f['telefono'], mensaje_mora((string) $f['cliente']));
               } else {
                   $msgRecordatorio = "Hola " . $f['cliente'] . " 💛\n"
                       . "Te recordamos que tu " . lcfirst($p['rotulo']) . " de " . pesos($p['pendiente'])
