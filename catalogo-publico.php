@@ -439,7 +439,7 @@ $logosPorMarca = [
           <div class="cp-form-campo" id="cpBloqueNumCuotas" hidden>
             <span class="cp-form-etiqueta" id="cpEtiquetaCuotas">Número de cuotas</span>
             <div class="cp-fichas" role="group" aria-labelledby="cpEtiquetaCuotas">
-              <button type="button" class="cp-ficha cp-ficha-nueva" data-n="1" aria-pressed="false"><b>1</b><small>con plazo</small></button>
+              <button type="button" class="cp-ficha" data-n="1" aria-pressed="false"><b>1</b><small>con plazo</small></button>
               <button type="button" class="cp-ficha" data-n="2" aria-pressed="true"><b>2</b><small>cuotas</small></button>
               <button type="button" class="cp-ficha" data-n="3" aria-pressed="false"><b>3</b><small>cuotas</small></button>
               <button type="button" class="cp-ficha" data-n="4" aria-pressed="false"><b>4</b><small>cuotas</small></button>
