@@ -27,6 +27,25 @@
   var conPuntos = function (n) { return n ? n.toLocaleString('es-CO') : ''; };
   var compacto = window.matchMedia('(max-width: 959px)');
 
+  /* ---------- "Para atender primero" en celular: una cuota abierta a la vez ---------- */
+  var listaUrg = raiz.querySelector('.tc-urg-lista');
+  if (listaUrg) {
+    listaUrg.addEventListener('click', function (e) {
+      var boton = e.target.closest('.tc-abrir');
+      if (!boton) return;
+      var carta = boton.closest('.tc-carta');
+      var abrir = !carta.classList.contains('abierta');
+      listaUrg.querySelectorAll('.tc-carta.abierta').forEach(function (c) {
+        c.classList.remove('abierta');
+        c.querySelector('.tc-abrir').setAttribute('aria-expanded', 'false');
+      });
+      if (abrir) {
+        carta.classList.add('abierta');
+        boton.setAttribute('aria-expanded', 'true');
+      }
+    });
+  }
+
   /* ---------- Filtros de "Todas las cuotas" ---------- */
   var filtro = { grupo: 'todas', clienta: null };
   var lista = $('tc-lista');
