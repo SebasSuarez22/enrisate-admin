@@ -2,6 +2,16 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 13 de octubre, 2026 (Facturación en tablet y celular, propuesta B, solo en la rama)
+
+- **Hecho en la rama `claude/tender-babbage-hggtl9`, NO en master:** propuesta B aprobada. `facturar.php` + bloque "Facturación · tablet y celular" al final de `assets/css/enrisate.css`. Escritorio (más de 1024px) se ve igual.
+- **Cómo funciona:** hasta 1024px el encabezado de cada sección es un botón (`.sec-cab`). Celular (<700px): se abre una sección a la vez y cada cerrada cuenta lo que tiene (`data-res`); total y "Generar factura" en una barra fija (`.barra-cobro`), y el resumen con la ganancia en un `<dialog id="hojaResumen">`. Tablet (700–1024px): dos columnas, todo abierto, y la barra trae subtotal, descuento, ganancia y total.
+- **Buscador:** ocupa toda la fila (56px); en tablet y celular se esconden "cantidad" y "Agregar" (se agrega al elegir y la cantidad se cambia con − y + en cada línea). Las líneas son tarjetas (`#lineasLista`); la tabla sigue en escritorio.
+- **Cambios que también se ven en escritorio:** "Existente"/"Nuevo" (antes "Cliente existente"/"Nuevo cliente"); el número de cuotas es de 4 botones (radios `num_cuotas`, antes un menú); las cuotas son bloques de valor y fecha lado a lado; la última cuota se muestra como "se calcula sola"; el aviso de "falta el cliente" sale en la página (ya no es una alerta del navegador); se ocultan las filas "Saldo a favor / Abono / Resto" cuando valen $0 (antes se veían siempre porque `hidden` perdía contra `display:flex`).
+- **Ojo:** las cifras del resumen ahora se pintan por `data-v` (ya no por id `verSub`, etc.) y hay tres copias (escritorio, barra y hoja). Si una sección cerrada tiene un campo inválido (ej. abono que no es múltiplo de 500), el navegador la abre sola (`invalid` en `#cuenta`). El formulario manda lo mismo de antes (`items`, `cuota_monto[]`, `cuota_vence[]`, `num_cuotas`…); no se tocó el servidor.
+- **Pruebas:** toda la suite OK (25 archivos); recorrido en navegador a 360, 390 y 430 (celular), 667×375 y 844×390 (acostado), 768, 820 y 1024 (tablet) y escritorio: buscar, + y −, error sin cliente, cuotas, saldo a favor, precarga desde pedido, envío real. Todo lo que se toca mide 44px o más, sin desbordes.
+- **Pendiente:** "Sí, llévalo a master"; al desplegar, esperar SUCCESS y actualizar la bitácora. Probar en el celular de Sebastián con un pedido real.
+
 ## 12 de octubre, 2026 (Cartera: ventana "Reprogramar", solo en la rama)
 
 - **Hecho en la rama `claude/tender-babbage-hggtl9`, NO en master:** propuesta 3 aprobada. Cambia la fecha de una cuota y corre las siguientes los mismos días, con calendario, "esta y las siguientes / solo esta", vista previa y aviso por WhatsApp.
