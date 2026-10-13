@@ -281,6 +281,123 @@ foreach (reprogramaciones_por_cuota(array_keys($datosReprogramar)) as $numeroF =
     }
 }
 
+/* ---------- Tablero de tablet y celular (propuesta C) ----------
+   Hasta 959px la cartera se ve como un tablero: arriba lo que hay por cobrar y cuánto ya venció,
+   luego las cuotas para atender primero, la lista completa y los reportes. Escritorio (≥960px)
+   sigue con las tablas de siempre. Todo sale de los mismos datos de arriba. */
+$estadoFactura = function (array $f): array {
+    if (!empty($f['anulada'])) {
+        return ['anulada', 'Anulada'];
+    }
+    if ($f['plan'] !== 'cuotas') {
+        return ['', 'Contado'];
+    }
+    $todasPagadas  = true;
+    $algunaVencida = false;
+    foreach ($f['cuotas'] as $cuota) {
+        if (!cuota_esta_pagada($cuota)) {
+            $todasPagadas = false;
+            if (esta_vencida($cuota['vence'])) {
+                $algunaVencida = true;
+            }
+        }
+    }
+    if ($todasPagadas) {
+        return ['pagada', 'Pagada'];
+    }
+    return $algunaVencida ? ['vencida', 'Vencida'] : ['pendiente', 'Pendiente'];
+};
+
+/** Enlace de WhatsApp de una cuota pendiente: el de mora si ya venció, el recordatorio si aún no. */
+$waCuota = function (array $p): array {
+    $f = $p['factura'];
+    if ($f['telefono'] === '') {
+        return ['mora' => null, 'panel' => null];
+    }
+    if (esta_vencida($p['vence'])) {
+        $url = enlace_whatsapp($f['telefono'], mensaje_mora((string) $f['cliente']));
+        return ['mora' => $url, 'panel' => $url];
+    }
+    $msg = "Hola " . $f['cliente'] . " 💛\n"
+        . "Te recordamos que tu " . lcfirst($p['rotulo']) . " de " . pesos($p['pendiente'])
+        . " vence el " . fecha_larga($p['vence']) . ".\n"
+        . "¡Cualquier cosa, aquí estamos!";
+    return ['mora' => null, 'panel' => enlace_whatsapp($f['telefono'], $msg)];
+};
+
+$hoyTs = strtotime('today');
+$diasHasta = fn(string $vence): int => (int) round((strtotime(substr($vence, 0, 10)) - $hoyTs) / 86400);
+$textoDias = function (int $d): string {
+    if ($d === 0) return 'Hoy';
+    return $d < 0 ? 'Hace ' . -$d . ($d === -1 ? ' día' : ' días') : 'En ' . $d . ($d === 1 ? ' día' : ' días');
+};
+
+$tb = ['total' => 0, 'v' => 0, 's' => 0, 'd' => 0, 'n_v' => 0, 'n_s' => 0, 'n_d' => 0];
+$tablero = [];
+foreach ($pendientes as $p) {
+    $f = $p['factura'];
+    $d = $diasHasta($p['vence']);
+    $g = $d < 0 ? 'v' : ($d <= 7 ? 's' : 'd');   // vencida · esta semana · después
+    $wa = $waCuota($p);
+    $tb['total'] += $p['pendiente'];
+    $tb[$g]      += $p['pendiente'];
+    $tb['n_' . $g]++;
+    $tablero[] = [
+        'id'        => $f['numero'] . ':' . $p['idx'],
+        'numero'    => (string) $f['numero'],
+        'idx'       => (int) $p['idx'],
+        'cliente'   => (string) $f['cliente'],
+        'telefono'  => (string) $f['telefono'],
+        'rotulo'    => $p['rotulo'],
+        'vence'     => substr((string) $p['vence'], 0, 10),
+        'venceTxt'  => fecha_abreviada($p['vence']),
+        'dias'      => $d,
+        'grupo'     => $g,
+        'pendiente' => (int) $p['pendiente'],
+        'pactado'   => (int) $p['pactado'],
+        'wa'        => $wa['panel'],
+        'mora'      => $wa['mora'] !== null,
+    ];
+}
+
+// Lo que busca el buscador de arriba: clientas, facturas y productos.
+$clientasBusqueda = [];
+foreach ($todas as $f) {
+    $k = mb_strtolower(trim((string) $f['cliente']));
+    if ($k === '') {
+        continue;
+    }
+    if (!isset($clientasBusqueda[$k])) {
+        $clientasBusqueda[$k] = ['nombre' => (string) $f['cliente'], 'wa' => null, 'tel' => (string) $f['telefono'], 'pendiente' => 0, 'cuotas' => 0];
+    } elseif ($clientasBusqueda[$k]['tel'] === '' && $f['telefono'] !== '') {
+        $clientasBusqueda[$k]['tel'] = (string) $f['telefono'];
+    }
+}
+foreach ($tablero as $c) {
+    $k = mb_strtolower(trim($c['cliente']));
+    if (isset($clientasBusqueda[$k])) {
+        $clientasBusqueda[$k]['pendiente'] += $c['pendiente'];
+        $clientasBusqueda[$k]['cuotas']++;
+    }
+}
+foreach ($clientasBusqueda as &$cb) {
+    $cb['wa'] = $cb['tel'] !== '' ? enlace_whatsapp($cb['tel'], '') : null;
+    unset($cb['tel']);
+}
+unset($cb);
+
+$datosTablero = [
+    'cuotas'    => array_column($tablero, null, 'id'),
+    'clientas'  => array_values($clientasBusqueda),
+    'facturas'  => array_map(fn($f) => [
+        'n' => (string) $f['numero'], 'c' => (string) $f['cliente'], 'f' => fecha_abreviada(fecha_factura($f)),
+        't' => (int) $f['total'], 'e' => $estadoFactura($f)[1],
+    ], $todas),
+    'productos' => array_map(fn($p) => [
+        'sku' => (string) $p['sku'], 'n' => (string) $p['nombre'], 'm' => (string) $p['marca'], 'u' => (int) $p['cant'], 't' => (int) round($p['total']),
+    ], $lista),
+];
+
 $tituloPagina = 'Cartera y reportes';
 $barraVolver  = true;
 require __DIR__ . '/includes/cabecera.php';
@@ -313,8 +430,10 @@ require __DIR__ . '/includes/cabecera.php';
     </p>
   <?php endif; ?>
 
+  <?php require __DIR__ . '/includes/cartera_tablero.php'; ?>
+
   <?php if ($recordatorios): ?>
-    <section class="panel">
+    <section class="panel panel-recordatorios">
       <h2 class="titulo-panel">Recordatorios <span class="titulo-nota">cuotas que vencen en los próximos 5 días</span></h2>
       <div class="alertas">
         <?php foreach ($recordatorios as $r): $f = $r['factura'];
@@ -345,7 +464,7 @@ require __DIR__ . '/includes/cabecera.php';
     </section>
   <?php endif; ?>
 
-  <section class="panel">
+  <section class="panel panel-cartera-pend">
     <div class="panel-header">
       <div class="panel-titulo">
         <h2 class="titulo-panel">Cartera pendiente</h2>
@@ -381,26 +500,14 @@ require __DIR__ . '/includes/cabecera.php';
       // descuento se repita entre las dos versiones — btn-mostrar-
       // descuento la busca por id (ver el <script> al final de este
       // archivo), y dos elementos con el mismo id rompería el toggle.
-      $accionesCartera = function (array $p, string $sufijo) use ($token): array {
+      $accionesCartera = function (array $p, string $sufijo) use ($token, $waCuota): array {
           $f = $p['factura'];
           $vencida = esta_vencida($p['vence']);
           $idDescuento = 'desc-' . $f['numero'] . '-' . $p['idx'] . $sufijo;
 
           // WhatsApp: el de mora si la cuota ya venció, el recordatorio si aún no. El botón de la
           // fila clásica (celular y tablet) usa solo el de mora; el panel de escritorio usa el que aplique.
-          $waMora = null;
-          $waPanel = null;
-          if ($f['telefono'] !== '') {
-              if ($vencida) {
-                  $waMora = $waPanel = enlace_whatsapp($f['telefono'], mensaje_mora((string) $f['cliente']));
-              } else {
-                  $msgRecordatorio = "Hola " . $f['cliente'] . " 💛\n"
-                      . "Te recordamos que tu " . lcfirst($p['rotulo']) . " de " . pesos($p['pendiente'])
-                      . " vence el " . fecha_larga($p['vence']) . ".\n"
-                      . "¡Cualquier cosa, aquí estamos!";
-                  $waPanel = enlace_whatsapp($f['telefono'], $msgRecordatorio);
-              }
-          }
+          ['mora' => $waMora, 'panel' => $waPanel] = $waCuota($p);
           ob_start();
           ?>
           <?php if ($vencida && $f['telefono'] !== ''): ?>
@@ -632,7 +739,12 @@ require __DIR__ . '/includes/cabecera.php';
   </section>
 
   <section class="panel" id="historial">
-    <h2 class="titulo-panel">Historial de facturas</h2>
+    <details class="tc-colapso" id="historial-det" open>
+    <summary class="tc-colapso-cab">
+      <h2 class="titulo-panel">Historial de facturas</h2>
+      <span class="tc-colapso-n"><?= count($todas) ?> <?= count($todas) === 1 ? 'factura' : 'facturas' ?></span>
+      <svg class="tc-colapso-flecha" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </summary>
 
     <form method="get" action="cartera.php#historial" class="form-busqueda">
       <div class="campo apretado">
@@ -647,30 +759,8 @@ require __DIR__ . '/includes/cabecera.php';
     <?php else: ?>
       <?php
       // Estado (Pagada/Vencida/Pendiente/Contado/Anulada) y las acciones
-      // (Ver + Anular/Reactivar) se ven igual en la fila de tabla y en
-      // la tarjeta de celular; se calculan una sola vez por factura.
-      $estadoFactura = function (array $f): array {
-          if (!empty($f['anulada'])) {
-              return ['anulada', 'Anulada'];
-          }
-          if ($f['plan'] !== 'cuotas') {
-              return ['', 'Contado'];
-          }
-          $todasPagadas  = true;
-          $algunaVencida = false;
-          foreach ($f['cuotas'] as $cuota) {
-              if (!cuota_esta_pagada($cuota)) {
-                  $todasPagadas = false;
-                  if (esta_vencida($cuota['vence'])) {
-                      $algunaVencida = true;
-                  }
-              }
-          }
-          if ($todasPagadas) {
-              return ['pagada', 'Pagada'];
-          }
-          return $algunaVencida ? ['vencida', 'Vencida'] : ['pendiente', 'Pendiente'];
-      };
+      // (Ver + Anular/Reactivar) se ven igual en la fila de tabla y en la tarjeta de celular;
+      // $estadoFactura se define arriba, junto con la lógica de la página.
       $accionesFactura = function (array $f) use ($token): string {
           $anulada = !empty($f['anulada']);
           ob_start();
@@ -759,6 +849,7 @@ require __DIR__ . '/includes/cabecera.php';
         <?php endforeach; ?>
       </div>
     <?php endif; ?>
+    </details>
   </section>
 
   <?php if ($todas): ?>
@@ -836,7 +927,12 @@ require __DIR__ . '/includes/cabecera.php';
   </section>
 
   <section class="panel panel-inventario">
-    <h2 class="titulo-panel">Detalle por SKU</h2>
+    <details class="tc-colapso" id="sku-det" open>
+    <summary class="tc-colapso-cab">
+      <h2 class="titulo-panel">Detalle por SKU</h2>
+      <span class="tc-colapso-n"><?= count($lista) ?> productos</span>
+      <svg class="tc-colapso-flecha" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </summary>
     <div class="tabla-scroll oculta-en-movil">
     <table class="lineas tabla-detalle-sku">
       <thead>
@@ -850,7 +946,7 @@ require __DIR__ . '/includes/cabecera.php';
       </thead>
       <tbody>
         <?php foreach ($lista as $p): ?>
-          <tr>
+          <tr id="sku-t-<?= e($p['sku']) ?>">
             <td>
               <?= e($p['nombre']) ?>
               <span class="sku"><?= e($p['sku']) ?></span>
@@ -869,7 +965,7 @@ require __DIR__ . '/includes/cabecera.php';
          tabla angosta con 5 columnas numéricas imposibles de leer. -->
     <div class="filas-esencial">
       <?php foreach ($lista as $p): ?>
-        <details class="fila-lista">
+        <details class="fila-lista" id="sku-c-<?= e($p['sku']) ?>">
           <summary>
             <span class="fila-lista-resumen">
               <span class="fila-lista-titulo"><?= e($p['nombre']) ?></span>
@@ -885,6 +981,7 @@ require __DIR__ . '/includes/cabecera.php';
         </details>
       <?php endforeach; ?>
     </div>
+    </details>
   </section>
 
   <?php endif; ?>
@@ -966,6 +1063,8 @@ require __DIR__ . '/includes/cabecera.php';
 </dialog>
 <script src="assets/js/cartera-reprogramar.js?v=<?= filemtime(__DIR__ . '/assets/js/cartera-reprogramar.js') ?>" defer></script>
 <?php endif; ?>
+
+<script src="assets/js/cartera-tablero.js?v=<?= filemtime(__DIR__ . '/assets/js/cartera-tablero.js') ?>" defer></script>
 
 <script>
 document.querySelectorAll('.btn-mostrar-descuento').forEach(btn => {

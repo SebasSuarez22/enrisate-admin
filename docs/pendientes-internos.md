@@ -2,6 +2,15 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 13 de octubre, 2026 (Cartera y reportes en tablet y celular, propuesta C)
+
+- **Hecho y publicado en master:** propuesta C aprobada. Hasta 959px la cartera abre como un tablero; escritorio (≥960px) queda igual. Archivos: `cartera.php`, `includes/cartera_tablero.php` (HTML del tablero y de la ventana "Cobrar"), `assets/js/cartera-tablero.js`, bloque "Cartera · tablero de tablet y celular" al final de `assets/css/enrisate.css`.
+- **Qué hay:** buscador fijo arriba (clientas, facturas y productos; una clienta filtra la lista de cuotas, una factura abre factura.php, un producto abre su fila en Detalle por SKU); resumen "Por cobrar" con barra por urgencia (vencido / esta semana = hoy a 7 días / después); carrusel "Para atender primero"; "Todas las cuotas" con filtros y Excel; Reportes (en celular los KPI se deslizan; en tablet van en cuadrícula); Historial y Detalle por SKU quedan cerrados (se abren con un toque; si llega `?q=` o `#historial`, el historial queda abierto).
+- **Ventana "Cobrar"** (`#tc-cobrar`): una sola para toda la página, llena desde `<script id="datos-tablero">`; manda lo mismo que el panel de escritorio (abono, o descuento con motivo); desde ahí se abre WhatsApp y "Cambiar la fecha" (usa `.btn-reprogramar` de `cartera-reprogramar.js`). En celular sube como hoja; en tablet va centrada.
+- **Ojo:** el mockup no mostraba el historial; se dejó como sección plegable al final. En tablet/celular se esconden "Recordatorios" y "Cartera pendiente" (el tablero ya los cubre); en escritorio siguen. El orden de las secciones en tablet/celular se cambia con `order` (el HTML sigue igual). `body:has(.cartera)` usa `overflow-x: clip` para que el buscador pueda quedarse fijo (con `hidden` no se pega). El enlace de WhatsApp de cada cuota ahora sale de `$waCuota` (antes estaba repetido); `$estadoFactura` se movió arriba.
+- **Pruebas:** toda la suite OK (25 archivos); recorrido en navegador a 360, 390 y 430 (celular), 667×375 y 844×390 (acostado), 768, 820 y 959 (tablet) y 960/1366 (escritorio sin cambios): filtros, abrir Cobrar, "Mitad", error por monto alto, descuento sin motivo, abono real, cambiar fecha, buscador (clienta, factura, producto) e historial.
+- **Pendiente:** probar en el celular de Sebastián con cuotas reales.
+
 ## 13 de octubre, 2026 (Facturación en tablet y celular, propuesta B)
 
 - **Hecho y publicado en master:** propuesta B aprobada. `facturar.php` + bloque "Facturación · tablet y celular" al final de `assets/css/enrisate.css`. Escritorio (más de 1024px) se ve igual.
