@@ -2,6 +2,15 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 13 de octubre, 2026 (Seguridad de las bases de datos: pendientes)
+
+- **Revisado (solo lectura):** el MySQL de Enrísate (proyecto Railway `poetic-reflection`) no tiene proxy ni dominio público: solo lo alcanza el panel por la red privada. MySQL no tiene RLS (eso es de Postgres/Supabase). El Postgres de n8n (proyecto `zucchini-victory`) SÍ tiene un proxy TCP público.
+- **Pendiente 1 (Sebastián, lo hace él):** quitar el proxy público del Postgres de n8n. Railway → `zucchini-victory` → servicio **Postgres** → Settings → Networking → borrar el TCP Proxy `altaria.proxy.rlwy.net:31134` (puerto 5432). n8n no lo necesita (usa la red privada) y la dirección web de n8n (`n8n-production-3e78.up.railway.app`) no cambia. Intenté quitarlo desde la sesión y el permiso se canceló: no se cambió nada.
+- **Pendiente 2:** confirmar que el panel entra a MySQL con un usuario de permisos limitados (no el administrador) y, si no, crear uno solo para el panel y cambiar la variable en Railway. No se leyeron las claves ni las variables.
+- **Pendiente 3:** al reactivar `menu-as` (Supabase; es el menú de la cafetería, no Enrísate), revisar el RLS con los avisos de seguridad de Supabase. Los 3 proyectos de Supabase (`whatsapp-clone`, `Academia`, `menu-as`) están pausados y no se pudieron revisar.
+- **Pendiente 4:** activar la verificación en dos pasos en n8n y usar una contraseña larga y única (su dirección es pública).
+- **Aparte:** `config.php` trae un `ADMIN_HASH` por defecto (un hash, no la clave); el ingreso ya usa la tabla de usuarios, así que conviene quitarlo.
+
 ## 13 de octubre, 2026 (Cartera y reportes en tablet y celular, propuesta C, solo en la rama)
 
 - **Hecho en la rama `claude/tender-babbage-hggtl9`, NO en master:** propuesta C aprobada. Hasta 959px la cartera abre como un tablero; escritorio (≥960px) queda igual. Archivos: `cartera.php`, `includes/cartera_tablero.php` (HTML del tablero y de la ventana "Cobrar"), `assets/js/cartera-tablero.js`, bloque "Cartera · tablero de tablet y celular" al final de `assets/css/enrisate.css`.
