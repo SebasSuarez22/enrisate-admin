@@ -15,6 +15,14 @@ $icX     = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
 
 $urgentes = array_values(array_filter($tablero, fn($c) => $c['grupo'] !== 'd'));
 $etiquetaGrupo = ['v' => 'vencida', 's' => 'pronto', 'd' => ''];
+// Las dos primeras letras de la clienta, para el círculo de la tarjeta en celular.
+$iniciales = function (string $nombre): string {
+    $letras = '';
+    foreach (array_slice(preg_split('/\s+/u', trim($nombre)) ?: [], 0, 2) as $palabra) {
+        $letras .= mb_strtoupper(mb_substr($palabra, 0, 1));
+    }
+    return $letras !== '' ? $letras : '·';
+};
 ?>
 <!-- Una sola búsqueda para clientas, facturas y productos -->
 <div class="tc-buscar">
@@ -62,25 +70,37 @@ $etiquetaGrupo = ['v' => 'vencida', 's' => 'pronto', 'd' => ''];
         <small><?= count($urgentes) ?> <?= count($urgentes) === 1 ? 'cuota' : 'cuotas' ?></small>
       </div>
       <?php if ($urgentes): ?>
-        <div class="tc-carrusel" tabindex="0" aria-label="Cuotas vencidas o que vencen esta semana">
-          <?php foreach ($urgentes as $c): ?>
-            <article class="tc-carta <?= $etiquetaGrupo[$c['grupo']] ?>">
+        <div class="tc-urg-lista" role="list" aria-label="Cuotas vencidas o que vencen esta semana">
+          <?php foreach ($urgentes as $i => $c):
+            // En celular la fecha va sin el año ("25 sep"); en tablet se ve completa, como antes.
+            $venceCorta = (string) preg_replace('/\s\d{4}$/', '', $c['venceTxt']);
+            $venceAnio  = substr($c['venceTxt'], strlen($venceCorta));
+          ?>
+            <article class="tc-carta <?= $etiquetaGrupo[$c['grupo']] ?><?= $i === 0 ? ' abierta' : '' ?>" role="listitem">
+              <span class="tc-ini" aria-hidden="true"><?= e($iniciales($c['cliente'])) ?></span>
               <div class="tc-carta-q">
                 <b><?= e($c['cliente']) ?></b>
                 <span class="tc-pill <?= $etiquetaGrupo[$c['grupo']] ?>"><?= e($textoDias($c['dias'])) ?></span>
               </div>
-              <div>
+              <div class="tc-carta-m">
                 <p class="tc-monto"><?= pesos($c['pendiente']) ?></p>
-                <p class="tc-meta"><?= e($c['rotulo']) ?> · vence <?= e($c['venceTxt']) ?></p>
+                <p class="tc-meta"><?= e($c['rotulo']) ?> · <span class="tc-vence">vence </span><?= e($venceCorta) ?><span class="tc-vence"><?= e($venceAnio) ?></span></p>
               </div>
-              <div class="tc-acc">
-                <button type="button" class="tc-cobrar" data-tc-cobrar="<?= e($c['id']) ?>">Cobrar</button>
-                <?php if ($c['wa']): ?>
-                  <a class="tc-ico wa" href="<?= e($c['wa']) ?>" target="_blank" rel="noopener"
-                     aria-label="<?= $c['mora'] ? 'Escribir por WhatsApp a ' . e($c['cliente']) . ' por la mora' : 'Recordar por WhatsApp a ' . e($c['cliente']) ?>"><?= $icWa ?></a>
+              <button type="button" class="tc-abrir" aria-expanded="<?= $i === 0 ? 'true' : 'false' ?>" aria-controls="tc-panel-<?= $i ?>"
+                      aria-label="Ver las acciones de <?= e($c['cliente']) ?>, <?= e($c['rotulo']) ?>"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+              <div class="tc-panel" id="tc-panel-<?= $i ?>">
+                <?php if ($c['pendiente'] < $c['pactado']): ?>
+                  <p class="tc-de">Cuota de <?= pesos($c['pactado']) ?> · vence <?= e($c['venceTxt']) ?></p>
                 <?php endif; ?>
-                <button type="button" class="tc-ico btn-reprogramar" data-numero="<?= e($c['numero']) ?>" data-idx="<?= (int) $c['idx'] ?>"
-                        aria-label="Cambiar la fecha de vencimiento de <?= e($c['cliente']) ?>, <?= e($c['rotulo']) ?>"><?= $icCal ?></button>
+                <div class="tc-acc">
+                  <button type="button" class="tc-cobrar" data-tc-cobrar="<?= e($c['id']) ?>"><?= $icOk ?>Cobrar</button>
+                  <?php if ($c['wa']): ?>
+                    <a class="tc-ico wa" href="<?= e($c['wa']) ?>" target="_blank" rel="noopener"
+                       aria-label="<?= $c['mora'] ? 'Escribir por WhatsApp a ' . e($c['cliente']) . ' por la mora' : 'Recordar por WhatsApp a ' . e($c['cliente']) ?>"><?= $icWa ?><span class="tc-et" aria-hidden="true">Escribir</span></a>
+                  <?php endif; ?>
+                  <button type="button" class="tc-ico btn-reprogramar" data-numero="<?= e($c['numero']) ?>" data-idx="<?= (int) $c['idx'] ?>"
+                          aria-label="Cambiar la fecha de vencimiento de <?= e($c['cliente']) ?>, <?= e($c['rotulo']) ?>"><?= $icCal ?><span class="tc-et" aria-hidden="true">Fecha</span></button>
+                </div>
               </div>
             </article>
           <?php endforeach; ?>

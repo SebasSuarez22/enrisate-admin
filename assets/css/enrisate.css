@@ -3336,13 +3336,9 @@ dialog.rp :is(button, input):focus-visible { outline: 2px solid var(--brillo); o
   .tc-seccion-cab small { font-size: 14px; color: var(--marfil-70); }
   .tc-titulo { margin: 0; font: 600 1.25rem/1.2 var(--display); color: var(--brillo); }
 
-  .tc-carrusel {
-    display: flex; gap: 12px; overflow-x: auto; padding: 2px 16px 12px; margin-inline: -16px;
-    scroll-snap-type: x mandatory; scroll-padding-inline: 16px; scrollbar-width: none;
-  }
-  .tc-carrusel::-webkit-scrollbar { display: none; }
+  .tc-urg-lista { display: grid; gap: 12px; padding: 2px 0 12px; }
   .tc-carta {
-    flex: 0 0 min(300px, 82%); scroll-snap-align: start; display: grid; gap: 12px; align-content: start; padding: 16px;
+    display: grid; gap: 12px; align-content: start; padding: 16px;
     border: 1px solid var(--linea); border-radius: 18px; background: rgba(36, 21, 33, 0.8);
   }
   .tc-carta.vencida { border-color: rgba(228, 137, 154, 0.5); background: linear-gradient(160deg, rgba(228, 137, 154, 0.12), rgba(36, 21, 33, 0.8) 60%); }
@@ -3370,6 +3366,8 @@ dialog.rp :is(button, input):focus-visible { outline: 2px solid var(--brillo); o
   .tc-ico:hover { color: var(--brillo); border-color: var(--champana); }
   .tc-ico svg { width: 20px; height: 20px; }
   .tc-ico.wa { color: var(--rosa); }
+  /* Solo del celular (ver más abajo): círculo con iniciales, flecha, texto de los botones */
+  .tc-ini, .tc-abrir, .tc-de, .tc-et, .tc-cobrar svg { display: none; }
 
   .tc-chips {
     display: flex; gap: 8px; overflow-x: auto; padding: 2px 16px 4px; margin-inline: -16px; scrollbar-width: none;
@@ -3520,6 +3518,57 @@ dialog.rp :is(button, input):focus-visible { outline: 2px solid var(--brillo); o
   .tc-dlg[open] { animation: tc-sube 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
   .tc-agarre { display: block; }
   .tc-hoja { padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+  /* Para atender primero · celular (propuesta C2): una fila por cuota, la más urgente abierta;
+     al tocar una fila se abren sus botones y se cierra la anterior. Las tabletas siguen igual. */
+  .tc-urg-lista { gap: 8px; padding: 0; }
+  .tc-carta {
+    grid-template-columns: 40px minmax(0, 1fr) auto 16px;
+    grid-template-areas: "ini nom der fle" "ini met pil fle" "pan pan pan pan";
+    gap: 0 8px; align-items: center; align-content: normal; min-height: 64px; padding: 10px 12px; border-radius: 16px;
+  }
+  .tc-carta.abierta:not(.vencida) { border-color: rgba(224, 184, 126, 0.4); }
+  .tc-carta-q, .tc-carta-m { display: contents; }
+  .tc-ini, .tc-carta-q b, .tc-meta, .tc-monto, .tc-pill { position: relative; z-index: 1; pointer-events: none; }
+  .tc-ini {
+    grid-area: ini; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+    font: 600 15px var(--display); color: var(--champana); background: rgba(224, 184, 126, 0.14);
+  }
+  .tc-carta.vencida .tc-ini { color: var(--alerta); background: rgba(228, 137, 154, 0.16); }
+  .tc-carta-q b { grid-area: nom; font-size: 15px; }
+  .tc-meta { grid-area: met; margin: 0; font-size: 13px; line-height: 1.35; }
+  .tc-vence { display: none; }
+  .tc-monto { grid-area: der; justify-self: end; font-size: 1.125rem; line-height: 1.05; white-space: nowrap; }
+  .tc-pill { grid-area: pil; justify-self: end; margin-top: 4px; font-size: 12.5px; padding: 1px 9px; }
+  /* Toda la fila es el botón; el texto queda encima y deja pasar el toque */
+  .tc-abrir {
+    grid-column: 1 / -1; grid-row: 1 / span 2; z-index: 0; align-self: stretch;
+    display: flex; align-items: center; justify-content: flex-end; margin: -10px -12px; padding: 0 12px;
+    color: var(--marfil-70); background: none; border: 0; border-radius: 16px; cursor: pointer;
+  }
+  .tc-abrir svg { width: 16px; height: 16px; transition: transform 0.2s ease; }
+  .tc-carta.abierta .tc-abrir svg { transform: rotate(180deg); }
+  .tc-abrir:focus-visible { outline: 2px solid var(--brillo); outline-offset: -2px; }
+  .tc-panel { grid-area: pan; display: grid; gap: 8px; margin-top: 8px; }
+  .tc-carta:not(.abierta) .tc-panel { display: none; }
+  .tc-de { display: block; margin: 0; font-size: 13px; color: var(--marfil-70); }
+  .tc-acc { gap: 8px; }
+  .tc-acc > * {
+    flex: 1 1 0; width: auto; height: auto; min-width: 0; min-height: 44px; padding: 0 8px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    font: 700 14px/1.2 var(--texto); letter-spacing: 0; white-space: nowrap;
+  }
+  .tc-acc .tc-cobrar { flex-grow: 1.5; }
+  .tc-cobrar svg { display: block; width: 20px; height: 20px; flex: none; }
+  .tc-et { display: inline; }
+}
+
+/* Celulares muy angostos (320px): el nombre y los datos usan todo el ancho, y Cobrar va solo en su fila */
+@media (max-width: 339px) {
+  .tc-carta { grid-template-areas: "ini nom nom fle" "ini met met fle" "ini der pil fle" "pan pan pan pan"; }
+  .tc-abrir { grid-row: 1 / span 3; }
+  .tc-monto { justify-self: start; margin-top: 4px; }
+  .tc-acc { flex-wrap: wrap; }
+  .tc-acc .tc-cobrar { flex-basis: 100%; }
 }
 @keyframes tc-sube { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 
@@ -3538,12 +3587,10 @@ dialog.rp :is(button, input):focus-visible { outline: 2px solid var(--brillo); o
   .tc-hero { grid-area: hero; }
   .tc-urgentes { grid-area: urg; }
   .tc-todas { grid-area: todas; }
-  .tc-carrusel { flex-direction: column; overflow: visible; margin-inline: 0; padding-inline: 0; }
-  .tc-carta { flex: none; }
   .tc-chips { margin-inline: 0; padding-inline: 0; flex-wrap: wrap; -webkit-mask: none; mask: none; }
   .lienzo.cartera .kpis { grid-template-columns: repeat(3, 1fr); }
   .lienzo.cartera .kpis + .kpis { grid-template-columns: repeat(2, 1fr); }
   #historial .filas-esencial, .panel-inventario .filas-esencial { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-@media (prefers-reduced-motion: reduce) { .tc-dlg[open] { animation: none; } .tc-colapso-flecha { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .tc-dlg[open] { animation: none; } .tc-colapso-flecha, .tc-abrir svg { transition: none; } }

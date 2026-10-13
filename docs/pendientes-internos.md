@@ -2,6 +2,14 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 14 de octubre, 2026 (Cartera en celular: "Para atender primero" más compacto, propuesta C2)
+
+- **Hecho y publicado en master:** en celular (<700px) las cuotas de "Para atender primero" ya no son tarjetas grandes en carrusel: son una lista vertical de filas (iniciales, nombre, cuota y fecha, cifra y días). La más urgente aparece abierta con Cobrar, Escribir y Fecha (icono + palabra); al tocar otra fila se abre y se cierra la anterior. Se ven 5 cuotas en una pantalla de 844px (antes 3 a 4). Tablet (700–959px) y escritorio quedan igual.
+- **Archivos:** `includes/cartera_tablero.php` (tarjeta con `.tc-ini`, botón `.tc-abrir`, `.tc-panel`; el carrusel `.tc-carrusel` pasó a `.tc-urg-lista`), bloque "Para atender primero · celular" dentro del `@media (max-width: 699px)` de `assets/css/enrisate.css` (más un ajuste para ≤339px: Cobrar va solo en su fila) y `assets/js/cartera-tablero.js` (una abierta a la vez).
+- **Ojo:** el mismo HTML sirve a tablet y celular; lo exclusivo del celular (círculo, flecha, textos de los botones, "Cuota de $X" cuando hay abono parcial) se esconde con CSS en tablet. La fecha en celular va sin año ("25 sep"); en tablet se ve completa como antes. En celular el nombre mide 15px y la fecha/etiqueta 13px y 12.5px, como en el mockup aprobado.
+- **Pruebas:** recorrido en navegador a 320, 360, 390 y 430 (celular), 667×375 (acostado), 768 (tablet, sin cambios salvo 1px de texto) y 1100 (escritorio): sin desbordes, botones de 44px o más, abrir/cerrar y una sola abierta. La suite con base de datos no se pudo correr en esta sesión (sin MariaDB); no toca este código.
+- **Pendiente:** probar en el celular de Sebastián con cuotas reales.
+
 ## 13 de octubre, 2026 (Cartera y reportes en tablet y celular, propuesta C)
 
 - **Hecho y publicado en master:** propuesta C aprobada. Hasta 959px la cartera abre como un tablero; escritorio (≥960px) queda igual. Archivos: `cartera.php`, `includes/cartera_tablero.php` (HTML del tablero y de la ventana "Cobrar"), `assets/js/cartera-tablero.js`, bloque "Cartera · tablero de tablet y celular" al final de `assets/css/enrisate.css`.
