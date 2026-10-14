@@ -3682,16 +3682,17 @@ dialog.rp :is(button, input):focus-visible { outline: 2px solid var(--brillo); o
 @media (prefers-reduced-motion: reduce) { .tc-dlg[open] { animation: none; } .tc-colapso-flecha, .tc-abrir svg { transition: none; } }
 
 /* =========================================================
-   Clientes · directorio de escritorio (propuesta B)
+   Clientes · directorio de escritorio y tablet (propuesta B)
    ---------------------------------------------------------
-   Desde 960px, "Clientes" es un directorio: a la izquierda la lista de la A a la Z (con índice, buscador y
-   filtro por segmento) y a la derecha la ficha de la clienta elegida. La lista y la ficha se desplazan por
-   dentro; la página no crece con cada clienta. Debajo de 960px no se ve: siguen la tabla y las tarjetas.
-   Medidas de escritorio: botones de 36px o más (los principales, 44px); letra de 13px o más.
+   Desde 700px, "Clientes" es un directorio: la lista de la A a la Z (con buscador y filtro por segmento) y la
+   ficha de la clienta elegida. La lista y la ficha se desplazan por dentro; la página no crece con cada clienta.
+   Escritorio (960px o más): lista de 400px con índice A–Z y botones de 40px. Tablet (700–959px): la lista ocupa el
+   40% y todo lo que se toca mide 44px o más, sin índice de letras. Debajo de 700px no se ve: siguen la tabla y las
+   tarjetas de siempre (el celular tiene su propia propuesta).
    ========================================================= */
 .cd { display: none; }
 
-@media (min-width: 960px) {
+@media (min-width: 700px) {
   .lienzo.clientes { max-width: 1240px; padding: 24px 32px 24px; }
   /* El título de la página lo da el directorio; el h1 queda para los lectores de pantalla */
   .lienzo.clientes > .saludo, .lienzo.clientes > .subsaludo {
@@ -3827,4 +3828,57 @@ dialog.rp :is(button, input):focus-visible { outline: 2px solid var(--brillo); o
   .cd-form .campo.ancho, .cd-form-fin { grid-column: 1 / -1; }
   .cd-form input { min-height: 44px; }
   .cd-form-fin { display: flex; gap: 8px; }
+}
+
+/* Tablet (700–959px): la lista y la ficha lado a lado, con el título y los botones arriba a todo el ancho */
+@media (min-width: 700px) and (max-width: 959px) {
+  .lienzo.clientes { padding: 16px 24px 24px; }
+  .cd {
+    grid-template-columns: minmax(280px, 40%) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas: "cab cab" "fil fic" "lis fic"; gap: 12px 16px; height: max(560px, calc(100dvh - 112px));
+  }
+  .cd-izq { display: contents; }
+  .cd-izq-cab { grid-area: cab; }
+  .cd-filtros { grid-area: fil; }
+  .cd-lista-caja { grid-area: lis; grid-template-columns: minmax(0, 1fr); }
+  .cd-vacio { grid-area: lis; align-self: start; margin: 8px; background: #1B1018; }
+  .cd-az { display: none; }
+  .cd-ficha { grid-area: fic; container: cdficha / inline-size; padding: 16px; }
+
+  /* Todo lo que se toca mide 44px o más */
+  .cd-btn { min-height: 44px; }
+  .cd-btn.principal { min-height: 48px; }
+  .cd-btn.solo { width: 44px; }
+  .cd-busca, .cd-filtros select { min-height: 48px; }
+  .cd-busca input { font-size: 16px; }
+  .cd-fila { grid-template-columns: 40px minmax(0, 1fr) auto; min-height: 64px; }
+  .cd-ini { width: 40px; height: 40px; font-size: 15px; }
+  .cd-ini.grande { width: 56px; height: 56px; font-size: 20px; }
+  .cd-fact { min-height: 48px; padding: 0 12px; gap: 12px; white-space: nowrap; }
+  .cd-fact span { white-space: nowrap; }
+  .cd-anio { display: none; }
+  .cd-enlace { min-height: 44px; }
+  .cd-form input { min-height: 48px; }
+
+  /* La ficha: nombre y botones se acomodan al ancho que haya; las 6 cifras van de 2 en 2 (de 3 en 3 si cabe) */
+  .cd-f-cab { flex-wrap: wrap; gap: 12px; }
+  .cd-f-nom { flex: 1 1 160px; }
+  .cd-f-nom h3 { font-size: 1.5rem; }
+  .cd-f-acc { margin-left: 0; width: 100%; }
+  .cd-f-acc form { flex: 1; }
+  .cd-f-acc .cd-btn { flex: 1; width: 100%; }
+  .cd-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cd-tile.ancho { grid-column: auto; }
+  .cd-tile b { font-size: 1.375rem; }
+  .cd-form { grid-template-columns: 1fr; }
+  .cd-form h3 { font-size: 1.25rem; }
+}
+@container cdficha (min-width: 480px) {
+  .cd-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cd-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container cdficha (min-width: 520px) {
+  .cd-f-acc { margin-left: auto; width: auto; }
+  .cd-f-acc form { flex: none; }
+  .cd-f-acc .cd-btn { flex: none; width: auto; }
 }

@@ -80,7 +80,7 @@
       '<button type="submit" class="cd-btn peligro">' + I.borrar + 'Eliminar</button></form></div>';
     var facturas = c.facturas.length
       ? c.facturas.map(function (f) {
-        return '<a class="cd-fact" href="factura.php?n=' + encodeURIComponent(f.n) + '"><b>' + esc(f.n) + '</b><span>' + esc(f.f) + '</span><span class="cd-fact-t">' + pesos(f.t) + '</span><span class="cd-etq ' + f.c + '"><i></i>' + esc(f.e) + '</span></a>';
+        return '<a class="cd-fact" href="factura.php?n=' + encodeURIComponent(f.n) + '"><b>' + esc(f.n) + '</b><span>' + esc(f.f.replace(/\s\d{4}$/, '')) + '<span class="cd-anio">' + esc(f.f.slice(f.f.replace(/\s\d{4}$/, '').length)) + '</span></span><span class="cd-fact-t">' + pesos(f.t) + '</span><span class="cd-etq ' + f.c + '"><i></i>' + esc(f.e) + '</span></a>';
       }).join('')
       : '<p class="cd-fino">Todavía no tiene facturas.</p>';
     var ofertas = c.ofertas.length
