@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/formato.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/cuotas.php';
 
 /* =========================================================
    Clientes · almacén en MySQL (capa 3)
@@ -242,10 +243,19 @@ function agregar_cliente_desde_factura(string $nombre, string $telefono): void
  */
 function estadisticas_compra_cliente(array $cliente, array $facturas): ?array
 {
+    return estadisticas_de_facturas(facturas_propias_cliente($cliente, $facturas));
+}
+
+/**
+ * Las facturas sin anular que son de la clienta: por teléfono, o por nombre
+ * exacto, lo que primero coincida (el mismo criterio de siempre).
+ */
+function facturas_propias_cliente(array $cliente, array $facturas): array
+{
     $telefono = (string) ($cliente['telefono'] ?? '');
     $nombre   = trim((string) ($cliente['nombre'] ?? ''));
 
-    $propias = array_values(array_filter($facturas, function (array $f) use ($telefono, $nombre): bool {
+    return array_values(array_filter($facturas, function (array $f) use ($telefono, $nombre): bool {
         if (!empty($f['anulada'])) {
             return false;
         }
@@ -254,8 +264,6 @@ function estadisticas_compra_cliente(array $cliente, array $facturas): ?array
         }
         return strcasecmp(trim((string) ($f['cliente'] ?? '')), $nombre) === 0;
     }));
-
-    return estadisticas_de_facturas($propias);
 }
 
 /**
@@ -295,6 +303,212 @@ function estadisticas_de_facturas(array $propias): ?array
         'favorito'        => $favorito,
         'ultima_compra'   => date('Y-m-d', $fechas[$n - 1]),
     ];
+}
+
+/**
+ * Lo que la clienta tiene por pagar en sus facturas a cuotas ($propias ya son
+ * suyas y sin anular): el total que falta y si alguna cuota ya venció.
+ *
+ * @return array{total:int, vencida:bool}
+ */
+function cuotas_pendientes_cliente(array $propias): array
+{
+    $total   = 0;
+    $vencida = false;
+    foreach ($propias as $f) {
+        if (($f['plan'] ?? '') !== 'cuotas') {
+            continue;
+        }
+        foreach ($f['cuotas'] ?? [] as $cuota) {
+            $falta = cuota_pendiente($cuota);
+            if ($falta <= 0) {
+                continue;
+            }
+            $total += $falta;
+            if (esta_vencida((string) ($cuota['vence'] ?? ''))) {
+                $vencida = true;
+            }
+        }
+    }
+    return ['total' => $total, 'vencida' => $vencida];
+}
+
+/** Segmentos en los que cae una clienta, en el orden en que se muestran. */
+const SEGMENTOS_CLIENTE = [
+    'rep' => ['Les toca reponer',     'Ya pasó el tiempo en que suelen volver a comprar'],
+    'cuo' => ['Con cuota pendiente',  'Tienen cuotas por cobrar en Cartera'],
+    'nue' => ['Nuevas',               'Una sola compra, o ninguna todavía'],
+    'sal' => ['Con saldo a favor',    'Tienen saldo para descontar en su próxima factura'],
+    'ina' => ['Inactivas',            'Más de 90 días sin comprar'],
+    'sin' => ['Sin teléfono',         'No se les puede escribir por WhatsApp'],
+];
+
+/**
+ * A qué segmentos pertenece una clienta. Sale de datos que el panel ya tiene
+ * (nada nuevo que guardar). Una clienta puede estar en varios:
+ *   rep  compra cada cierto tiempo y ya pasó ese tiempo desde su última compra
+ *   cuo  le falta pagar alguna cuota
+ *   nue  una sola compra, o ninguna
+ *   sal  tiene saldo a favor
+ *   ina  compró alguna vez, pero hace más de 90 días
+ *   sin  no tiene teléfono
+ * $hoy (Y-m-d) existe para poder probarlo con fechas fijas.
+ *
+ * @return list<string>
+ */
+function segmentos_cliente(array $cliente, ?array $stats, int $pendiente, ?string $hoy = null): array
+{
+    $hoy       = $hoy ?? date('Y-m-d');
+    $compras   = (int) ($stats['compras'] ?? 0);
+    $desde     = null;
+    if ($stats && !empty($stats['ultima_compra'])) {
+        $desde = (int) floor((strtotime($hoy) - strtotime((string) $stats['ultima_compra'])) / 86400);
+    }
+    $frecuencia = $stats['frecuencia_dias'] ?? null;
+
+    $segmentos = [];
+    if ($desde !== null && $frecuencia !== null && $desde >= max(1, (int) $frecuencia)) {
+        $segmentos[] = 'rep';
+    }
+    if ($pendiente > 0) {
+        $segmentos[] = 'cuo';
+    }
+    if ($compras <= 1) {
+        $segmentos[] = 'nue';
+    }
+    if ((int) ($cliente['saldo_favor'] ?? 0) > 0) {
+        $segmentos[] = 'sal';
+    }
+    if ($desde !== null && $desde > 90) {
+        $segmentos[] = 'ina';
+    }
+    if (normalizar_telefono((string) ($cliente['telefono'] ?? '')) === '') {
+        $segmentos[] = 'sin';
+    }
+    return $segmentos;
+}
+
+/** "Hoy", "Ayer", "Hace 12 días" o "Aún no compra", según los días desde la última compra. */
+function texto_ultima_compra(?int $dias): string
+{
+    if ($dias === null) {
+        return 'Aún no compra';
+    }
+    return $dias < 1 ? 'Hoy' : ($dias === 1 ? 'Ayer' : 'Hace ' . $dias . ' días');
+}
+
+/** Cómo va el pago de una factura: [clase, texto] para la etiqueta ("nue" verde, "rep" dorado, "cuo" rosa). */
+function resumen_pago_factura(array $f): array
+{
+    if (($f['plan'] ?? '') !== 'cuotas') {
+        return ['nue', 'Contado'];
+    }
+    $pendiente = false;
+    $vencida   = false;
+    foreach ($f['cuotas'] ?? [] as $cuota) {
+        if (!cuota_esta_pagada($cuota)) {
+            $pendiente = true;
+            if (esta_vencida((string) ($cuota['vence'] ?? ''))) {
+                $vencida = true;
+            }
+        }
+    }
+    if (!$pendiente) {
+        return ['nue', 'Pagada'];
+    }
+    return $vencida ? ['cuo', 'Vencida'] : ['rep', 'Pendiente'];
+}
+
+/** Clave para ordenar nombres de la A a la Z sin que las tildes los desordenen (Ángela junto a Andrea). */
+function clave_nombre_cliente(string $nombre): string
+{
+    $limpio = strtr(trim($nombre), [
+        'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U', 'Ü' => 'U', 'Ñ' => 'N',
+        'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n',
+    ]);
+    return mb_strtolower($limpio);
+}
+
+/** La letra bajo la que va una clienta en el directorio ("#" si no empieza por letra). */
+function letra_cliente(string $nombre): string
+{
+    $primera = mb_strtoupper(mb_substr(clave_nombre_cliente($nombre), 0, 1));
+    return preg_match('/^[A-Z]$/', $primera) === 1 ? $primera : '#';
+}
+
+/**
+ * Todo lo que el directorio de Clientes (escritorio) necesita de cada clienta,
+ * ya calculado: se manda al navegador como JSON y la ficha se arma con eso.
+ * $clientes ya viene ordenada; $facturas es la lista completa (con anuladas).
+ *
+ * @return array<string, array<string, mixed>> por id de clienta
+ */
+function datos_directorio_clientes(array $clientes, array $facturas, ?string $hoy = null): array
+{
+    $hoy = $hoy ?? date('Y-m-d');
+    $datos = [];
+    foreach ($clientes as $c) {
+        $propias = facturas_propias_cliente($c, $facturas);
+        $stats   = estadisticas_de_facturas($propias);
+        $debe    = cuotas_pendientes_cliente($propias);
+        $saldo   = (int) ($c['saldo_favor'] ?? 0);
+        $segs    = segmentos_cliente($c, $stats, $debe['total'], $hoy);
+        $dias    = $stats ? (int) floor((strtotime($hoy) - strtotime((string) $stats['ultima_compra'])) / 86400) : null;
+        $tiene   = normalizar_telefono((string) $c['telefono']) !== '';
+
+        $ofertas = [];
+        if ($stats && $tiene) {
+            $oferta = function (string $tipo, string $texto) use (&$ofertas, $c, $stats, $hoy): void {
+                $ofertas[] = ['t' => $texto, 'url' => enlace_whatsapp((string) $c['telefono'], mensaje_oferta_cliente($c, $stats, $tipo, $hoy))];
+            };
+            if ($stats['frecuencia_dias'] !== null) {
+                $oferta('frecuencia', 'Ofrecerle reponer');
+            } elseif ($stats['compras'] === 1) {
+                $oferta('primera', 'Agradecer su primera compra');
+            }
+            if ($stats['favorito']) {
+                $oferta('favorito', 'Ofrecerle su favorito');
+            }
+        }
+
+        usort($propias, fn(array $a, array $b) => strcmp((string) $b['creada'], (string) $a['creada']));
+        $recientes = array_map(function (array $f): array {
+            [$clase, $texto] = resumen_pago_factura($f);
+            return ['n' => (string) $f['numero'], 'f' => fecha_abreviada((string) ($f['fecha_pago'] ?? $f['creada'])), 't' => (int) $f['total'], 'c' => $clase, 'e' => $texto];
+        }, array_slice($propias, 0, 3));
+
+        if ($debe['total'] > 0) {
+            $pista = 'Debe ' . pesos($debe['total']) . ($debe['vencida'] ? ' · vencida' : '');
+        } elseif (in_array('rep', $segs, true)) {
+            $pista = 'Le toca reponer';
+        } elseif ($saldo > 0) {
+            $pista = 'Saldo a favor ' . pesos($saldo);
+        } elseif (!$tiene) {
+            $pista = 'Sin teléfono';
+        } else {
+            $compras = (int) ($stats['compras'] ?? 0);
+            $pista = $compras . ($compras === 1 ? ' compra' : ' compras');
+        }
+
+        $datos[(string) $c['id']] = [
+            'id'        => (string) $c['id'],
+            'nombre'    => (string) $c['nombre'],
+            'telefono'  => (string) $c['telefono'],
+            'notas'     => (string) $c['notas'],
+            'saldo'     => $saldo,
+            'compras'   => (int) ($stats['compras'] ?? 0),
+            'frecuencia' => $stats['frecuencia_dias'] ?? null,
+            'favorito'  => $stats['favorito'] ?? null,
+            'ultima'    => texto_ultima_compra($dias),
+            'debe'      => $debe['total'],
+            'vencida'   => $debe['vencida'],
+            'segs'      => $segs,
+            'pista'     => $pista,
+            'ofertas'   => $ofertas,
+            'facturas'  => $recientes,
+        ];
+    }
+    return $datos;
 }
 
 /**

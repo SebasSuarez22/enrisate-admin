@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (int) ($_POST['saldo_favor'] ?? 0)
         );
         if ($mensaje === '') {
-            header('Location: clientes.php?ok=editada');
+            header('Location: clientes.php?ok=editada&sel=' . rawurlencode((string) ($_POST['id'] ?? '')));
             exit;
         }
         $error = $mensaje;
@@ -44,7 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (string) ($_POST['notas'] ?? '')
         );
         if ($mensaje === '') {
-            header('Location: clientes.php?ok=1');
+            // En escritorio, el directorio abre la ficha de la clienta recién agregada.
+            $nueva = buscar_cliente_coincidente(leer_clientes(), trim((string) ($_POST['nombre'] ?? '')), normalizar_telefono((string) ($_POST['telefono'] ?? '')));
+            header('Location: clientes.php?ok=1' . ($nueva ? '&sel=' . rawurlencode((string) $nueva['id']) : ''));
             exit;
         }
         $error = $mensaje;
@@ -70,6 +72,11 @@ usort($clientes, fn($a, $b) => $a['nombre'] <=> $b['nombre']);
 
 $facturas = leer_facturas();
 
+// Para el directorio de escritorio: de la A a la Z sin que las tildes desordenen, y la ficha de cada una ya calculada.
+$clientesAZ = $clientes;
+usort($clientesAZ, fn($a, $b) => strcmp(clave_nombre_cliente((string) $a['nombre']), clave_nombre_cliente((string) $b['nombre'])));
+$dirDatos = datos_directorio_clientes($clientesAZ, $facturas);
+
 $token = csrf_token();
 
 $tituloPagina = 'Clientes';
@@ -77,7 +84,7 @@ $barraVolver  = true;
 require __DIR__ . '/includes/cabecera.php';
 ?>
 
-<main class="lienzo ancho">
+<main class="lienzo ancho clientes">
   <h1 class="saludo">Clientes</h1>
   <p class="subsaludo">La lista de clientes: nombre, teléfono y notas. Ve agregándolos aquí a medida que los tengas.</p>
 
@@ -88,7 +95,9 @@ require __DIR__ . '/includes/cabecera.php';
     <p class="aviso neutro"><?= e($ok) ?></p>
   <?php endif; ?>
 
-  <section class="panel">
+  <?php require __DIR__ . '/includes/clientes_directorio.php'; ?>
+
+  <section class="panel panel-cli-agregar">
     <h2 class="titulo-panel">Agregar cliente</h2>
     <form method="post" action="clientes.php" class="rejilla-campos">
       <input type="hidden" name="csrf" value="<?= e($token) ?>">
@@ -110,7 +119,7 @@ require __DIR__ . '/includes/cabecera.php';
     </form>
   </section>
 
-  <section class="panel">
+  <section class="panel panel-cli-lista">
     <h2 class="titulo-panel">Todos los clientes</h2>
     <p class="subsaludo">Cada factura nueva agrega al cliente aquí solito. Si tienes facturas viejas de antes de este cambio, usa este botón una vez para traerlas.</p>
     <form method="post" action="clientes.php" class="form-sincronizar grupo-acciones">
