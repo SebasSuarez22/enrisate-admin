@@ -26,6 +26,9 @@
   var soloNumeros = function (t) { return parseInt(String(t).replace(/\D/g, ''), 10) || 0; };
   var conPuntos = function (n) { return n ? n.toLocaleString('es-CO') : ''; };
   var compacto = window.matchMedia('(max-width: 959px)');
+  var tablet = window.matchMedia('(min-width: 700px) and (max-width: 959px)');   // aquí el cobro es un panel fijo, no una ventana
+  var textoDias = function (d) { return d === 0 ? 'Hoy' : d < 0 ? 'Hace ' + (-d) + (d === -1 ? ' día' : ' días') : 'En ' + d + (d === 1 ? ' día' : ' días'); };
+  var iniciales = function (n) { return String(n).trim().split(/\s+/).slice(0, 2).map(function (p) { return p.charAt(0); }).join('').toUpperCase() || '·'; };
 
   /* ---------- "Para atender primero" en celular: una cuota abierta a la vez ---------- */
   var listaUrg = raiz.querySelector('.tc-urg-lista');
@@ -63,9 +66,17 @@
     Array.prototype.forEach.call(raiz.querySelectorAll('[data-tc-filtro]'), function (b) {
       b.setAttribute('aria-pressed', String(b.dataset.tcFiltro === filtro.grupo));
     });
+    Array.prototype.forEach.call(lista.querySelectorAll('.tc-grupo'), function (cab) {
+      var filas = lista.querySelectorAll('.tc-fila[data-grupo="' + cab.dataset.tcGrupo + '"]:not([hidden])'), suma = 0;
+      Array.prototype.forEach.call(filas, function (f) { suma += (D.cuotas[f.dataset.tcCobrar] || {}).pendiente || 0; });
+      cab.hidden = !filas.length;
+      cab.querySelector('.tc-grupo-n').textContent = filas.length;
+      cab.querySelector('.tc-grupo-s').textContent = pesos(suma);
+    });
     barraCliente.hidden = !filtro.clienta;
     if (filtro.clienta) $('tc-filtro-nombre').textContent = filtro.clienta;
     vacio.hidden = visibles > 0;
+    seleccionarVisible();
     if (!visibles) {
       vacio.textContent = filtro.clienta
         ? filtro.clienta + ' no tiene cuotas en este grupo.'
@@ -86,6 +97,8 @@
   var actual = null;
   var opener = null;
   var abrirCobrar = function () {};   // la ventana la reemplaza si el navegador la soporta
+  var seleccionarVisible = function () {};  // en tablet: si la cuota elegida queda oculta por un filtro, elige otra
+  var initPanel = function () {};           // en tablet: deja elegida la cuota más urgente al abrir
 
   if (dlg && typeof dlg.showModal === 'function') {
     var formAbono = $('tc-form-abono'), formDesc = $('tc-form-desc');
@@ -118,6 +131,12 @@
       $('tc-cobrar-t').textContent = c.cliente;
       $('tc-cobrar-sub').textContent = c.rotulo + ' · vence ' + c.venceTxt + ' · factura ' + c.numero;
       $('tc-cobrar-pend').textContent = pesos(c.pendiente);
+      $('tc-cobrar-ini').textContent = iniciales(c.cliente);
+      var dias = $('tc-cobrar-dias');
+      dias.textContent = textoDias(c.dias);
+      dias.className = 'tc-pill tc-resumen-extra' + (c.grupo === 'v' ? ' vencida' : c.grupo === 's' ? ' pronto' : '');
+      $('tc-cobrar-de').textContent = c.pendiente < c.pactado ? 'Cuota de ' + pesos(c.pactado) + ' · ya abonó ' + pesos(c.pactado - c.pendiente) : '';
+      dlg.classList.toggle('vencida', c.grupo === 'v');
       [formAbono, formDesc].forEach(function (f) {
         f.elements.numero.value = c.numero;
         f.elements.cuota_idx.value = c.idx;
@@ -137,23 +156,62 @@
       enlaceWa.hidden = !c.wa;
       if (c.wa) {
         enlaceWa.href = c.wa;
-        enlaceWa.querySelector('span').textContent = c.mora ? 'Escribir por WhatsApp (mora)' : 'Recordar por WhatsApp';
+        enlaceWa.querySelector('.tc-et-largo').textContent = c.mora ? 'Escribir por WhatsApp (mora)' : 'Recordar por WhatsApp';
+        enlaceWa.querySelector('.tc-et-corto').textContent = c.mora ? 'WhatsApp · mora' : 'WhatsApp';
       }
       enlaceFecha.dataset.numero = c.numero;
       enlaceFecha.dataset.idx = c.idx;
       mostrar('abono');
+      if (tablet.matches) {
+        // Panel fijo: se queda abierto y solo cambia la cuota; no se roba el foco para no subir el teclado
+        marcarFila(c.id);
+        if (!dlg.open) {
+          dlg.show();
+          if (dlg.contains(document.activeElement)) document.activeElement.blur();   // show() enfoca el primer campo
+        }
+        return;
+      }
       dlg.showModal();
       montoA.focus();
       montoA.select();
     }
+
+    function marcarFila(id) {
+      if (!lista) return;
+      Array.prototype.forEach.call(lista.querySelectorAll('.tc-fila'), function (f) {
+        if (f.dataset.tcCobrar === id) f.setAttribute('aria-current', 'true'); else f.removeAttribute('aria-current');
+      });
+    }
+    function elegirPrimera() {
+      var primera = lista && lista.querySelector('.tc-fila:not([hidden])');
+      if (primera) abrirDialogo(primera.dataset.tcCobrar);
+    }
+    function ajustarAlAncho() {
+      if (tablet.matches) {
+        if (dlg.open && dlg.matches(':modal')) dlg.close();
+        if (actual && lista && lista.querySelector('.tc-fila[data-tc-cobrar="' + actual.id + '"]:not([hidden])')) abrirDialogo(actual.id);
+        else elegirPrimera();
+      } else if (dlg.open && !dlg.matches(':modal')) {
+        dlg.close();
+        if (lista) Array.prototype.forEach.call(lista.querySelectorAll('.tc-fila'), function (f) { f.removeAttribute('aria-current'); });
+      }
+    }
+    seleccionarVisible = function () {
+      if (!tablet.matches || !dlg.open) return;
+      var fila = lista && lista.querySelector('.tc-fila[data-tc-cobrar="' + (actual && actual.id) + '"]:not([hidden])');
+      if (!fila) elegirPrimera();
+    };
+    tablet.addEventListener('change', ajustarAlAncho);
+    initPanel = function () { if (tablet.matches) elegirPrimera(); };
     abrirCobrar = abrirDialogo;
 
     function cerrar() { dlg.close(); }
     dlg.addEventListener('close', function () { if (opener && opener.focus && document.contains(opener)) opener.focus(); });
     dlg.addEventListener('click', function (e) {
+      if (tablet.matches) return; // en tablet es un panel fijo: no se cierra
       if (e.target === dlg || e.target.closest('[data-tc-cerrar]')) cerrar(); // clic en el fondo oscuro o en la X
     });
-    enlaceFecha.addEventListener('click', cerrar); // la ventana de cambiar fecha la abre cartera-reprogramar.js
+    enlaceFecha.addEventListener('click', function () { if (!tablet.matches) cerrar(); }); // la ventana de cambiar fecha la abre cartera-reprogramar.js
     enlaceDesc.addEventListener('click', function () { mostrar('descuento'); montoD.focus(); montoD.select(); });
     dlg.querySelector('[data-tc-volver]').addEventListener('click', function () { mostrar('abono'); montoA.focus(); });
 
@@ -298,4 +356,5 @@
   }
 
   aplicarFiltros();
+  initPanel();
 })();
