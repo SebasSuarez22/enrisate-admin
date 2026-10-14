@@ -2,6 +2,14 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 15 de octubre, 2026 (Cartera y reportes: cifras de "Reportes" en celular con selector de periodo, propuesta C, publicada en master)
+
+- **Hecho y publicado en master:** en celular (menos de 700px) las siete cifras de "Reportes" dejan de ser dos carruseles de tarjetas (la del borde quedaba cortada y solo se veían completas 2 de 7). Ahora: una tarjeta con tres botones (Hoy · Este mes · Este año) que muestra la ganancia del periodo en grande y, para hoy y este mes, lo más vendido; abajo, fijo, el histórico (total vendido y total invertido) en dos columnas. Arranca en "Este mes". Tablet y escritorio siguen con las tarjetas `.kpi` de siempre.
+- **Archivos:** `includes/cartera_reportes_celular.php` (HTML: los tres paneles ya vienen escritos, con las mismas variables de `cartera.php`: `$gananciaHoy/Mes/Anio`, `$masVendidoHoy/Mes`, `$totalVendido`, `$totalInvertido`…), `assets/js/cartera-reportes-celular.js` (solo cambia de panel; flechas, Inicio y Fin con teclado), `cartera.php` (el `require` y el script) y el bloque "Cartera y reportes · cifras de Reportes en celular" al final de `assets/css/enrisate.css` (clases `.rc-*`; ojo: `.rp-*` ya es de la ventana de reprogramar, por eso no se usó). El CSS de carrusel de `.kpis` en celular se cambió por `.lienzo.cartera .kpis { display: none }`.
+- **Ojo:** "Este año" no muestra "más vendido" porque el panel no lo calcula por año. Las cifras se achican según el ancho de su tarjeta (`cqi`) y nunca se parten. Sin JavaScript se ven los tres paneles seguidos (hay un `<noscript>` con el estilo); los `.kpi` quedan escondidos en celular, así que el HTML de los dos diseños convive.
+- **Pruebas:** recorrido en navegador a 320, 360, 390, 430 y 667 (acostado), con datos normales y con el peor caso (producto de nombre larguísimo y cifras de 9 dígitos): sin desbordes, botones de 48px, letra de 13px o más; tocar cada periodo, teclado, sin JavaScript; a 699 se ve el diseño de celular y a 700, 768 y 1280 siguen las tarjetas de siempre. La suite con base de datos no se pudo correr (sin MariaDB en la sesión).
+- **Pendiente:** probarlo en el celular de Sebastián con las cifras reales.
+
 ## 15 de octubre, 2026 (Clientes en celular: mosaicos, lista y ficha por pasos, propuesta C)
 
 - **Hecho y publicado en master:** en celular (menos de 700px) Clientes arranca con seis mosaicos de segmento (con su número) y las dos clientas más urgentes ("Para atender primero"); cada paso es una pantalla: mosaico → lista del segmento (de 8 en 8, con buscador y "Ver más") → ficha. La ficha se reparte en tres pestañas (Resumen, Compras, Escribirle) y Editar y Eliminar quedan fijos abajo. "Agregar" abre una ventana desde abajo; "Traer clientas de facturación" quedó al final del inicio. El botón "Atrás" del celular vuelve a la pantalla anterior (cada paso es una entrada del historial).
