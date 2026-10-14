@@ -907,6 +907,8 @@ require __DIR__ . '/includes/cabecera.php';
     </div>
   </div>
 
+  <?php require __DIR__ . '/includes/cartera_reportes_celular.php'; ?>
+
   <section class="panel">
     <h2 class="titulo-panel">Ventas por producto <span class="titulo-nota">top <?= count($top) ?> por ingreso, histórico</span></h2>
     <div class="barras">
@@ -1065,6 +1067,7 @@ require __DIR__ . '/includes/cabecera.php';
 <?php endif; ?>
 
 <script src="assets/js/cartera-tablero.js?v=<?= filemtime(__DIR__ . '/assets/js/cartera-tablero.js') ?>" defer></script>
+<script src="assets/js/cartera-reportes-celular.js?v=<?= filemtime(__DIR__ . '/assets/js/cartera-reportes-celular.js') ?>" defer></script>
 
 <script>
 document.querySelectorAll('.btn-mostrar-descuento').forEach(btn => {
