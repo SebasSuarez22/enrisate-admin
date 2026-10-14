@@ -15,6 +15,9 @@ $icX     = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
 
 $urgentes = array_values(array_filter($tablero, fn($c) => $c['grupo'] !== 'd'));
 $etiquetaGrupo = ['v' => 'vencida', 's' => 'pronto', 'd' => ''];
+$nombreGrupo   = ['v' => 'Vencidas', 's' => 'Esta semana', 'd' => 'Después'];
+// "25 sep 2026" → "25 sep" (el año se esconde en celular y tablet, donde el espacio es poco).
+$sinAnio = fn(string $fecha): string => (string) preg_replace('/\s\d{4}$/', '', $fecha);
 // Las dos primeras letras de la clienta, para el círculo de la tarjeta en celular.
 $iniciales = function (string $nombre): string {
     $letras = '';
@@ -57,6 +60,7 @@ $iniciales = function (string $nombre): string {
         <li class="semana">Esta semana <?= pesos($tb['s']) ?></li>
         <li class="despues">Después <?= pesos($tb['d']) ?></li>
       </ul>
+      <a class="tc-ico tc-hero-xl" href="cartera-excel.php" title="Descargar Excel: vencidas y pendientes" aria-label="Descargar Excel: vencidas y pendientes"><?= $icExcel ?></a>
     <?php else: ?>
       <p class="tc-hero-s">No hay cuotas pendientes por cobrar.</p>
     <?php endif; ?>
@@ -73,7 +77,7 @@ $iniciales = function (string $nombre): string {
         <div class="tc-urg-lista" role="list" aria-label="Cuotas vencidas o que vencen esta semana">
           <?php foreach ($urgentes as $i => $c):
             // En celular la fecha va sin el año ("25 sep"); en tablet se ve completa, como antes.
-            $venceCorta = (string) preg_replace('/\s\d{4}$/', '', $c['venceTxt']);
+            $venceCorta = $sinAnio($c['venceTxt']);
             $venceAnio  = substr($c['venceTxt'], strlen($venceCorta));
           ?>
             <article class="tc-carta <?= $etiquetaGrupo[$c['grupo']] ?><?= $i === 0 ? ' abierta' : '' ?>" role="listitem">
@@ -127,10 +131,16 @@ $iniciales = function (string $nombre): string {
         <button type="button" id="tc-filtro-quitar" aria-label="Quitar el filtro por clienta"><?= $icX ?></button>
       </p>
       <div class="tc-compacta" id="tc-lista">
-        <?php foreach ($tablero as $c): ?>
+        <?php $grupoPrevio = null; foreach ($tablero as $c): ?>
+          <?php if ($c['grupo'] !== $grupoPrevio): $grupoPrevio = $c['grupo']; ?>
+            <div class="tc-grupo <?= $c['grupo'] ?>" data-tc-grupo="<?= $c['grupo'] ?>">
+              <span class="tc-grupo-p" aria-hidden="true"></span><b><?= e($nombreGrupo[$c['grupo']]) ?></b>
+              <span class="tc-grupo-n"><?= (int) $tb['n_' . $c['grupo']] ?></span><span class="tc-grupo-s"><?= pesos($tb[$c['grupo']]) ?></span>
+            </div>
+          <?php endif; ?>
           <button type="button" class="tc-fila" data-tc-cobrar="<?= e($c['id']) ?>" data-grupo="<?= $c['grupo'] ?>" data-cliente="<?= e($c['cliente']) ?>">
             <span class="tc-fila-n"><?= e($c['cliente']) ?></span>
-            <span class="tc-fila-m"><?= e($c['rotulo']) ?> · <?= e($c['venceTxt']) ?></span>
+            <span class="tc-fila-m"><?= e($c['rotulo']) ?> · <?= e($sinAnio($c['venceTxt'])) ?><span class="tc-anio"><?= e(substr($c['venceTxt'], strlen($sinAnio($c['venceTxt'])))) ?></span></span>
             <span class="tc-fila-d"><b><?= pesos($c['pendiente']) ?></b><small class="<?= $c['grupo'] === 'v' ? 'v' : '' ?>"><?= e($textoDias($c['dias'])) ?></small></span>
           </button>
         <?php endforeach; ?>
@@ -138,18 +148,18 @@ $iniciales = function (string $nombre): string {
       <p class="tc-vacio" id="tc-vacio" hidden></p>
     </section>
   <?php endif; ?>
-</div>
 
-<script type="application/json" id="datos-tablero"><?= json_encode($datosTablero, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <?php if ($tablero): ?>
 <!-- Ventana "Cobrar": una sola para toda la página; cartera-tablero.js la llena con la cuota que se toca.
      Los formularios mandan lo mismo que el panel de escritorio (abono o descuento). En celular sube
-     como hoja desde abajo; en tablet es una ventana centrada. -->
+     como hoja desde abajo; en tablet no es una ventana: es el panel fijo de la derecha, siempre abierto
+     con la cuota elegida en la lista. -->
 <dialog class="tc-dlg" id="tc-cobrar" aria-labelledby="tc-cobrar-t">
   <div class="tc-hoja">
     <div class="tc-agarre" aria-hidden="true"></div>
     <header class="tc-hoja-cab">
-      <div>
+      <span class="tc-ini-p" id="tc-cobrar-ini" aria-hidden="true"></span>
+      <div class="tc-hoja-tit">
         <h2 id="tc-cobrar-t">Cobrar</h2>
         <p id="tc-cobrar-sub"></p>
       </div>
@@ -159,6 +169,8 @@ $iniciales = function (string $nombre): string {
     <div class="tc-resumen-cuota">
       <span>Falta por pagar</span>
       <b id="tc-cobrar-pend"></b>
+      <span class="tc-pill tc-resumen-extra" id="tc-cobrar-dias"></span>
+      <small class="tc-resumen-extra" id="tc-cobrar-de"></small>
     </div>
 
     <form method="post" action="cartera.php" class="tc-form" id="tc-form-abono" novalidate>
@@ -198,10 +210,14 @@ $iniciales = function (string $nombre): string {
     </form>
 
     <div class="tc-enlaces" id="tc-enlaces">
-      <a class="tc-enlace" id="tc-wa" href="#" target="_blank" rel="noopener" hidden><?= $icWa ?><span></span></a>
+      <a class="tc-enlace" id="tc-wa" href="#" target="_blank" rel="noopener" hidden><?= $icWa ?><span class="tc-et-largo"></span><span class="tc-et-corto"></span></a>
       <button type="button" class="tc-enlace" id="tc-ir-desc"><?= $icDesc ?>Aplicar descuento</button>
-      <button type="button" class="tc-enlace btn-reprogramar" id="tc-ir-fecha" data-numero="" data-idx=""><?= $icCal ?>Cambiar la fecha</button>
+      <button type="button" class="tc-enlace btn-reprogramar" id="tc-ir-fecha" data-numero="" data-idx=""><?= $icCal ?><span class="tc-et-largo">Cambiar la fecha</span><span class="tc-et-corto">Cambiar fecha</span></button>
     </div>
   </div>
 </dialog>
 <?php endif; ?>
+</div>
+
+<script type="application/json" id="datos-tablero"><?= json_encode($datosTablero, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+

@@ -2,6 +2,15 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 14 de octubre, 2026 (Cartera en tablet: lista y detalle, propuesta A, solo en la rama)
+
+- **Hecho en la rama (falta llevarlo a master):** en tablet (700–959px) Cartera ya no usa dos columnas con tarjetas grandes. Arriba, una banda con "Por cobrar", lo vencido, la barra y el Excel; abajo, a la izquierda, todas las cuotas agrupadas por urgencia (Vencidas, Esta semana, Después, con cuántas y cuánto suman) y, a la derecha, el cobro de la cuota elegida. Celular y escritorio no cambian.
+- **Cómo funciona:** el panel de la derecha es el mismo `<dialog id="tc-cobrar">`, abierto sin ventana (`dlg.show()`, no `showModal()`) y con `position: sticky`. Al tocar una fila (`.tc-fila[data-tc-cobrar]`) solo cambia la cuota; los formularios de abono y descuento, las validaciones y el cambio de fecha son los de siempre. La más urgente queda elegida al abrir; si un filtro por clienta oculta la elegida, pasa a la primera visible. Si se cambia el ancho entre celular y tablet, el cobro pasa de ventana a panel y al revés.
+- **Archivos:** `includes/cartera_tablero.php` (encabezados `.tc-grupo`, fecha sin año, botón de Excel en la banda, el `<dialog>` ahora vive dentro de `.tc`), bloque "Tablet" de `assets/css/enrisate.css` y `assets/js/cartera-tablero.js` (`tablet`, `marcarFila`, `elegirPrimera`, `ajustarAlAncho`, encabezados que se recalculan al filtrar).
+- **Ojo:** en tablet se esconden las tarjetas "Para atender primero" y los filtros Todas/Vencidas/Esta semana/Después (la lista ya va agrupada); siguen en celular. El botón de la ventana dice "Confirmar abono" (el mockup decía "Cobrar $X"). En tablet WhatsApp y fecha usan una etiqueta corta (`.tc-et-corto`).
+- **Pruebas:** recorrido en navegador a 700, 768, 820, 834, 912 y 959 (sin desbordes, botones de 44px o más), elegir otra cuota, Mitad, error de monto, descuento, filtro por clienta, pasar de tablet a celular y volver; en celular la ventana sigue siendo modal y en escritorio nada se ve. La suite con base de datos no se pudo correr (sin MariaDB en la sesión); no toca este código.
+- **Pendiente:** probar en la tablet de Sebastián con cuotas reales; con muchísimas cuotas la lista crece hacia abajo y el panel se queda fijo.
+
 ## 14 de octubre, 2026 (Cartera en celular: "Para atender primero" más compacto, propuesta C2, solo en la rama)
 
 - **Hecho en la rama (falta llevarlo a master):** en celular (<700px) las cuotas de "Para atender primero" ya no son tarjetas grandes en carrusel: son una lista vertical de filas (iniciales, nombre, cuota y fecha, cifra y días). La más urgente aparece abierta con Cobrar, Escribir y Fecha (icono + palabra); al tocar otra fila se abre y se cierra la anterior. Se ven 5 cuotas en una pantalla de 844px (antes 3 a 4). Tablet (700–959px) y escritorio quedan igual.

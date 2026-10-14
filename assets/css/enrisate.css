@@ -3367,7 +3367,8 @@ dialog.rp :is(button, input):focus-visible { outline: 2px solid var(--brillo); o
   .tc-ico svg { width: 20px; height: 20px; }
   .tc-ico.wa { color: var(--rosa); }
   /* Solo del celular (ver más abajo): círculo con iniciales, flecha, texto de los botones */
-  .tc-ini, .tc-abrir, .tc-de, .tc-et, .tc-cobrar svg { display: none; }
+  .tc-ini, .tc-abrir, .tc-de, .tc-et, .tc-cobrar svg, .tc-grupo, .tc-anio:empty, .tc-hero-xl, .tc-ini-p, .tc-resumen-extra, .tc-et-corto { display: none; }
+  .tc-anio { display: inline; }
 
   .tc-chips {
     display: flex; gap: 8px; overflow-x: auto; padding: 2px 16px 4px; margin-inline: -16px; scrollbar-width: none;
@@ -3572,22 +3573,107 @@ dialog.rp :is(button, input):focus-visible { outline: 2px solid var(--brillo); o
 }
 @keyframes tc-sube { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 
-/* Tablet (700–959px): dos columnas. A la izquierda lo urgente; a la derecha la lista completa. */
+/* Tablet (700–959px), propuesta A "lista y detalle": arriba una banda con lo que hay por cobrar; abajo,
+   a la izquierda, todas las cuotas agrupadas por urgencia y, a la derecha, el cobro de la cuota elegida
+   (el mismo formulario de la ventana Cobrar, pero fijo en la pantalla y sin ventana emergente). */
 @media (min-width: 700px) and (max-width: 959px) {
   .tc {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-    grid-template-areas: "hero todas" "urg todas";
-    grid-template-rows: auto 1fr;
-    column-gap: 24px;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    grid-template-areas: "hero hero" "todas det";
+    gap: 16px;
     align-items: start;
   }
   .tc-sin-cuotas { grid-template-columns: minmax(0, 1fr); grid-template-areas: "hero"; }
   .tc-buscar { margin-inline: -24px; padding-inline: 24px; }
   .tc-res { left: 24px; right: 24px; }
+  .tc-urgentes, .tc-todas .tc-seccion-cab, .tc-chips, .tc-leyenda { display: none; }
   .tc-hero { grid-area: hero; }
-  .tc-urgentes { grid-area: urg; }
-  .tc-todas { grid-area: todas; }
-  .tc-chips { margin-inline: 0; padding-inline: 0; flex-wrap: wrap; -webkit-mask: none; mask: none; }
+  .tc-todas { grid-area: todas; gap: 4px; }
+  .tc-dlg { grid-area: det; }
+
+  /* Banda de resumen */
+  .tc-hero {
+    grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "tot sub xl" "tot bar xl";
+    align-items: center; gap: 12px 24px; padding: 16px 24px;
+  }
+  .tc-hero > div:first-child { grid-area: tot; }
+  .tc-hero-m { font-size: 2.25rem; }
+  .tc-hero-s { grid-area: sub; }
+  .tc-barra { grid-area: bar; }
+  .tc-hero-xl { grid-area: xl; display: grid; }
+  .tc-sin-cuotas .tc-hero { grid-template-areas: "tot sub"; grid-template-columns: auto minmax(0, 1fr); }
+
+  /* Lista agrupada por urgencia */
+  .tc-compacta { gap: 4px; }
+  .tc-grupo {
+    display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; padding-inline: 12px;
+    font: 700 14px var(--texto); color: var(--marfil-70);
+  }
+  .tc-grupo:first-child { margin-top: 0; }
+  .tc-grupo.v, .tc-fila[data-grupo="v"] { --c: var(--alerta); }
+  .tc-grupo.s, .tc-fila[data-grupo="s"] { --c: var(--champana); }
+  .tc-grupo.d, .tc-fila[data-grupo="d"] { --c: #9A7B8E; }
+  .tc-grupo-p { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+  .tc-grupo b { color: var(--marfil); }
+  .tc-grupo-n::before { content: "· "; }
+  .tc-grupo-s { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .tc-anio { display: none; }
+  .tc-fila {
+    position: relative; min-height: 64px; padding: 10px 12px 10px 24px;
+    border: 1px solid transparent; border-radius: 14px;
+  }
+  .tc-fila::before { content: ""; position: absolute; left: 8px; top: 10px; bottom: 10px; width: 4px; border-radius: 2px; background: var(--c); }
+  .tc-fila[aria-current="true"] { border-color: rgba(224, 184, 126, 0.45); background: rgba(224, 184, 126, 0.1); }
+  .tc-fila-n { font-weight: 700; }
+  .tc-fila-d { display: grid; justify-items: end; gap: 4px; }
+  .tc-fila-d b { font: 600 1.0625rem/1.1 var(--display); color: var(--brillo); white-space: nowrap; }
+  .tc-fila-d small {
+    display: inline-flex; padding: 1px 10px; font: 700 13px/1.5 var(--texto); white-space: nowrap;
+    color: var(--marfil-70); border: 1px solid var(--linea); border-radius: 999px;
+  }
+  .tc-fila[data-grupo="v"] .tc-fila-d small { color: var(--alerta); border-color: rgba(228, 137, 154, 0.5); background: rgba(228, 137, 154, 0.08); }
+  .tc-fila[data-grupo="s"] .tc-fila-d small { color: var(--champana); border-color: rgba(224, 184, 126, 0.5); background: rgba(224, 184, 126, 0.08); }
+
+  /* Cobro de la cuota elegida: el mismo <dialog>, abierto sin ventana y fijo mientras se baja la lista */
+  .tc-dlg {
+    position: sticky; top: 92px; inset-inline: auto; width: auto; max-height: calc(100dvh - 108px); margin: 0;
+    border-radius: 20px; box-shadow: none; overflow-y: auto;
+    background: linear-gradient(160deg, rgba(224, 184, 126, 0.08), rgba(36, 21, 33, 0.85) 60%);
+  }
+  .tc-dlg.vencida { border-color: rgba(228, 137, 154, 0.5); background: linear-gradient(160deg, rgba(228, 137, 154, 0.12), rgba(36, 21, 33, 0.85) 60%); }
+  .tc-agarre, .tc-cerrar { display: none; }
+  .tc-hoja { gap: 16px; }
+  .tc-hoja-cab { justify-content: flex-start; align-items: center; gap: 12px; }
+  .tc-ini-p {
+    flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%;
+    font: 600 17px var(--display); color: var(--champana); background: rgba(224, 184, 126, 0.14);
+  }
+  .tc-dlg.vencida .tc-ini-p { color: var(--alerta); background: rgba(228, 137, 154, 0.16); }
+  .tc-hoja-cab h2 { font-size: 1.125rem; font-weight: 700; font-family: var(--texto); }
+  .tc-hoja-cab p { margin-top: 2px; }
+  .tc-resumen-cuota {
+    flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 12px 0;
+    background: none; border: 0; border-block: 1px solid var(--linea); border-radius: 0;
+  }
+  .tc-resumen-cuota > span:first-child { flex-basis: 100%; }
+  .tc-resumen-cuota b { font-size: 2.25rem; }
+  .tc-resumen-extra { display: inline-flex; }
+  .tc-resumen-cuota small.tc-resumen-extra { display: block; flex-basis: 100%; font-size: 14px; color: var(--marfil-70); }
+  .tc-resumen-cuota small.tc-resumen-extra:empty { display: none; }
+  .tc-resumen-cuota .tc-pill.vencida { color: var(--alerta); }
+  .tc-resumen-cuota .tc-pill.pronto { color: var(--champana); }
+  .tc-enlaces { gap: 8px; }
+  .tc-enlaces .tc-enlace {
+    flex: 1 1 0; min-width: 0; justify-content: center; gap: 6px; min-height: 48px; padding: 0 8px; text-decoration: none;
+    font-weight: 700; border: 1px solid var(--linea); border-radius: 10px; background: rgba(15, 7, 12, 0.3);
+  }
+  .tc-enlaces .tc-enlace:hover { border-color: var(--champana); }
+  .tc-enlaces .tc-et-largo { display: none; }
+  .tc-enlaces .tc-et-corto { display: inline; }
+  .tc-enlaces .tc-enlace#tc-wa { color: var(--rosa); }
+  .tc-enlaces .tc-enlace#tc-ir-desc { flex-basis: 100%; order: 3; justify-content: flex-start; border-width: 1px 0 0; border-radius: 0; background: none; padding: 0; }
+  .tc-enlaces .tc-enlace#tc-ir-desc[hidden] { display: none; }
+
   .lienzo.cartera .kpis { grid-template-columns: repeat(3, 1fr); }
   .lienzo.cartera .kpis + .kpis { grid-template-columns: repeat(2, 1fr); }
   #historial .filas-esencial, .panel-inventario .filas-esencial { grid-template-columns: repeat(2, minmax(0, 1fr)); }
