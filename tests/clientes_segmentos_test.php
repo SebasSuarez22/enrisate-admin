@@ -112,5 +112,23 @@ verificar(count($datos['a']['facturas']) === 3 && $datos['a']['facturas'][0]['n'
 verificar(count($datos['a']['ofertas']) === 2 && str_contains($datos['a']['ofertas'][0]['url'], 'wa.me/573001234567'), 'ofertas de WhatsApp para quien tiene teléfono');
 verificar($datos['b']['ofertas'] === [] && $datos['b']['pista'] === 'Sin teléfono' && in_array('sin', $datos['b']['segs'], true), 'sin teléfono: no hay ofertas y queda en "sin teléfono"');
 
+/* --- urgencia: a quién escribir primero --- */
+
+$vencida = $fact('2026-07-01', ['plan' => 'cuotas', 'cuotas' => [['monto' => 50000, 'vence' => '2026-09-01', 'abonos' => []]]]);
+$porVencer = $fact('2026-07-01', ['plan' => 'cuotas', 'cuotas' => [['monto' => 50000, 'vence' => '2099-01-01', 'abonos' => []]]]);
+$u = datos_directorio_clientes([
+    $cli(['id' => 'v', 'nombre' => 'Vencida', 'telefono' => '3000000001']),
+    $cli(['id' => 'd', 'nombre' => 'Debe', 'telefono' => '3000000002']),
+    $cli(['id' => 'r', 'nombre' => 'Repone', 'telefono' => '3000000003']),
+    $cli(['id' => 'n', 'nombre' => 'Normal', 'telefono' => '3000000004']),
+], [
+    array_merge($vencida, ['cliente' => 'Vencida', 'telefono' => '3000000001']),
+    array_merge($porVencer, ['numero' => 'F-2', 'cliente' => 'Debe', 'telefono' => '3000000002']),
+    $fact('2026-06-01', ['numero' => 'F-3', 'cliente' => 'Repone', 'telefono' => '3000000003']),
+    $fact('2026-08-01', ['numero' => 'F-4', 'cliente' => 'Repone', 'telefono' => '3000000003']),
+    $fact('2026-10-10', ['numero' => 'F-5', 'cliente' => 'Normal', 'telefono' => '3000000004']),
+], $hoy);
+verificar($u['v']['urgencia'] < $u['d']['urgencia'] && $u['d']['urgencia'] < $u['r']['urgencia'] && $u['r']['urgencia'] < $u['n']['urgencia'], 'urgencia: deuda vencida, luego deuda, luego "le toca reponer", luego el resto');
+
 echo $fallos === 0 ? "\nTodo bien.\n" : "\n$fallos fallo(s).\n";
 exit($fallos === 0 ? 0 : 1);

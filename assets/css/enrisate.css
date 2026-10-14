@@ -1794,18 +1794,6 @@ select option, select optgroup { background: #241521; color: var(--marfil); }
 }
 .fila-lista-detalle .form-abono input[type="number"] { flex: 1 1 auto; width: auto; }
 
-/* =========================================================
-   Clientes: mismo criterio que Pedidos/Cartera — tabla con columnas
-   proporcionales en escritorio/tablet, tarjeta desplegable en celular.
-   4 columnas es mucho menos denso que las tablas de Cartera, pero se
-   deja igual de consistente con el resto del panel. */
-.tabla-clientes { table-layout: fixed; }
-.tabla-clientes td { white-space: normal; overflow-wrap: anywhere; }
-.tabla-clientes th:nth-child(1), .tabla-clientes td:nth-child(1) { width: 7%; }
-.tabla-clientes th:nth-child(2), .tabla-clientes td:nth-child(2) { width: 26%; }
-.tabla-clientes th:nth-child(3), .tabla-clientes td:nth-child(3) { width: 20%; }
-.tabla-clientes th:nth-child(4), .tabla-clientes td:nth-child(4) { width: 47%; }
-
 /* La casilla de selección vive dentro de <summary>, junto al nombre —
    event.stopPropagation() en el onclick evita que tocarla abra o
    cierre la tarjeta. La tarjeta de edición (mismo formulario que la
@@ -1915,19 +1903,8 @@ a.boton-icono { text-decoration: none; }
 .panel-descuento input[name="motivo"] { flex: 1 1 220px; }
 .panel-descuento input[type="number"] { width: 110px; flex: none; }
 
-/* align-items: end, no center: los campos tienen etiqueta arriba y los
-   botones no, así que centrar contra todo el bloque (etiqueta + campo)
-   dejaba los botones más arriba que las cajas de los campos. */
-.form-editar-cliente { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; padding: 6px 0; }
-.form-editar-cliente .campo { flex: 1 1 150px; margin-bottom: 0; }
-
-/* Botón "Traer clientas de facturación", suelto arriba de la tabla en
-   Clientes — mismo espaciado de bloque que usa el resto de la página
-   (antes tenía un margen suelto de 18px por estilo en línea). */
-.form-sincronizar { margin-top: 12px; margin-bottom: var(--sp-bloque); }
-
 /* =========================================================
-   Eliminar en lote (Clientes, Productos)
+   Eliminar en lote (Productos)
    ========================================================= */
 .barra-eliminar { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-bottom: 12px; }
 .seleccionar-todo {
@@ -2485,54 +2462,6 @@ a.boton-icono { text-decoration: none; }
   }
   .ped-item-cifra strong { color: var(--champana); font-size: 14px; font-weight: 700; }
   .ped-item-cifra span { font-size: 11.5px; color: var(--marfil-70); }
-}
-
-/* ==========================================================================
-   CLIENTES · notas y etiquetas de WhatsApp (todos los tamaños)
-   La nota que escribe Sebastián se lee como texto normal y los datos de
-   compra (cada cuánto compra, producto favorito) son etiquetas-botón que
-   abren el WhatsApp de la clienta con un ofrecimiento. Van igual en la
-   tabla (escritorio y tablet) y dentro de la tarjeta desplegable del
-   celular, que conserva su forma.
-   ========================================================================== */
-.cn-nota {
-  margin: 0 0 7px; max-width: 62ch;
-  font-size: 13.5px; line-height: 1.45; color: var(--marfil);
-}
-.cn-chips { display: flex; flex-wrap: wrap; gap: 7px; }
-.cn-pista { display: none; margin: 8px 0 0; font-size: 11.5px; line-height: 1.4; color: var(--marfil-40); }
-
-.chip {
-  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
-  padding: 4px 10px; border-radius: 999px;
-  font: 600 12px/1.3 var(--texto); text-decoration: none; white-space: nowrap;
-  color: var(--marfil); border: 1px solid var(--linea);
-  transition: filter 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
-}
-.chip svg { flex: none; }
-.chip em { font-style: normal; font-weight: 500; color: var(--marfil-70); }
-.chip .chip-texto { overflow: hidden; text-overflow: ellipsis; }
-.chip .chip-wa { opacity: 0.55; margin-left: 2px; transition: opacity 0.16s ease; }
-
-.chip.f { color: var(--brillo); background: rgba(224, 184, 126, 0.1); border-color: rgba(224, 184, 126, 0.38); }
-.chip.v { color: #F0C4CC; background: rgba(201, 127, 142, 0.13); border-color: rgba(201, 127, 142, 0.42); }
-.chip.n { color: var(--marfil-70); border-style: dashed; }
-
-a.chip:hover { filter: brightness(1.14); border-color: var(--champana); }
-a.chip:hover .chip-wa { opacity: 1; }
-a.chip:focus-visible { outline: 2px solid var(--brillo); outline-offset: 2px; }
-.chip.sin-telefono { cursor: default; opacity: 0.8; }
-
-/* Celular (tarjeta desplegable): etiquetas más altas para tocarlas con el
-   dedo y una línea que dice qué hacen (sin cursor, no hay "title" que lo diga). */
-@media (max-width: 639px) {
-  .cn-nota { margin-bottom: 8px; }
-  .cn-chips { gap: 8px; }
-  .chip { min-height: 36px; padding: 6px 12px; font-size: 12.5px; white-space: normal; border-radius: 18px; }
-  /* En celular el texto baja a una segunda línea en vez de cortarse con "…":
-     lo que dice la etiqueta (cada cuánto compra, el favorito) es el dato. */
-  .chip .chip-texto { min-width: 0; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
-  .cn-pista { display: block; }
 }
 
 /* =========================================================
@@ -3687,8 +3616,8 @@ dialog.rp :is(button, input):focus-visible { outline: 2px solid var(--brillo); o
    Desde 700px, "Clientes" es un directorio: la lista de la A a la Z (con buscador y filtro por segmento) y la
    ficha de la clienta elegida. La lista y la ficha se desplazan por dentro; la página no crece con cada clienta.
    Escritorio (960px o más): lista de 400px con índice A–Z y botones de 40px. Tablet (700–959px): la lista ocupa el
-   40% y todo lo que se toca mide 44px o más, sin índice de letras. Debajo de 700px no se ve: siguen la tabla y las
-   tarjetas de siempre (el celular tiene su propia propuesta).
+   40% y todo lo que se toca mide 44px o más, sin índice de letras. Celular (menos de 700px): otro diseño, más abajo
+   (.cm: mosaicos de segmento → lista → ficha con pestañas).
    ========================================================= */
 .cd { display: none; }
 
@@ -3699,7 +3628,6 @@ dialog.rp :is(button, input):focus-visible { outline: 2px solid var(--brillo); o
     position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
   }
   .lienzo.clientes > .aviso { margin-bottom: 16px; }
-  .panel-cli-agregar, .panel-cli-lista { display: none; }
   .lienzo.clientes > * + * { margin-top: 0; }
 
   .cd {
@@ -3825,6 +3753,7 @@ dialog.rp :is(button, input):focus-visible { outline: 2px solid var(--brillo); o
   .cd-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
   .cd-form h3 { grid-column: 1 / -1; margin: 0; font: 600 1.375rem/1.2 var(--display); color: var(--brillo); overflow-wrap: anywhere; }
   .cd-form .campo { margin: 0; }
+  .cd-form .campo label { font-size: 14px; letter-spacing: 0; }
   .cd-form .campo.ancho, .cd-form-fin { grid-column: 1 / -1; }
   .cd-form input { min-height: 44px; }
   .cd-form-fin { display: flex; gap: 8px; }
@@ -3882,3 +3811,162 @@ dialog.rp :is(button, input):focus-visible { outline: 2px solid var(--brillo); o
   .cd-f-acc form { flex: none; }
   .cd-f-acc .cd-btn { flex: none; width: auto; }
 }
+
+/* =========================================================
+   Clientes · celular (propuesta C)
+   ---------------------------------------------------------
+   Menos de 700px: la pantalla de inicio son seis mosaicos de segmento (con su número) y las dos clientas más
+   urgentes; cada paso es una pantalla —mosaico, lista, ficha— y la ficha se reparte en tres pestañas (Resumen,
+   Compras, Escribirle) con Editar y Eliminar fijos abajo. Lo arma assets/js/clientes-celular.js.
+   Medidas: todo lo que se toca mide 44px o más (campos 52, botones 48); letra de 13px o más; los nombres se
+   parten en líneas, nunca se cortan con "…".
+   ========================================================= */
+.cm { display: none; }
+
+@media (max-width: 699px) {
+  .lienzo.clientes { padding: 16px 16px 24px; }
+  .lienzo.clientes > .saludo, .lienzo.clientes > .subsaludo {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .lienzo.clientes > * + * { margin-top: 0; }
+  .lienzo.clientes > .aviso { margin-bottom: 16px; }
+  .cm { display: block; }
+  .cm[data-pantalla="ficha"] { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+  .cm [hidden] { display: none !important; }
+
+  .cm-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .cm-titulo { margin: 0; font: 600 1.75rem/1.1 var(--display); color: var(--brillo); }
+  .cm-sub { margin: 2px 0 0; font-size: 14px; color: var(--marfil-70); }
+  .cm-pt { margin: 0; font: 600 1.375rem/1.15 var(--display); color: var(--brillo); overflow-wrap: anywhere; }
+  .cm-titulo:focus, .cm-pt:focus { outline: none; }
+  .cm-fino { margin: 0; font-size: 13.5px; line-height: 1.35; color: var(--marfil-70); }
+
+  .cm-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 16px;
+    font: 700 14.5px/1.2 var(--texto); white-space: nowrap; text-decoration: none; cursor: pointer;
+    color: var(--marfil-70); background: rgba(15, 7, 12, 0.3); border: 1px solid var(--linea); border-radius: 12px;
+  }
+  .cm-btn svg { width: 20px; height: 20px; flex: none; }
+  .cm-btn:active { filter: brightness(1.1); }
+  .cm-btn.principal { color: #2A1622; font-weight: 800; background: linear-gradient(135deg, var(--brillo), var(--champana) 62%, #D3A167); border: 0; }
+  .cm-btn.peligro { color: var(--alerta); border-color: rgba(228, 137, 154, 0.45); }
+  .cm-btn.wa { color: var(--rosa); }
+  .cm-btn.ancho { width: 100%; }
+  .cm .cm-btn:focus-visible, .cm-fila:focus-visible, .cm-mosaico:focus-visible, .cm-tab:focus-visible, .cm-atras:focus-visible, .cm-hoja :is(button, input):focus-visible { outline: 2px solid var(--brillo); outline-offset: 2px; }
+
+  .cm-busca {
+    display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 12px; margin-bottom: 12px; color: var(--marfil-40);
+    border: 1px solid var(--linea); border-radius: 14px; background: rgba(15, 7, 12, 0.5);
+  }
+  .cm-busca:focus-within { border-color: var(--champana); }
+  .cm-busca svg { width: 20px; height: 20px; flex: none; }
+  .cm-busca input { flex: 1; min-width: 0; padding: 0; border: 0; outline: 0; background: none; color: var(--brillo); font-size: 16px; -webkit-appearance: none; appearance: none; }
+  .cm-busca input::placeholder { color: var(--marfil-40); }
+  .cm-busca input::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+  /* Mosaicos de segmento */
+  .cm-mosaicos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .cm-mosaico {
+    position: relative; overflow: hidden; display: grid; align-content: space-between; gap: 8px; min-height: 104px; padding: 12px 16px; text-align: left;
+    color: inherit; font: inherit; cursor: pointer; border: 1px solid var(--linea); border-radius: 16px; background: rgba(36, 21, 33, 0.55);
+  }
+  .cm-mosaico::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c); }
+  .cm-mosaico .n { font: 600 2rem/1 var(--display); color: var(--brillo); font-variant-numeric: tabular-nums; }
+  .cm-mosaico .t { font: 700 14px/1.25 var(--texto); color: var(--marfil); }
+  .cm-mosaico.todas { grid-column: 1 / -1; min-height: 64px; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 12px; }
+  .cm-mosaico.todas .n { font-size: 1.5rem; }
+  .rep { --c: var(--champana); } .cuo { --c: var(--alerta); } .nue { --c: #8FCB9B; } .sal { --c: var(--brillo); } .ina { --c: #9A7B8E; } .sin { --c: var(--marfil-40); } .todas { --c: var(--champana); }
+  .cm-sec { margin: 20px 0 4px; font: 700 14px var(--texto); color: var(--marfil-70); }
+  @media (min-width: 560px) {   /* celular acostado: tres mosaicos por fila */
+    .cm-mosaicos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cm-mosaico { min-height: 88px; }
+  }
+
+  /* Filas de clienta */
+  .cm-lista { display: grid; }
+  .cm-fila {
+    display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; column-gap: 12px; width: 100%; min-height: 64px; padding: 8px;
+    text-align: left; color: inherit; font: inherit; cursor: pointer; background: none; border: 0; border-bottom: 1px solid rgba(224, 184, 126, 0.1);
+  }
+  .cm-fila:last-child { border-bottom: 0; }
+  .cm-fila:active { background: rgba(224, 184, 126, 0.08); }
+  .cm-fila-txt { display: grid; min-width: 0; }
+  .cm-nombre { font: 700 15px/1.3 var(--texto); overflow-wrap: anywhere; color: var(--marfil); }
+  .cm-pista { font-size: 13.5px; line-height: 1.35; color: var(--marfil-70); }
+  .cm-chev { width: 16px; height: 16px; flex: none; color: var(--marfil-40); }
+  .cm-ini {
+    flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+    font: 600 15px var(--display); color: var(--champana); background: rgba(224, 184, 126, 0.14);
+  }
+  .cm-ini.v { color: var(--alerta); background: rgba(228, 137, 154, 0.16); }
+  .cm-ini.grande { width: 52px; height: 52px; font-size: 19px; }
+  .cm-cuenta { margin: 8px 0 4px; font-size: 13.5px; color: var(--marfil-70); }
+  .cm-mas { margin-top: 12px; }
+  .cm-vacio { margin: 0; padding: 24px 16px; text-align: center; font-size: 14px; color: var(--marfil-70); border: 1px dashed rgba(224, 184, 126, 0.4); border-radius: 14px; }
+  .cm-sync { display: grid; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(224, 184, 126, 0.12); }
+
+  /* Pantallas de lista y de ficha */
+  .cm-atras {
+    display: inline-flex; align-items: center; gap: 4px; min-height: 48px; margin-left: -4px; padding: 0 12px 0 4px; cursor: pointer;
+    font: 700 14.5px var(--texto); color: var(--champana); background: none; border: 0; border-radius: 10px;
+  }
+  .cm-atras svg { width: 20px; height: 20px; }
+  .cm-f-cab { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .cm-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border: 1px solid var(--linea); border-radius: 14px; background: rgba(15, 7, 12, 0.5); }
+  .cm-tab { min-height: 44px; padding: 0 8px; cursor: pointer; font: 700 14px var(--texto); color: var(--marfil-70); background: none; border: 0; border-radius: 10px; }
+  .cm-tab[aria-selected="true"] { color: #2A1622; background: linear-gradient(135deg, var(--brillo), var(--champana) 62%, #D3A167); }
+  .cm-panel { display: grid; gap: 16px; align-content: start; margin-top: 16px; }
+  .cm-etqs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cm-etq {
+    display: inline-flex; align-items: center; gap: 6px; padding: 1px 10px; font: 700 13px/1.5 var(--texto); white-space: nowrap;
+    color: var(--marfil-70); border: 1px solid var(--linea); border-radius: 999px;
+  }
+  .cm-etq i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .cm-etq.rep { color: var(--champana); border-color: rgba(224, 184, 126, 0.5); background: rgba(224, 184, 126, 0.08); }
+  .cm-etq.cuo { color: var(--alerta); border-color: rgba(228, 137, 154, 0.5); background: rgba(228, 137, 154, 0.08); }
+  .cm-etq.nue { color: #8FCB9B; border-color: rgba(143, 203, 155, 0.45); background: rgba(143, 203, 155, 0.07); }
+  .cm-etq.sal { color: var(--brillo); border-color: rgba(224, 184, 126, 0.45); }
+  .cm-etq.ina { color: #9A7B8E; border-color: rgba(154, 123, 142, 0.5); }
+  .cm-etq.sin { color: var(--marfil-40); }
+  .cm-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .cm-tile { display: grid; gap: 2px; align-content: start; padding: 12px; border: 1px solid var(--linea); border-radius: 14px; background: rgba(15, 7, 12, 0.35); }
+  .cm-tile span { font-size: 13px; color: var(--marfil-70); }
+  .cm-tile b { font: 600 1.25rem/1.15 var(--display); color: var(--brillo); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .cm-tile b.txt { font: 700 15px/1.3 var(--texto); }
+  .cm-nota { margin: 0; padding: 12px 16px; font-size: 14.5px; border-left: 3px solid var(--champana); border-radius: 0 10px 10px 0; background: rgba(224, 184, 126, 0.07); overflow-wrap: anywhere; }
+  .cm-sec-bloque { display: grid; gap: 8px; }
+  .cm-sec-bloque h3 { margin: 0; font: 700 14px var(--texto); color: var(--marfil-70); }
+  .cm-fact {
+    display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 12px; font-size: 14px; white-space: nowrap; text-decoration: none;
+    color: var(--marfil-70); border: 1px solid var(--linea); border-radius: 12px; background: rgba(15, 7, 12, 0.3);
+  }
+  .cm-fact b { color: var(--marfil); }
+  .cm-fact .t { margin-left: auto; color: var(--marfil); font-variant-numeric: tabular-nums; }
+  .cm-enlace { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 600; color: var(--champana); text-underline-offset: 3px; }
+  .cm-ofertas { display: grid; gap: 8px; }
+  .cm-barra {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--linea); background: rgba(21, 12, 18, 0.96);
+  }
+  .cm-barra form { margin: 0; }
+
+  /* Formularios: editar (pantalla) y agregar (ventana desde abajo) */
+  .cm-form { display: grid; gap: 12px; }
+  .cm-form .campo { margin: 0; }
+  .cm-form .campo label { font-size: 14px; letter-spacing: 0; }
+  .cm-form input:not([type="hidden"]) { min-height: 52px; font-size: 16px; }
+  .cm-hoja {
+    width: 100%; max-width: none; max-height: 94dvh; margin: auto 0 0; padding: 0; overflow-y: auto; color: var(--marfil);
+    background: var(--ciruela-2); border: 1px solid rgba(224, 184, 126, 0.45); border-bottom: 0; border-radius: 22px 22px 0 0;
+  }
+  .cm-hoja::backdrop { background: rgba(8, 3, 6, 0.66); }
+  .cm-hoja[open] { animation: cm-sube 0.28s cubic-bezier(0.32, 0.72, 0.5, 1); }
+  .cm-hoja-agarre { width: 40px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--humo); }
+  .cm-hoja .cm-form { padding: 8px 16px calc(24px + env(safe-area-inset-bottom, 0px)); }
+  .cm-hoja-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .cm-hoja-cab h2 { margin: 0; font: 600 1.375rem/1.2 var(--display); color: var(--brillo); }
+  .cm-cerrar { flex: none; display: grid; place-items: center; width: 48px; height: 48px; margin-right: -8px; padding: 0; cursor: pointer; color: var(--marfil-70); background: none; border: 0; border-radius: 50%; }
+  .cm-cerrar svg { width: 20px; height: 20px; }
+}
+@keyframes cm-sube { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cm-hoja[open] { animation: none; } }
