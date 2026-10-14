@@ -2,6 +2,14 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 15 de octubre, 2026 (Clientes en tablet: lista y ficha lado a lado, propuesta B, solo en la rama)
+
+- **Hecho en la rama (falta llevarlo a master):** el directorio de Clientes ahora también sale en tablet (700–959px), con el mismo HTML y el mismo `assets/js/clientes-directorio.js` que en escritorio; solo cambia el CSS. Arriba, el título y los botones (traer de facturación y "Agregar") a todo el ancho; debajo, a la izquierda, buscador, filtro de segmento y la lista (40% del ancho, mínimo 280px) y, a la derecha, la ficha. La lista y la ficha se desplazan por dentro: la página no crece. Celular (menos de 700px) no cambia todavía.
+- **Cómo está hecho:** el bloque "Clientes · directorio de escritorio y tablet" de `assets/css/enrisate.css` ahora empieza en 700px; al final hay un bloque `@media (min-width: 700px) and (max-width: 959px)` que lo adapta: `.cd-izq` pasa a `display: contents` y el grid se arma con áreas (`cab`, `fil`, `lis`, `fic`); se esconde el índice A–Z (letras de 24px no sirven con el dedo; quedan los encabezados de letra dentro de la lista); todo lo que se toca mide 44px o más (principal 48px); la ficha es un contenedor (`cdficha`) y sus 6 cifras van de 2 en 2, o de 3 en 3 si la ficha mide 480px o más. La fecha de las facturas recientes pierde el año en tablet (`.cd-anio`).
+- **Ojo:** entre 640 y 699px sigue viéndose la tabla de siempre (el corte de la tabla era 640px; el directorio empieza en 700px, como Cartera). Eso se resuelve con la propuesta de celular. Igual que en escritorio, se pierde la selección en lote para eliminar varias a la vez.
+- **Pruebas:** recorrido en navegador a 700, 768, 820, 834, 912 y 959 con 51 clientas de ejemplo: sin desbordes, todo de 44px o más, la página no se desplaza; elegir, editar, agregar y filtrar por segmento; a 960 y 1280 el escritorio queda igual (botones de 40px, índice A–Z) y a 699 y 390 siguen los paneles de siempre. La suite con base de datos no se pudo correr (sin MariaDB en la sesión); este cambio es solo de CSS y de un detalle del JS.
+- **Pendiente:** probarlo en la tablet de Sebastián con clientas reales; propuesta de celular para Clientes.
+
 ## 14 de octubre, 2026 (Clientes en escritorio: directorio A–Z con ficha, propuesta B, solo en la rama)
 
 - **Hecho en la rama (falta llevarlo a master):** desde 960px "Clientes" ya no es un formulario más una tabla larga. A la izquierda, la lista de la A a la Z (índice de letras, buscador y filtro por segmento); a la derecha, la ficha de la clienta elegida (cifras, segmentos, facturas recientes, ofertas por WhatsApp, editar y eliminar). La lista y la ficha se desplazan por dentro: la página no crece. Tablet y celular no cambian todavía (siguen la tabla y las tarjetas); faltan sus propuestas.
