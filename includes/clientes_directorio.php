@@ -1,6 +1,6 @@
 <?php
 /* =========================================================
-   Clientes · directorio de escritorio (960px o más)
+   Clientes · directorio de escritorio y tablet (700px o más)
    ---------------------------------------------------------
    A la izquierda, la lista agrupada por letra con un índice A–Z, un buscador y un filtro por
    segmento; a la derecha, la ficha de la clienta elegida. La lista y la ficha se desplazan por
@@ -13,7 +13,9 @@
    assets/js/clientes-directorio.js arma la ficha con $dirDatos y hace funcionar buscador,
    filtro, índice y formularios. Los formularios mandan lo mismo que siempre (agregar, editar,
    eliminar y traer de facturación); el servidor sigue siendo quien valida todo.
-   Debajo de 960px esto no se ve: siguen la tabla y las tarjetas de siempre.
+   Desde 700px se ve esto (directorio de escritorio y de tablet). Debajo de 700px se ve, en su lugar, el
+   directorio de celular (más abajo): mosaicos de segmento, lista y ficha por pasos, que arma
+   assets/js/clientes-celular.js con los mismos datos.
    ========================================================= */
 
 $iniciales = function (string $nombre): string {
@@ -92,8 +94,32 @@ foreach ($clientesAZ as $c) {
   <section class="cd-ficha" id="cd-ficha" aria-live="polite" tabindex="-1"></section>
 </div>
 
+<!-- Celular (menos de 700px): mosaicos de segmento → lista → ficha con pestañas. Todo lo arma clientes-celular.js;
+     aquí solo está el contenedor y la ventana de "Agregar cliente", que manda el formulario de siempre. -->
+<div class="cm" id="cm" data-csrf="<?= e($token) ?>" data-total="<?= count($clientesAZ) ?>">
+  <div class="cm-pantalla" id="cm-pantalla" tabindex="-1"></div>
+</div>
+<dialog class="cm-hoja" id="cm-hoja" aria-labelledby="cm-hoja-t">
+  <div class="cm-hoja-agarre" aria-hidden="true"></div>
+  <form method="post" action="clientes.php" class="cm-form" id="cm-form-nuevo">
+    <div class="cm-hoja-cab">
+      <h2 id="cm-hoja-t">Agregar cliente</h2>
+      <button type="button" class="cm-cerrar" data-cm-cerrar aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <input type="hidden" name="csrf" value="<?= e($token) ?>">
+    <div class="campo"><label for="cm-nombre">Nombre completo</label><input type="text" id="cm-nombre" name="nombre" placeholder="Gina Pertuz" required autocomplete="off"></div>
+    <div class="campo"><label for="cm-tel">Teléfono</label><input type="tel" id="cm-tel" name="telefono" placeholder="3001234567" inputmode="numeric" autocomplete="off"></div>
+    <div class="campo"><label for="cm-notas">Notas</label><input type="text" id="cm-notas" name="notas" placeholder="Opcional" autocomplete="off"></div>
+    <button type="submit" class="cm-btn principal ancho">Agregar cliente</button>
+  </form>
+</dialog>
+
 <script type="application/json" id="datos-clientes"><?= json_encode([
+    'orden'     => array_map('strval', array_keys($dirDatos)),
     'clientes'  => $dirDatos,
     'segmentos' => array_map(fn(array $s) => ['t' => $s[0], 'd' => $s[1]], SEGMENTOS_CLIENTE),
 ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="assets/js/clientes-directorio.js?v=<?= filemtime(__DIR__ . '/../assets/js/clientes-directorio.js') ?>" defer></script>
+<script src="assets/js/clientes-celular.js?v=<?= filemtime(__DIR__ . '/../assets/js/clientes-celular.js') ?>" defer></script>

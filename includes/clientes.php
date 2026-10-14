@@ -490,6 +490,10 @@ function datos_directorio_clientes(array $clientes, array $facturas, ?string $ho
             $pista = $compras . ($compras === 1 ? ' compra' : ' compras');
         }
 
+        // Qué tan urgente es escribirle o cobrarle (menor = antes): deuda vencida, deuda, le toca reponer, el resto.
+        // Dentro de cada grupo, la que lleva más días sin comprar va primero.
+        $grupoUrgencia = $debe['vencida'] ? 0 : ($debe['total'] > 0 ? 1 : (in_array('rep', $segs, true) ? 2 : 5));
+
         $datos[(string) $c['id']] = [
             'id'        => (string) $c['id'],
             'nombre'    => (string) $c['nombre'],
@@ -504,6 +508,7 @@ function datos_directorio_clientes(array $clientes, array $facturas, ?string $ho
             'vencida'   => $debe['vencida'],
             'segs'      => $segs,
             'pista'     => $pista,
+            'urgencia'  => $grupoUrgencia * 1000 - min(999, max(0, (int) $dias)),
             'ofertas'   => $ofertas,
             'facturas'  => $recientes,
         ];
