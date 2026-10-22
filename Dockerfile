@@ -4,7 +4,20 @@
 # PHP + Apache con las extensiones que la app necesita:
 #   - pdo_mysql/mysqli: para hablar con la base de datos.
 #   - gd: para procesar las fotos de producto (recorte, compresión).
-FROM php:8.4-apache
+#
+# Versión de PHP fijada a propósito (no "8.4-apache"): con la etiqueta
+# flotante, Railway puede reusar la imagen base que ya tenía guardada y
+# seguir corriendo una versión vieja sin avisar. 8.4.27 (21 oct 2026)
+# corrige PHP2Shell (CVE-2026-109618 y CVE-2026-109619): ejecución remota
+# de código SIN iniciar sesión, más grave con mod_php (el que usa esta
+# imagen), con ataques ya reportados. Ante cada nueva versión de
+# seguridad de PHP: subir este número y el mínimo de la revisión de abajo.
+FROM php:8.4.27-apache
+
+# Revisión al construir: si por error la imagen trae un PHP sin la
+# corrección de PHP2Shell, la construcción se detiene acá y Railway deja
+# andando la versión anterior, en vez de publicar un servidor vulnerable.
+RUN php -r 'if (version_compare(PHP_VERSION, "8.4.27", "<")) { fwrite(STDERR, "PHP " . PHP_VERSION . " no tiene la corrección de PHP2Shell (hace falta 8.4.27 o más nueva).\n"); exit(1); }'
 
 #
 # Las librerías -dev (libpng-dev, etc.) NO se desinstalan después de

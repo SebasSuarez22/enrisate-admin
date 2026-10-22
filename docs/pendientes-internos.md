@@ -2,6 +2,14 @@
 
 _Nota privada de trabajo. No se muestra al cliente — solo para dar continuidad entre sesiones. Las entradas nuevas se agregan arriba._
 
+## 22 de octubre, 2026 (Seguridad: PHP2Shell, CVE-2026-109618 y CVE-2026-109619, solo en la rama)
+
+- **Qué pasó:** el 21 de octubre PHP publicó 8.5.12, 8.4.27, 8.3.36 y 8.2.35 para dos fallas críticas ("PHP2Shell"): ejecución remota de código sin iniciar sesión. El riesgo es mayor con mod_php (el que usa esta imagen), porque se dispara con un POST grande antes de que corra el código del panel. Hay reportes de ataques activos. Una de las dos (109619) pasa por `session.upload_progress`.
+- **Estado de producción:** el último despliegue es del 15 de octubre, con `FROM php:8.4-apache` → PHP 8.4.26 o anterior: **vulnerable** hasta que se publique esto.
+- **Hecho en la rama:** `Dockerfile` fija `php:8.4.27-apache` (con la etiqueta flotante Railway podía reusar la base guardada) y agrega una revisión al construir que detiene el build si PHP < 8.4.27. Segunda capa: `docker/seguridad.ini` apaga `session.upload_progress.enabled` (el panel no lo usa) y `docker/seguridad-apache.conf` pone `LimitRequestBody` de 1 MB en todo el sitio y 13 MB solo para `/inventario.php` (única página con `$_FILES`; `post_max_size` sigue en 12M).
+- **Pruebas:** con la imagen oficial 8.4.27 (digest `sha256:a0b75cee…`) y la configuración del proyecto: PHP 8.4.27, upload_progress apagado, `apache2ctl -t` correcto, POST de 2 MB a index/pedido-publico/api-cliente/verificar → 413 (también con chunked), 500 KB → pasa, 5 MB a inventario → pasa, 14 MB → 413. No se pudo construir la imagen completa aquí (el entorno bloquea deb.debian.org), así que gd y composer se prueban en el build de Railway; la revisión de versión sí corrió. `composer audit`: sin avisos.
+- **Pendiente:** llevar a master (urgente), confirmar en el log del build de Railway "PHP 8.4.27", y revisar los logs del 21–22 de octubre buscando POST grandes, 413/500 o "Segmentation fault" de procesos de Apache. Si aparece algo, rotar `ADMIN_HASH`, claves de usuarios, secretos 2FA y la clave de MySQL.
+
 ## 15 de octubre, 2026 (Cartera y reportes: cifras de "Reportes" en celular con selector de periodo, propuesta C, solo en la rama)
 
 - **Hecho en la rama (falta llevarlo a master):** en celular (menos de 700px) las siete cifras de "Reportes" dejan de ser dos carruseles de tarjetas (la del borde quedaba cortada y solo se veían completas 2 de 7). Ahora: una tarjeta con tres botones (Hoy · Este mes · Este año) que muestra la ganancia del periodo en grande y, para hoy y este mes, lo más vendido; abajo, fijo, el histórico (total vendido y total invertido) en dos columnas. Arranca en "Este mes". Tablet y escritorio siguen con las tarjetas `.kpi` de siempre.
